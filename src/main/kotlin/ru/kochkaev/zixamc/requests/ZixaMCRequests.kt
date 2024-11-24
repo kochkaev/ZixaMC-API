@@ -47,15 +47,16 @@ class ZixaMCRequests : ModInitializer {
         }
         else {
             val forwardedMessage = bot.forwardMessage(
-                ConfigManager.CONFIG!!.targetChatId,
-                ConfigManager.CONFIG!!.targetTopicId,
-                msg.chat.id,
+                chatId = ConfigManager.CONFIG!!.targetChatId,
+                messageThreadId = ConfigManager.CONFIG!!.targetTopicId,
+                fromChatId = msg.chat.id,
                 messageId = msg.messageId
             )
             if (ConfigManager.CONFIG!!.textOnSend4Target.isNotEmpty()) bot.sendMessage(
-                ConfigManager.CONFIG!!.targetChatId,
-                ConfigManager.CONFIG!!.textOnSend4Target,
-                ConfigManager.CONFIG!!.targetTopicId,
+                chatId = ConfigManager.CONFIG!!.targetChatId,
+                text = ConfigManager.CONFIG!!.textOnSend4Target,
+                replyToMessageId = forwardedMessage.messageId,
+//                ConfigManager.CONFIG!!.targetTopicId,
             )
             if (ConfigManager.CONFIG!!.autoCreatePoll) bot.sendPoll(
                 chatId = ConfigManager.CONFIG!!.targetChatId,
@@ -66,7 +67,9 @@ class ZixaMCRequests : ModInitializer {
                     TgInputPollOption(ConfigManager.CONFIG!!.pollAnswerNull),
                     TgInputPollOption(ConfigManager.CONFIG!!.pollAnswerFalse),
                 ),
-//                replyParameters = TgReplyParameters(forwardedMessage.messageId, allowSendingWithoutReply = false),
+                replyParameters = TgReplyParameters(
+                    message_id = forwardedMessage.messageId,
+                ),
             )
         }
     }
@@ -74,13 +77,14 @@ class ZixaMCRequests : ModInitializer {
         val firstReply = getFirstReply(msg)
         if (ConfigManager.CONFIG == null || firstReply.forwardFrom == null) return false
         if (ConfigManager.CONFIG!!.textOnAccept4Target.isNotEmpty()) bot.sendMessage(
-            ConfigManager.CONFIG!!.targetChatId,
-            ConfigManager.CONFIG!!.textOnAccept4Target,
-            firstReply.messageId,
+            chatId = ConfigManager.CONFIG!!.targetChatId,
+            text = ConfigManager.CONFIG!!.textOnAccept4Target,
+            replyToMessageId = firstReply.messageId,
         )
         if (ConfigManager.CONFIG!!.textOnAccept4User.isNotEmpty()) bot.sendMessage(
-            firstReply.forwardFrom.id,
-            ConfigManager.CONFIG!!.textOnAccept4User,
+            chatId = firstReply.forwardFrom.id,
+            text = ConfigManager.CONFIG!!.textOnAccept4User,
+            replyToMessageId = msg.messageId,
         )
         return true
     }

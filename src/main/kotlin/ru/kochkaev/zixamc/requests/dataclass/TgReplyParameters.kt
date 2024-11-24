@@ -6,8 +6,8 @@ import org.spongepowered.include.com.google.gson.annotations.SerializedName
  * @author kochkaev
  */
 data class TgReplyParameters(
-    @SerializedName("message_id")
-    val messageId: Int,
+//    @SerializedName("message_id")
+    val message_id: Int,
     @SerializedName("chat_id")
     val chatId: Long? = null,
     @SerializedName("allow_sending_without_reply")

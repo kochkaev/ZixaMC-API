@@ -17,13 +17,6 @@
       "ru.kochkaev.zixamc.requests.ZixaMCRequests"
     ]
   },
-  "mixins": [
-    "zixamcrequests.mixins.json",
-    {
-      "config": "zixamcrequests.client.mixins.json",
-      "environment": "client"
-    }
-  ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-language-kotlin": ">=${kotlin_loader_version}",
