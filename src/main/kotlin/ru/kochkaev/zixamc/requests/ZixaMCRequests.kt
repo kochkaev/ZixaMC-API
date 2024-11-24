@@ -1,0 +1,105 @@
+package ru.kochkaev.zixamc.requests
+
+import kotlinx.coroutines.*
+import net.fabricmc.api.ModInitializer
+import org.slf4j.LoggerFactory
+import ru.kochkaev.zixamc.requests.dataclass.TgInputPollOption
+import ru.kochkaev.zixamc.requests.dataclass.TgMessage
+import ru.kochkaev.zixamc.requests.dataclass.TgReplyParameters
+
+/**
+ * @author kochkaev
+ */
+class ZixaMCRequests : ModInitializer {
+    private val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
+    companion object {
+        val logger = LoggerFactory.getLogger("ZixaMCRequests")
+        private lateinit var bot: TelegramBotZixa
+    }
+    override fun onInitialize() {
+        ConfigManager.init(false)
+        bot = TelegramBotZixa(ConfigManager.CONFIG?.botAPIURL!!, ConfigManager.CONFIG?.botToken!!, logger)
+        runBlocking {
+            bot.init()
+        }
+        bot.registerMessageHandler(this::onTelegramMessage)
+        bot.registerCommandHandler("accept", this::onTelegramAcceptCommand)
+        bot.registerCommandHandler("reject", this::onTelegramRejectCommand)
+        coroutineScope.launch {
+            bot.startPolling(coroutineScope)
+        }
+    }
+    suspend fun onTelegramMessage(msg: TgMessage) {
+        if (ConfigManager.CONFIG == null) return
+        val firstReply = getFirstReply(msg)
+        if (
+            (
+                msg.chat.id == ConfigManager.CONFIG!!.targetChatId
+                || ConfigManager.CONFIG!!.targetTopicId!=0 && msg.messageThreadId == ConfigManager.CONFIG!!.targetTopicId
+            ) && ConfigManager.CONFIG!!.forwardBack
+                && (msg.replyToMessage != null && firstReply.from == bot.me && firstReply.forwardFrom != null)
+        ) {
+            bot.forwardMessage(
+                firstReply.forwardFrom.id,
+                fromChatId = msg.chat.id,
+                messageId = msg.messageId
+            )
+        }
+        else {
+            val forwardedMessage = bot.forwardMessage(
+                ConfigManager.CONFIG!!.targetChatId,
+                ConfigManager.CONFIG!!.targetTopicId,
+                msg.chat.id,
+                messageId = msg.messageId
+            )
+            if (ConfigManager.CONFIG!!.textOnSend4Target.isNotEmpty()) bot.sendMessage(
+                ConfigManager.CONFIG!!.targetChatId,
+                ConfigManager.CONFIG!!.textOnSend4Target,
+                ConfigManager.CONFIG!!.targetTopicId,
+            )
+            if (ConfigManager.CONFIG!!.autoCreatePoll) bot.sendPoll(
+                chatId = ConfigManager.CONFIG!!.targetChatId,
+                messageThreadId = ConfigManager.CONFIG!!.targetTopicId,
+                question = ConfigManager.CONFIG!!.pollQuestion.replace("{username}", "@${msg.senderUserName}"),
+                options = listOf(
+                    TgInputPollOption(ConfigManager.CONFIG!!.pollAnswerTrue),
+                    TgInputPollOption(ConfigManager.CONFIG!!.pollAnswerNull),
+                    TgInputPollOption(ConfigManager.CONFIG!!.pollAnswerFalse),
+                ),
+//                replyParameters = TgReplyParameters(forwardedMessage.messageId, allowSendingWithoutReply = false),
+            )
+        }
+    }
+    suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
+        val firstReply = getFirstReply(msg)
+        if (ConfigManager.CONFIG == null || firstReply.forwardFrom == null) return false
+        if (ConfigManager.CONFIG!!.textOnAccept4Target.isNotEmpty()) bot.sendMessage(
+            ConfigManager.CONFIG!!.targetChatId,
+            ConfigManager.CONFIG!!.textOnAccept4Target,
+            firstReply.messageId,
+        )
+        if (ConfigManager.CONFIG!!.textOnAccept4User.isNotEmpty()) bot.sendMessage(
+            firstReply.forwardFrom.id,
+            ConfigManager.CONFIG!!.textOnAccept4User,
+        )
+        return true
+    }
+    suspend fun onTelegramRejectCommand(msg: TgMessage): Boolean {
+        val firstReply = getFirstReply(msg)
+        if (ConfigManager.CONFIG == null || firstReply.forwardFrom == null) return false
+        if (ConfigManager.CONFIG!!.textOnReject4Target.isNotEmpty()) bot.sendMessage(
+            ConfigManager.CONFIG!!.targetChatId,
+            ConfigManager.CONFIG!!.textOnReject4Target,
+            firstReply.messageId,
+        )
+        if (ConfigManager.CONFIG!!.textOnReject4User.isNotEmpty()) bot.sendMessage(
+            firstReply.forwardFrom.id,
+            ConfigManager.CONFIG!!.textOnReject4User,
+        )
+        return true
+    }
+    fun getFirstReply(msg: TgMessage): TgMessage {
+        val repliedMessage = msg.replyToMessage ?: return msg
+        return if (repliedMessage.replyToMessage == null) repliedMessage else getFirstReply(repliedMessage)
+    }
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "zixamcrequests",
+  "version": "${version}",
+  "name": "ZixaMCRequests",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/zixamcrequests/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "ru.kochkaev.zixamc.requests.client.ZixaMCRequestsClient"
+    ],
+    "main": [
+      "ru.kochkaev.zixamc.requests.ZixaMCRequests"
+    ]
+  },
+  "mixins": [
+    "zixamcrequests.mixins.json",
+    {
+      "config": "zixamcrequests.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-language-kotlin": ">=${kotlin_loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
