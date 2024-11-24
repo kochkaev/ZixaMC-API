@@ -2,7 +2,7 @@ package ru.kochkaev.zixamc.requests
 
 import net.fabricmc.api.ModInitializer
 import org.slf4j.LoggerFactory
-import ru.kochkaev.zixamc.requests.dataclass.TgMessage
+import ru.kochkaev.zixamc.requests.dataclassTelegram.TgMessage
 
 /**
  * @author kochkaev

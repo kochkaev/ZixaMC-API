@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.requests.dataclass
+package ru.kochkaev.zixamc.requests.dataclassTelegram
 
 import retrofit2.http.Body
 import retrofit2.http.GET

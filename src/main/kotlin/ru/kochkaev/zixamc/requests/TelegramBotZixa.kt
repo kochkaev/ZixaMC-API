@@ -1,13 +1,12 @@
 package ru.kochkaev.zixamc.requests
 
-import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import org.slf4j.Logger
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import ru.kochkaev.zixamc.requests.dataclass.*
+import ru.kochkaev.zixamc.requests.dataclassTelegram.*
 import java.time.Duration
 
 /**

@@ -58,6 +58,7 @@ repositories {
             includeGroup("maven.modrinth")
         }
     }
+    mavenCentral()
 }
 
 dependencies {
@@ -68,6 +69,22 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
 
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
+//    implementation("jdbc:jdbc:2.0")
+
+    // Storage
+    // LevelDB database
+    implementation("org.iq80.leveldb:leveldb:${project.property("leveldb_version")}")
+    implementation("org.iq80.leveldb:leveldb-api:${project.property("leveldb_version")}")
+
+    // MongoDB driver
+    implementation("org.mongodb:mongodb-driver-sync:${project.property("mongodb_version")}")
+    implementation("org.mongodb:mongodb-driver-core:${project.property("mongodb_version")}")
+    implementation("org.mongodb:bson:${project.property("mongodb_version")}")
+
+    // MySQL driver
+    implementation ("com.mysql:mysql-connector-j:${project.property("mysql_version")}")
+
 //    modImplementation("maven.modrinth:tgbridge:$tgbridgeVersion")
 
 //    implementation("org.springframework.boot:spring-boot-starter")

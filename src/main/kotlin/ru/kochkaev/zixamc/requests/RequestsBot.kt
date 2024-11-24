@@ -2,9 +2,9 @@ package ru.kochkaev.zixamc.requests
 
 import kotlinx.coroutines.*
 import ru.kochkaev.zixamc.requests.ZixaMCRequests.Companion.logger
-import ru.kochkaev.zixamc.requests.dataclass.TgInputPollOption
-import ru.kochkaev.zixamc.requests.dataclass.TgMessage
-import ru.kochkaev.zixamc.requests.dataclass.TgReplyParameters
+import ru.kochkaev.zixamc.requests.dataclassTelegram.TgInputPollOption
+import ru.kochkaev.zixamc.requests.dataclassTelegram.TgMessage
+import ru.kochkaev.zixamc.requests.dataclassTelegram.TgReplyParameters
 
 /**
  * @author kochkaev
