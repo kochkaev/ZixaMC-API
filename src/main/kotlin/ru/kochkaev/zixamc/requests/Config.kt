@@ -16,6 +16,8 @@ data class Config (
     val pollAnswerFalse: String = "",
     val forwardBack: Boolean = false,
     val textHello: String = "",
+    val textAgreeWithRules: String = "",
+    val textOnAgreeWithRules: String = "",
     val textOnSend4User: String = "",
     val textOnSend4Target: String = "",
     val textOnAccept4User: String = "",

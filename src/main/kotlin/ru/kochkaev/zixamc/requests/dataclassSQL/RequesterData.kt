@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.requests.dataclassSQL
 
 data class RequesterData(
-    val agreedWithRules: Boolean,
-    val requests: List<RequestData>
+    var agreed_with_rules: Boolean,
+    var requests: ArrayList<RequestData>
 
 ) : AccountData()

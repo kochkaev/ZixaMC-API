@@ -2,6 +2,7 @@ package ru.kochkaev.zixamc.requests
 
 import com.google.gson.Gson
 import com.mysql.cj.jdbc.exceptions.CommunicationsException
+import org.checkerframework.checker.units.qual.A
 import ru.kochkaev.zixamc.requests.dataclassSQL.*
 import java.sql.*
 
@@ -10,6 +11,7 @@ import java.sql.*
  */
 class MySQL {
     private var MySQLConnection: Connection? = null
+    val gson = Gson()
 
     /* Account types:
         0 -> Admin
@@ -35,11 +37,11 @@ class MySQL {
                                         CREATE TABLE `%s`.`%s` (
                                             `id` INT NOT NULL AUTO_INCREMENT,
                                             `user_id` BIGINT NOT NULL,
-                                            `nickname` VARCHAR(16) NOT NULL,
+                                            `nickname` VARCHAR(16),
                                             `second_nicknames` VARCHAR(16)[],
                                             `account_type` INT NOT NULL,
                                             `data` JSON NOT NULL,
-                                            PRIMARY KEY (`id`), UNIQUE (`user_id`), UNIQUE (`nickname`)
+                                            PRIMARY KEY (`id`), UNIQUE (`user_id`)
                                         ) ENGINE = InnoDB;
                                         """.trimIndent(),
                         ConfigManager.CONFIG!!.mySQLDatabase,
@@ -90,7 +92,8 @@ class MySQL {
         get() = MySQLConnection == null
 
 
-    @Deprecated("")
+    fun registerUser(user_id: Long?, nickname: String?, second_nicknames: Array<String>?, account_type: Int?, data: AccountData?): Boolean =
+        registerUser(user_id, nickname, second_nicknames, account_type, Gson().toJson(data))
     fun registerUser(user_id: Long?, nickname: String?, second_nicknames: Array<String>?, account_type: Int?, data: String?): Boolean {
         try {
             reConnect()
@@ -170,7 +173,6 @@ class MySQL {
         }
     }
 
-    @Deprecated("")
     fun updateUserData(user_id: Long?, data: String?) {
         try {
             if (user_id == null) return
@@ -184,7 +186,6 @@ class MySQL {
             ZixaMCRequests.logger.error("updateUserData error", e)
         }
     }
-    @Deprecated("")
     fun updateUserAccountType(user_id: Long?, account_type: Int?) {
         try {
             if (user_id == null) return
@@ -198,7 +199,6 @@ class MySQL {
             ZixaMCRequests.logger.error("updateUserData error", e)
         }
     }
-    @Deprecated("")
     fun updateUserNickname(user_id: Long?, nickname: String?) {
         try {
             if (user_id == null) return
@@ -212,14 +212,28 @@ class MySQL {
             ZixaMCRequests.logger.error("updateUserData error", e)
         }
     }
-    @Deprecated("")
-    fun addUserSecondNickname(user_id: Long?, second_nickname: String?) {
+    fun addUserSecondNickname(user_id: Long?, second_nickname: String?) : Boolean {
         try {
-            if (user_id == null) return
+            if (user_id == null) return false
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET second_nicknames = ARRAY_APPEND(second_nicknames, ?) WHERE user_id = ?;")
             preparedStatement.setString(1, second_nickname)
+            preparedStatement.setLong(1, user_id)
+            preparedStatement.executeUpdate()
+            return true
+        } catch (e: SQLException) {
+            ZixaMCRequests.logger.error("updateUserData error", e)
+        }
+        return false
+    }
+    fun updateUserSecondNicknames(user_id: Long?, second_nicknames: Array<String>?) {
+        try {
+            if (user_id == null) return
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET second_nicknames = ? WHERE user_id = ?;")
+            preparedStatement.setArray(1, MySQLConnection!!.createArrayOf("text", second_nicknames))
             preparedStatement.setLong(1, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
@@ -321,14 +335,7 @@ class MySQL {
                     val nickname = query.getString(3)
                     val second_nicknames = query.getArray(4).array as Array<String>
                     val account_type = query.getInt(5)
-                    val data: AccountData = Gson().fromJson(query.getString(6),
-                        when (account_type) {
-                            0 -> AdminData::class.java
-                            1 -> PlayerData::class.java
-                            2 -> RequesterData::class.java
-                            else -> AccountData::class.java
-                        }
-                    )
+                    val data: AccountData = MySQLIntegration.parseJsonToPOJO(query.getString(6), account_type)
                     registeredUsers[user_id] = TableRow(nickname, second_nicknames, account_type, data)
                 }
             } catch (e: SQLException) {
@@ -336,6 +343,24 @@ class MySQL {
             }
             return registeredUsers
         }
+    val getAllLinkedEntities: HashMap<Long, SQLEntity>
+        get() {
+            val linkedEntities = HashMap<Long, SQLEntity>()
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + ConfigManager.CONFIG!!.mySQLTable + ";")
+                val query = preparedStatement.executeQuery()
+                while (query.next()) {
+                    val user_id = query.getLong(1)
+                    linkedEntities[user_id] = SQLEntity(this, user_id)
+                }
+            } catch (e: SQLException) {
+                ZixaMCRequests.logger.error("getAllData error", e)
+            }
+            return linkedEntities
+        }
+    fun getLinkedEntity(user_id: Long?): SQLEntity? = if (user_id != null && isUserRegistered(user_id)) SQLEntity(this, user_id) else null
 
     fun saveAll(playerCacheMap: HashMap<Long?, TableRow?>) {
         try {
@@ -347,7 +372,7 @@ class MySQL {
                 val nickname: String = userInfo?.nickname?:return@forEach
                 val second_nicknames = MySQLConnection!!.createArrayOf("text", userInfo.second_nicknames)
                 val account_type: Int = userInfo.account_type
-                val data: String = Gson().toJson(userInfo.data)
+                val data: String = gson.toJson(userInfo.data)
                 try {
                     preparedStatement.setLong(1, user_id?:return@forEach)
                     preparedStatement.setString(2, nickname)

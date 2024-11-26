@@ -1,6 +1,6 @@
 package ru.kochkaev.zixamc.requests.dataclassSQL
 
 data class PlayerData(
-    val minecraft_accounts: List<AccountData>,
-    val requester_data: RequesterData? = null,
+    var minecraft_accounts: ArrayList<MinecraftAccountData>,
+    var requester_data: RequesterData? = null,
 ): AccountData()
