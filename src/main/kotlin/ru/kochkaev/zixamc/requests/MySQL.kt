@@ -50,7 +50,7 @@ class MySQL {
                 )
                 MySQLConnection!!.createStatement().execute("""
                     CREATE OR REPLACE FUNCTION JSON_AS_ARRAY_CREATE()
-                    RETURNS anyjson AS
+                    RETURNS JSON AS
                     ${'$'}${'$'}
                     BEGIN
                         RETURN CAST('{"array": []}' AS JSON);
@@ -60,7 +60,7 @@ class MySQL {
                 """)
                 MySQLConnection!!.createStatement().execute("""
                     CREATE OR REPLACE FUNCTION JSON_AS_ARRAY_APPEND(json anyjson, elem anyelem)
-                    RETURNS anyjson AS
+                    RETURNS JSON AS
                     ${'$'}${'$'}
                     BEGIN
                         RETURN JSON_ARRAY_APPEND(json, '$.array', elem);
