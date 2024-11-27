@@ -18,5 +18,6 @@ class ZixaMCRequests : ModInitializer {
     override fun onInitialize() {
         ConfigManager.init(false)
         RequestsBot.startBot()
+        MySQLIntegration.startServer()
     }
 }
