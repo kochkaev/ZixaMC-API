@@ -24,6 +24,7 @@ data class Config (
     val textOnAccept4Target: String = "",
     val textOnReject4User: String = "",
     val textOnReject4Target: String = "",
+    val textOnStart: String = "",
     val mySQLHost: String = "",
     val mySQLDatabase: String = "",
     val mySQLUser: String = "",

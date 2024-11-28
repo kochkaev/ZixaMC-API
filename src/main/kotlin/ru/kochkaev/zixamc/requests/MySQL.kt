@@ -48,37 +48,21 @@ class MySQL {
                         ConfigManager.CONFIG!!.mySQLTable
                     )
                 )
-                MySQLConnection!!.createStatement().execute("""
-                    CREATE OR REPLACE FUNCTION JSON_AS_ARRAY_CREATE()
-                    RETURNS JSON AS
-                    ${'$'}${'$'}
-                    BEGIN
-                        RETURN CAST('{"array": []}' AS JSON);
-                    END;
-                    ${'$'}${'$'}
-                    LANGUAGE plpgsql;
-                """)
-                MySQLConnection!!.createStatement().execute("""
-                    CREATE OR REPLACE FUNCTION JSON_AS_ARRAY_APPEND(json anyjson, elem anyelem)
-                    RETURNS JSON AS
-                    ${'$'}${'$'}
-                    BEGIN
-                        RETURN JSON_ARRAY_APPEND(json, '$.array', elem);
-                    END;
-                    ${'$'}${'$'}
-                    LANGUAGE plpgsql;
-                """)
-                MySQLConnection!!.createStatement().execute("""
-                    CREATE OR REPLACE FUNCTION JSON_CONTAINS(json anyjson, elem anyelement) 
-                    RETURNS BOOLEAN AS 
-                    ${'$'}${'$'} 
-                    BEGIN 
-                        RETURN elem = ANY(JSON_EXTRACT(json, '$.array')); 
-                    END; 
-                    ${'$'}${'$'} 
-                    LANGUAGE plpgsql; 
-                """)
             }
+            MySQLConnection!!.createStatement().execute("""
+                    CREATE FUNCTION IF NOT EXISTS json_as_array_append(jsonDoc JSON, elem VARCHAR(16))
+                    RETURNS JSON
+                    BEGIN
+                        RETURN JSON_ARRAY_APPEND(jsonDoc, '$.array', elem);
+                    END;
+                """)
+            MySQLConnection!!.createStatement().execute("""
+                    CREATE FUNCTION IF NOT EXISTS json_as_array_contains(jsonDoc JSON, elem VARCHAR(16))
+                    RETURNS BOOLEAN
+                    BEGIN 
+                        RETURN JSON_CONTAINS(jsonDoc, JSON_QUOTE(elem), '$.array'); 
+                    END;
+                """)
         } catch (e: ClassNotFoundException) {
             MySQLConnection = null
             throw Exception("Failed setting up mysql DB", e)
@@ -129,7 +113,7 @@ class MySQL {
             reConnect()
             if (!isUserRegistered(user_id) && user_id != null && !isNicknameRegistered(nickname) && (second_nicknames?.any{isNicknameRegistered(it)} != true)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("INSERT INTO " + ConfigManager.CONFIG!!.mySQLTable + " (user_id, nickname, second_nickname, account_type, data) VALUES (?, ?, ?, ?, ?);")
+                    MySQLConnection!!.prepareStatement("INSERT INTO " + ConfigManager.CONFIG!!.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?);")
 //                val sql_array_second_nicknames = MySQLConnection!!.createArrayOf("text", second_nicknames)
                 preparedStatement.setLong(1, user_id)
                 preparedStatement.setString(2, nickname)
@@ -162,7 +146,7 @@ class MySQL {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE nickname = ? OR JSON_AS_ARRAY_CONTAINS(second_nicknames, ?);")
+                MySQLConnection!!.prepareStatement("SELECT * FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
             preparedStatement.setString(1, nickname)
             preparedStatement.setString(2, nickname)
             return preparedStatement.executeQuery().next()
@@ -247,7 +231,7 @@ class MySQL {
             if (user_id == null) return false
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET second_nicknames = JSON_AS_ARRAY_APPEND(second_nicknames, ?) WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET second_nicknames = json_as_array_append(second_nicknames, ?) WHERE user_id = ?;")
             preparedStatement.setString(1, second_nickname)
             preparedStatement.setLong(1, user_id)
             preparedStatement.executeUpdate()
@@ -340,7 +324,7 @@ class MySQL {
             reConnect()
             if (isNicknameRegistered(nickname)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE nickname = ? OR JSON_AS_ARRAY_CONTAINS(second_nicknames, ?);")
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
                 preparedStatement.setString(1, nickname)
                 val query = preparedStatement.executeQuery()
                 if (!query.next()) return null

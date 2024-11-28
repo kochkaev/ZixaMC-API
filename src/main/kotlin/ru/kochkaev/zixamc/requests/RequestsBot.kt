@@ -21,6 +21,7 @@ object RequestsBot {
         bot.registerMessageHandler(this::onTelegramMessage)
         bot.registerCommandHandler("accept", this::onTelegramAcceptCommand)
         bot.registerCommandHandler("reject", this::onTelegramRejectCommand)
+        bot.registerCommandHandler("start", this::onTelegramStartCommand)
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
         }
@@ -96,6 +97,14 @@ object RequestsBot {
         if (ConfigManager.CONFIG!!.textOnReject4User.isNotEmpty()) bot.sendMessage(
             firstReply.forwardFrom.id,
             ConfigManager.CONFIG!!.textOnReject4User,
+        )
+        return true
+    }
+    suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
+        MySQLIntegration.addRequester(msg.from?.id?:return false)
+        if (ConfigManager.CONFIG!!.textOnStart!="") bot.sendMessage(
+            msg.chat.id,
+            ConfigManager.CONFIG!!.textOnStart,
         )
         return true
     }
