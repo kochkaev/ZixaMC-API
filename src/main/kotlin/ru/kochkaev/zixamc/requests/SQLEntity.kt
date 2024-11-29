@@ -21,10 +21,10 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
         set(account_type) {
             sql.updateUserAccountType(user_id, account_type)
         }
-    var pending_request_target_message_id: Int?
-        get() = sql.getUserPendingRequestTargetMessageId(user_id)
-        set(pending_request_target_message_id) {
-            sql.updateUserPendingRequestTargetMessageId(user_id, pending_request_target_message_id)
+    var temp_array: Array<String>?
+        get() = sql.getUserTempArray(user_id)
+        set(temp_array) {
+            sql.updateUserTempArray(user_id, temp_array)
         }
     var rawData: String?
         get() = sql.getUserData(user_id)
@@ -201,4 +201,6 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
             }
         }
     }
+
+    fun addToTempArray(value: String) : Boolean = sql.addToUserTempArray(user_id, value)
 }

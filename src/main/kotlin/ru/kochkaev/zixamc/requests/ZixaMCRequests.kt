@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.ParseResults
 import com.mojang.brigadier.context.CommandContextBuilder
 import net.fabricmc.api.ModInitializer
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.command.CommandSource
@@ -11,6 +12,7 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.WhitelistEntry
 import net.minecraft.server.command.ServerCommandSource
 import org.slf4j.LoggerFactory
+import ru.kochkaev.zixamc.requests.command.ZixaMCCommand
 import ru.kochkaev.zixamc.requests.dataclassTelegram.TgMessage
 
 /**
@@ -42,6 +44,9 @@ class ZixaMCRequests : ModInitializer {
         RequestsBot.startBot()
         MySQLIntegration.startServer()
         ServerLifecycleEvents.SERVER_STOPPED.register(this::onServerStopped)
+        CommandRegistrationCallback.EVENT.register { dispatcher, dedicated, environment ->
+            ZixaMCCommand.registerCommand(dispatcher)
+        }
     }
     fun onServerStopped(server: MinecraftServer) {
         RequestsBot.stopBot()

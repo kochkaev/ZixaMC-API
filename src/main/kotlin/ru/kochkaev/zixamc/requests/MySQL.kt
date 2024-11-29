@@ -42,7 +42,7 @@ class MySQL {
                                             `nickname` VARCHAR(16),
                                             `second_nicknames` JSON,
                                             `account_type` INT NOT NULL,
-                                            `pending_request_target_message_id` INT,
+                                            `temp_array` JSON NOT NULL,
                                             `data` JSON NOT NULL,
                                             PRIMARY KEY (`id`), UNIQUE (`user_id`)
                                         ) ENGINE = InnoDB;
@@ -116,13 +116,14 @@ class MySQL {
             reConnect()
             if (!isUserRegistered(user_id) && user_id != null && !isNicknameRegistered(nickname) && (second_nicknames?.any{isNicknameRegistered(it)} != true)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?);")
+                    MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, temp_array, data) VALUES (?, ?, ?, ?, ?, ?);")
 //                val sql_array_second_nicknames = MySQLConnection!!.createArrayOf("text", second_nicknames)
                 preparedStatement.setLong(1, user_id)
                 preparedStatement.setString(2, nickname)
                 preparedStatement.setString(3, "{\"array\":[${second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
                 preparedStatement.setInt(4, account_type?:3)
-                preparedStatement.setString(5, data)
+                preparedStatement.setString(5, "{\"array\":[]}")
+                preparedStatement.setString(6, data)
                 preparedStatement.executeUpdate()
                 return true
             }
@@ -216,18 +217,33 @@ class MySQL {
             ZixaMCRequests.logger.error("updateUserData error", e)
         }
     }
-    fun updateUserPendingRequestTargetMessageId(user_id: Long?, pending_request_target_message_id: Int?) {
+    fun updateUserTempArray(user_id: Long?, temp_array: Array<String>?) {
         try {
             if (user_id == null) return
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET pending_request_target_message_id = ? WHERE user_id = ?;")
-            preparedStatement.setInt(1, pending_request_target_message_id?:return)
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET temp_array = ? WHERE user_id = ?;")
+            preparedStatement.setString(1, "{\"array\":[${temp_array?.joinToString(", ") { "\"$this\"" }}]}")
             preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("updateUserData error", e)
         }
+    }
+    fun addToUserTempArray(user_id: Long?, value: String?) : Boolean {
+        try {
+            if (user_id == null) return false
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET temp_array = json_as_array_append(temp_array, ?) WHERE user_id = ?;")
+            preparedStatement.setString(1, value?:return false)
+            preparedStatement.setLong(2, user_id)
+            preparedStatement.executeUpdate()
+            return true
+        } catch (e: SQLException) {
+            ZixaMCRequests.logger.error("updateUserData error", e)
+        }
+        return false
     }
     fun updateUserNickname(user_id: Long?, nickname: String?) {
         try {
@@ -303,21 +319,21 @@ class MySQL {
         }
         return 3
     }
-    fun getUserPendingRequestTargetMessageId(user_id: Long?): Int {
+    fun getUserTempArray(user_id: Long?): Array<String>? {
         try {
             reConnect()
             if (isUserRegistered(user_id)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT pending_request_target_message_id FROM " + config.mySQLTable + " WHERE user_id = ?;")
+                    MySQLConnection!!.prepareStatement("SELECT temp_array FROM " + config.mySQLTable + " WHERE user_id = ?;")
                 preparedStatement.setLong(1, user_id!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
-                return query.getInt(1)
+                return gson.fromJson(query.getString(1), ArrayData::class.java).array
             }
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("getUserData error", e)
         }
-        return 3
+        return null
     }
     fun getUserNickname(user_id: Long?): String? {
         try {
@@ -367,12 +383,12 @@ class MySQL {
         }
         return null
     }
-    fun getUserIdByUserPendingRequestTargetMessageId(pending_request_target_message_id: Int?): Long? {
+    fun getUserIdByUserTempArrayMember(member: String?): Long? {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + " WHERE pending_request_target_message_id = ?;")
-            preparedStatement.setInt(1, pending_request_target_message_id?:return null)
+                MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + " WHERE json_as_array_contains(temp_array, ?);")
+            preparedStatement.setString(1, member?:return null)
             val query = preparedStatement.executeQuery()
             if (!query.next()) return null
             return query.getLong(1)
@@ -382,27 +398,27 @@ class MySQL {
         return null
     }
 
-    val allData: HashMap<Long, TableRow>
-        get() {
-            val registeredUsers = HashMap<Long, TableRow>()
-            try {
-                reConnect()
-                val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + ";")
-                val query = preparedStatement.executeQuery()
-                while (query.next()) {
-                    val user_id = query.getLong(2)
-                    val nickname = query.getString(3)
-                    val second_nicknames = gson.fromJson(query.getString(4), ArrayData::class.java).array
-                    val account_type = query.getInt(5)
-                    val data: AccountData = MySQLIntegration.parseJsonToPOJO(query.getString(6), account_type)
-                    registeredUsers[user_id] = TableRow(nickname, second_nicknames, account_type, data)
-                }
-            } catch (e: SQLException) {
-                ZixaMCRequests.logger.error("getAllData error", e)
-            }
-            return registeredUsers
-        }
+//    val allData: HashMap<Long, TableRow>
+//        get() {
+//            val registeredUsers = HashMap<Long, TableRow>()
+//            try {
+//                reConnect()
+//                val preparedStatement =
+//                    MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + ";")
+//                val query = preparedStatement.executeQuery()
+//                while (query.next()) {
+//                    val user_id = query.getLong(2)
+//                    val nickname = query.getString(3)
+//                    val second_nicknames = gson.fromJson(query.getString(4), ArrayData::class.java).array
+//                    val account_type = query.getInt(5)
+//                    val data: AccountData = MySQLIntegration.parseJsonToPOJO(query.getString(6), account_type)
+//                    registeredUsers[user_id] = TableRow(nickname, second_nicknames, account_type, data)
+//                }
+//            } catch (e: SQLException) {
+//                ZixaMCRequests.logger.error("getAllData error", e)
+//            }
+//            return registeredUsers
+//        }
     val getAllLinkedEntities: HashMap<Long, SQLEntity>
         get() {
             val linkedEntities = HashMap<Long, SQLEntity>()
@@ -422,37 +438,37 @@ class MySQL {
         }
     fun getLinkedEntity(user_id: Long?): SQLEntity? = if (user_id != null && isUserRegistered(user_id)) SQLEntity(this, user_id) else null
 
-    fun saveAll(playerCacheMap: HashMap<Long?, TableRow?>) {
-        try {
-            reConnect()
-            val preparedStatement =
-                MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nickname = ?, second_nicknames = ?, account_type = ?, data = ?;")
-            // Updating player data.
-            playerCacheMap.forEach { (user_id: Long?, userInfo: TableRow?) ->
-                val nickname: String = userInfo?.nickname?:return@forEach
-                val account_type: Int = userInfo.account_type
-                val data: String = gson.toJson(userInfo.data)
-                try {
-                    preparedStatement.setLong(1, user_id?:return@forEach)
-                    preparedStatement.setString(2, nickname)
-                    preparedStatement.setString(3, "{\"array\":[${userInfo.second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-                    preparedStatement.setInt(4, account_type)
-                    preparedStatement.setString(5, data)
-                    preparedStatement.setString(6, nickname)
-                    preparedStatement.setString(3, "{\"array\":[${userInfo.second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-                    preparedStatement.setInt(8, account_type)
-                    preparedStatement.setString(9, data)
-
-                    preparedStatement.addBatch()
-                } catch (e: SQLException) {
-                    ZixaMCRequests.logger.error(String.format("Error saving player data! %s ", user_id))
-                }
-            }
-            preparedStatement.executeBatch()
-        } catch (e: SQLException) {
-            ZixaMCRequests.logger.error("Error saving players data", e)
-        } catch (e: NullPointerException) {
-            ZixaMCRequests.logger.error("Error saving players data", e)
-        }
-    }
+//    fun saveAll(playerCacheMap: HashMap<Long?, TableRow?>) {
+//        try {
+//            reConnect()
+//            val preparedStatement =
+//                MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nickname = ?, second_nicknames = ?, account_type = ?, data = ?;")
+//            // Updating player data.
+//            playerCacheMap.forEach { (user_id: Long?, userInfo: TableRow?) ->
+//                val nickname: String = userInfo?.nickname?:return@forEach
+//                val account_type: Int = userInfo.account_type
+//                val data: String = gson.toJson(userInfo.data)
+//                try {
+//                    preparedStatement.setLong(1, user_id?:return@forEach)
+//                    preparedStatement.setString(2, nickname)
+//                    preparedStatement.setString(3, "{\"array\":[${userInfo.second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
+//                    preparedStatement.setInt(4, account_type)
+//                    preparedStatement.setString(5, data)
+//                    preparedStatement.setString(6, nickname)
+//                    preparedStatement.setString(3, "{\"array\":[${userInfo.second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
+//                    preparedStatement.setInt(8, account_type)
+//                    preparedStatement.setString(9, data)
+//
+//                    preparedStatement.addBatch()
+//                } catch (e: SQLException) {
+//                    ZixaMCRequests.logger.error(String.format("Error saving player data! %s ", user_id))
+//                }
+//            }
+//            preparedStatement.executeBatch()
+//        } catch (e: SQLException) {
+//            ZixaMCRequests.logger.error("Error saving players data", e)
+//        } catch (e: NullPointerException) {
+//            ZixaMCRequests.logger.error("Error saving players data", e)
+//        }
+//    }
 }

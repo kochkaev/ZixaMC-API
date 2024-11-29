@@ -15,7 +15,7 @@ object RequestsBot {
 
     fun startBot() {
         config = ConfigManager.CONFIG!!.requestsBot
-        bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger)
+        bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, 20)
         runBlocking {
             bot.init()
         }
@@ -113,29 +113,37 @@ object RequestsBot {
                         entity.editRequest(it)
                     }
                     "pending" -> {
-                        val firstReply = ZixaMCRequests.getFirstReply(msg)
-                        if (firstReply.from?.id == bot.me.id && firstReply.forwardOrigin != null) {
-                            bot.forwardMessage(
-                                chatId = config.targetChatId,
-                                messageThreadId = config.targetTopicId,
-                                fromChatId = msg.chat.id,
-                                messageId = msg.messageId,
-                            )
-                        }
+//                        val firstReply = msg.replyToMessage?:return
+//                        if (firstReply.from?.id == bot.me.id && firstReply.forwardOrigin != null) {
+//                            val forwardedMessage = bot.forwardMessage(
+//                                chatId = config.targetChatId,
+//                                messageThreadId = config.targetTopicId,
+//                                fromChatId = msg.chat.id,
+//                                messageId = msg.messageId,
+//                            )
+//                            entity.addToTempArray(forwardedMessage.messageId.toString())
+//                        }
+                        val forwardedMessage = bot.forwardMessage(
+                            chatId = config.targetChatId,
+                            messageThreadId = config.targetTopicId,
+                            fromChatId = msg.chat.id,
+                            messageId = msg.messageId,
+                        )
+                        entity.addToTempArray(forwardedMessage.messageId.toString())
                     }
                 }
             }
         }
         else {
-            val firstReply = ZixaMCRequests.getFirstReply(msg)
-            if (firstReply.from?.id != bot.me.id || firstReply.forwardOrigin == null) return
-            val entity = MySQLIntegration.getLinkedEntityByUserPendingRequestTargetMessageId(firstReply.messageId.toLong())?:return
-            if (!entity.getRequesterData()!!.requests.any {it.request_status == "pending"}) return
+            val replied = msg.replyToMessage?:return
+            val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return
+            if (!entity.temp_array!!.contains(replied.messageId.toString()) || !entity.getRequesterData()!!.requests.any {it.request_status == "pending"}) return
             bot.forwardMessage(
                 chatId = entity.user_id,
                 fromChatId = msg.chat.id,
                 messageId = msg.messageId,
             )
+            entity.addToTempArray(msg.messageId.toString())
         }
     }
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
@@ -210,31 +218,35 @@ object RequestsBot {
                     fromChatId = cbq.from.id,
                     messageId = request.message_id_in_chat_with_user.toInt()
                 )
-                bot.sendMessage(
+                val newMessage = bot.sendMessage(
                     chatId = config.targetChatId,
                     text = config.text.textOnSend4Target,
                     replyParameters = TgReplyParameters(forwardedMessage.messageId),
                 )
-                if (config.poll.autoCreatePoll) bot.sendPoll(
-                    chatId = config.targetChatId,
-                    messageThreadId = config.targetTopicId,
-                    question = config.poll.pollQuestion.replace("{nickname}", "@${request.request_nickname}"),
-                    options = listOf(
-                        TgInputPollOption(config.poll.pollAnswerTrue),
-                        TgInputPollOption(config.poll.pollAnswerNull),
-                        TgInputPollOption(config.poll.pollAnswerFalse),
-                    ),
-                    replyParameters = TgReplyParameters(
-                        message_id = forwardedMessage.messageId,
-                    ),
-                )
+                if (config.poll.autoCreatePoll) {
+                    val poll = bot.sendPoll(
+                        chatId = config.targetChatId,
+                        messageThreadId = config.targetTopicId,
+                        question = config.poll.pollQuestion.replace("{nickname}", "${request.request_nickname}"),
+                        options = listOf(
+                            TgInputPollOption(config.poll.pollAnswerTrue),
+                            TgInputPollOption(config.poll.pollAnswerNull),
+                            TgInputPollOption(config.poll.pollAnswerFalse),
+                        ),
+                        replyParameters = TgReplyParameters(
+                            message_id = forwardedMessage.messageId,
+                        ),
+                    )
+                    entity.addToTempArray(poll.messageId.toString())
+                }
                 bot.sendMessage(
                     chatId = cbq.from.id,
                     text = config.text.textOnSend4User,
                     replyParameters = TgReplyParameters(cbq.message.messageId),
                 )
                 request.message_id_in_target_chat = forwardedMessage.messageId.toLong()
-                entity.pending_request_target_message_id = forwardedMessage.messageId
+                entity.addToTempArray(forwardedMessage.messageId.toString())
+                entity.addToTempArray(newMessage.messageId.toString())
                 request.request_status = "pending"
                 entity.editRequest(request)
                 MySQLIntegration.setNickname(entity.user_id, request.request_nickname!!)
@@ -248,15 +260,15 @@ object RequestsBot {
     }
 
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
-        if (msg.chat.id >= 0 || MySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
-        val firstReply = ZixaMCRequests.getFirstReply(msg)
-        if (firstReply.from?.id != bot.me.id || firstReply.forwardOrigin == null) return false
-        val entity = MySQLIntegration.getLinkedEntityByUserPendingRequestTargetMessageId(firstReply.messageId.toLong())?:return false
+        if (msg.chat.id >= 0 || !MySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
+        val replied = msg.replyToMessage?:return false
+//        if (replied.from?.id != bot.me.id || replied.forwardOrigin == null) return false
+        val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return false
         val request = entity.getRequesterData()!!.requests.firstOrNull {it.request_status == "pending"} ?: return false
         bot.sendMessage(
             chatId = config.targetChatId,
-            text = config.text.textOnAccept4Target,
-            replyParameters = TgReplyParameters(firstReply.messageId),
+            text = config.text.textOnAccept4Target.replace("{nickname}", "${request.request_nickname}"),
+            replyParameters = TgReplyParameters(replied.messageId),
         )
         bot.sendMessage(
             chatId = entity.user_id,
@@ -272,20 +284,20 @@ object RequestsBot {
         request.request_status = "accepted"
         entity.editRequest(request)
         entity.promote(1)
-        entity.pending_request_target_message_id = null
+        entity.temp_array = arrayOf()
         ZixaMCRequests.addToWhitelist(request.request_nickname!!)
         return true
     }
     suspend fun onTelegramRejectCommand(msg: TgMessage): Boolean {
-        if (msg.chat.id >= 0 || MySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
-        val firstReply = ZixaMCRequests.getFirstReply(msg)
-        if (firstReply.from?.id != bot.me.id || firstReply.forwardOrigin == null) return false
-        val entity = MySQLIntegration.getLinkedEntityByUserPendingRequestTargetMessageId(firstReply.messageId.toLong())?:return false
+        if (msg.chat.id >= 0 || !MySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
+        val replied = msg.replyToMessage?:return false
+        if (replied.from?.id != bot.me.id || replied.forwardOrigin == null) return false
+        val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return false
         val request = entity.getRequesterData()!!.requests.firstOrNull {it.request_status == "pending"} ?: return false
         bot.sendMessage(
             chatId = config.targetChatId,
-            text = config.text.textOnReject4Target,
-            replyParameters = TgReplyParameters(firstReply.messageId),
+            text = config.text.textOnReject4Target.replace("{nickname}", "${request.request_nickname}"),
+            replyParameters = TgReplyParameters(replied.messageId),
         )
         bot.sendMessage(
             chatId = entity.user_id,
@@ -294,7 +306,7 @@ object RequestsBot {
         )
         request.request_status = "rejected"
         entity.editRequest(request)
-        entity.pending_request_target_message_id = null
+        entity.temp_array = arrayOf()
         return true
     }
     suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
@@ -342,6 +354,7 @@ object RequestsBot {
             messageThreadId = config.targetTopicId,
             text = config.text.textRequestCanceled4Target,
         )
+        entity.temp_array = arrayOf()
         return true
     }
     private suspend fun cancelSendingRequest(entity: SQLEntity): Boolean {

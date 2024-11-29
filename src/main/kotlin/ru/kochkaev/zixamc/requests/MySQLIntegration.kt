@@ -47,10 +47,11 @@ object MySQLIntegration {
     fun isAdmin(user_id: Long): Boolean = linkedEntities[user_id]?.account_type == 0
 
     fun getLinkedEntity(user_id: Long): SQLEntity? = linkedEntities[user_id]
-    fun getLinkedEntityByUserPendingRequestTargetMessageId(message_id: Long): SQLEntity? {
-        val user_id: Long = sql.getUserIdByUserPendingRequestTargetMessageId(message_id.toInt())?:return null
+    fun getLinkedEntityByTempArrayMessagesId(message_id: Long): SQLEntity? {
+        val user_id: Long = sql.getUserIdByUserTempArrayMember(message_id.toString())?:return null
         return linkedEntities[user_id]
     }
+    fun getAllRegisteredUserIds(): List<Long> = linkedEntities.keys.toList()
 
 //    fun promoteToPlayer(user_id: Long, minecraftAccount: MinecraftAccountData) {
 //        if (sql.getUserAccountType(user_id) >= 2) {

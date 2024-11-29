@@ -12,9 +12,7 @@ import java.time.Duration
 /**
  * @author vanutp
  */
-class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: Logger) {
-
-    private val POLL_TIMEOUT_SECONDS = 60
+class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: Logger, private val POLL_TIMEOUT_SECONDS: Int = 60) {
 
     private val okhttpClient = OkHttpClient.Builder()
         .readTimeout(Duration.ofSeconds((POLL_TIMEOUT_SECONDS + 10).toLong()))
