@@ -12,6 +12,10 @@ object MySQLIntegration {
         sql.connect()
         linkedEntities = sql.getAllLinkedEntities
     }
+    fun stopServer() {
+        sql.close()
+        linkedEntities.clear()
+    }
 
     fun addPlayer(user_id: Long) {
         if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = SQLEntity(sql, user_id, 1)
@@ -19,7 +23,11 @@ object MySQLIntegration {
     fun addRequester(user_id: Long) {
         if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = SQLEntity(sql, user_id, 2)
     }
-    fun addRequest(user_id: Long, nickname: String, requestData: RequestData) {
+    fun addUser(user_id: Long) {
+        if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = SQLEntity(sql, user_id, 3)
+    }
+
+    fun addRequest(user_id: Long, requestData: RequestData) {
         if (!sql.isUserRegistered(user_id)) addRequester(user_id)
         linkedEntities[user_id]!!.addRequest(requestData)
     }
@@ -34,6 +42,14 @@ object MySQLIntegration {
             insertData = agreed,
             insertField = "agreed_with_rules"
         )
+    }
+
+    fun isAdmin(user_id: Long): Boolean = linkedEntities[user_id]?.account_type == 0
+
+    fun getLinkedEntity(user_id: Long): SQLEntity? = linkedEntities[user_id]
+    fun getLinkedEntityByUserPendingRequestTargetMessageId(message_id: Long): SQLEntity? {
+        val user_id: Long = sql.getUserIdByUserPendingRequestTargetMessageId(message_id.toInt())?:return null
+        return linkedEntities[user_id]
     }
 
 //    fun promoteToPlayer(user_id: Long, minecraftAccount: MinecraftAccountData) {
@@ -61,6 +77,11 @@ object MySQLIntegration {
 //        if (!sql.isUserRegistered(user_id)) sql.registerUser(user_id, minecraftAccount.nickname, emptyArray(), 1, PlayerData(listOf(minecraftAccount), RequesterData(true, emptyList())))
 //        else if (sql.getUserAccountType(user_id) == 2) promoteToPlayer(user_id, minecraftAccount)
 //        else sql.updateUserData(user_id, sql.gson.toJson(getPlayerData(parseJsonToPOJO(sql.getUserData(user_id), sql.getUserAccountType(user_id))).let { it!!.minecraft_accounts = it.minecraft_accounts.plus(minecraftAccount) }))
+    }
+
+    fun isNicknameTaken(nickname: String): Boolean = sql.isNicknameRegistered(nickname)
+    fun setNickname(user_id: Long, nickname: String) {
+        linkedEntities[user_id]!!.addNickname(nickname)
     }
 
     fun parseJsonToPOJO(json: String?, account_type: Int): AccountData =
@@ -96,7 +117,9 @@ object MySQLIntegration {
         if (accountType == insertionAccountTypeLevel) {
             data::class.java.declaredFields.forEach {
                 if (it.name == insertField) {
-                    data::class.java.getDeclaredField(insertField).set(data, insertData)
+                    val field = data::class.java.getDeclaredField(insertField)
+                    field.isAccessible = true
+                    field.set(data, insertData)
                     return data
                 }
             }

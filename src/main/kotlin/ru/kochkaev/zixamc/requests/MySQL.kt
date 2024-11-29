@@ -11,6 +11,7 @@ import java.sql.*
  */
 class MySQL {
     private var MySQLConnection: Connection? = null
+    private lateinit var config: Config.MySQLDataClass
     val gson = Gson()
 
     /* Account types:
@@ -21,15 +22,16 @@ class MySQL {
      */
     @Throws(Exception::class)
     fun connect() {
+        config = ConfigManager.CONFIG!!.mySQL
         try {
             Class.forName("com.mysql.cj.jdbc.Driver")
             val uri =
-                "jdbc:mysql://" + ConfigManager.CONFIG!!.mySQLHost + "/" + ConfigManager.CONFIG!!.mySQLDatabase + "?autoReconnect=true"
+                "jdbc:mysql://" + config.mySQLHost + "/" + config.mySQLDatabase + "?autoReconnect=true"
 //            LogDebug(String.format("connecting to %s", uri))
-            MySQLConnection = DriverManager.getConnection(uri, ConfigManager.CONFIG!!.mySQLUser, ConfigManager.CONFIG!!.mySQLPassword)
+            MySQLConnection = DriverManager.getConnection(uri, config.mySQLUser, config.mySQLPassword)
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?;")
-            preparedStatement.setString(1, ConfigManager.CONFIG!!.mySQLTable)
+            preparedStatement.setString(1, config.mySQLTable)
             if (!preparedStatement.executeQuery().next()) {
                 MySQLConnection!!.createStatement().executeUpdate(
                     java.lang.String.format(
@@ -40,12 +42,13 @@ class MySQL {
                                             `nickname` VARCHAR(16),
                                             `second_nicknames` JSON,
                                             `account_type` INT NOT NULL,
+                                            `pending_request_target_message_id` INT,
                                             `data` JSON NOT NULL,
                                             PRIMARY KEY (`id`), UNIQUE (`user_id`)
                                         ) ENGINE = InnoDB;
                                         """.trimIndent(),
-                        ConfigManager.CONFIG!!.mySQLDatabase,
-                        ConfigManager.CONFIG!!.mySQLTable
+                        config.mySQLDatabase,
+                        config.mySQLTable
                     )
                 )
             }
@@ -113,7 +116,7 @@ class MySQL {
             reConnect()
             if (!isUserRegistered(user_id) && user_id != null && !isNicknameRegistered(nickname) && (second_nicknames?.any{isNicknameRegistered(it)} != true)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("INSERT INTO " + ConfigManager.CONFIG!!.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?);")
+                    MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?);")
 //                val sql_array_second_nicknames = MySQLConnection!!.createArrayOf("text", second_nicknames)
                 preparedStatement.setLong(1, user_id)
                 preparedStatement.setString(2, nickname)
@@ -134,7 +137,7 @@ class MySQL {
             if (user_id == null) return false
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE user_id = ?;")
             preparedStatement.setLong(1, user_id)
             return preparedStatement.executeQuery().next()
         } catch (e: SQLException) {
@@ -146,7 +149,7 @@ class MySQL {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
+                MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
             preparedStatement.setString(1, nickname)
             preparedStatement.setString(2, nickname)
             return preparedStatement.executeQuery().next()
@@ -179,7 +182,7 @@ class MySQL {
             if (user_id == null) return
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("DELETE FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("DELETE FROM " + config.mySQLTable + " WHERE user_id = ?;")
             preparedStatement.setLong(1, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
@@ -192,9 +195,9 @@ class MySQL {
             if (user_id == null) return
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET data = ? WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET data = ? WHERE user_id = ?;")
             preparedStatement.setString(1, data)
-            preparedStatement.setLong(1, user_id)
+            preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("updateUserData error", e)
@@ -205,9 +208,22 @@ class MySQL {
             if (user_id == null) return
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET account_type = ? WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET account_type = ? WHERE user_id = ?;")
             preparedStatement.setInt(1, account_type?:3)
-            preparedStatement.setLong(1, user_id)
+            preparedStatement.setLong(2, user_id)
+            preparedStatement.executeUpdate()
+        } catch (e: SQLException) {
+            ZixaMCRequests.logger.error("updateUserData error", e)
+        }
+    }
+    fun updateUserPendingRequestTargetMessageId(user_id: Long?, pending_request_target_message_id: Int?) {
+        try {
+            if (user_id == null) return
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET pending_request_target_message_id = ? WHERE user_id = ?;")
+            preparedStatement.setInt(1, pending_request_target_message_id?:return)
+            preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("updateUserData error", e)
@@ -218,9 +234,9 @@ class MySQL {
             if (user_id == null) return
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET nickname = ? WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET nickname = ? WHERE user_id = ?;")
             preparedStatement.setString(1, nickname)
-            preparedStatement.setLong(1, user_id)
+            preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("updateUserData error", e)
@@ -231,9 +247,9 @@ class MySQL {
             if (user_id == null) return false
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET second_nicknames = json_as_array_append(second_nicknames, ?) WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET second_nicknames = json_as_array_append(second_nicknames, ?) WHERE user_id = ?;")
             preparedStatement.setString(1, second_nickname)
-            preparedStatement.setLong(1, user_id)
+            preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
             return true
         } catch (e: SQLException) {
@@ -246,9 +262,9 @@ class MySQL {
             if (user_id == null) return
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + ConfigManager.CONFIG!!.mySQLTable + " SET second_nicknames = ? WHERE user_id = ?;")
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET second_nicknames = ? WHERE user_id = ?;")
             preparedStatement.setString(1, "{\"array\":[${second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-            preparedStatement.setLong(1, user_id)
+            preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("updateUserData error", e)
@@ -260,7 +276,7 @@ class MySQL {
             reConnect()
             if (isUserRegistered(user_id)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT data FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE user_id = ?;")
+                    MySQLConnection!!.prepareStatement("SELECT data FROM " + config.mySQLTable + " WHERE user_id = ?;")
                 preparedStatement.setLong(1, user_id!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
@@ -276,7 +292,7 @@ class MySQL {
             reConnect()
             if (isUserRegistered(user_id)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT account_type FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE user_id = ?;")
+                    MySQLConnection!!.prepareStatement("SELECT account_type FROM " + config.mySQLTable + " WHERE user_id = ?;")
                 preparedStatement.setLong(1, user_id!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
@@ -287,12 +303,28 @@ class MySQL {
         }
         return 3
     }
-    fun getUserNickname(user_id: Long?): String {
+    fun getUserPendingRequestTargetMessageId(user_id: Long?): Int {
         try {
             reConnect()
             if (isUserRegistered(user_id)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT nickname FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE user_id = ?;")
+                    MySQLConnection!!.prepareStatement("SELECT pending_request_target_message_id FROM " + config.mySQLTable + " WHERE user_id = ?;")
+                preparedStatement.setLong(1, user_id!!)
+                val query = preparedStatement.executeQuery()
+                query.next()
+                return query.getInt(1)
+            }
+        } catch (e: SQLException) {
+            ZixaMCRequests.logger.error("getUserData error", e)
+        }
+        return 3
+    }
+    fun getUserNickname(user_id: Long?): String? {
+        try {
+            reConnect()
+            if (isUserRegistered(user_id)) {
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("SELECT nickname FROM " + config.mySQLTable + " WHERE user_id = ?;")
                 preparedStatement.setLong(1, user_id!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
@@ -308,7 +340,7 @@ class MySQL {
             reConnect()
             if (isUserRegistered(user_id)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT second_nicknames FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE user_id = ?;")
+                    MySQLConnection!!.prepareStatement("SELECT second_nicknames FROM " + config.mySQLTable + " WHERE user_id = ?;")
                 preparedStatement.setLong(1, user_id!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
@@ -319,17 +351,31 @@ class MySQL {
         }
         return null
     }
-    fun getUserIdByNickname(nickname: String?): Int? {
+    fun getUserIdByNickname(nickname: String?): Long? {
         try {
             reConnect()
             if (isNicknameRegistered(nickname)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
                 preparedStatement.setString(1, nickname)
                 val query = preparedStatement.executeQuery()
                 if (!query.next()) return null
-                return query.getInt(1)
+                return query.getLong(1)
             }
+        } catch (e: SQLException) {
+            ZixaMCRequests.logger.error("getUserData error", e)
+        }
+        return null
+    }
+    fun getUserIdByUserPendingRequestTargetMessageId(pending_request_target_message_id: Int?): Long? {
+        try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + " WHERE pending_request_target_message_id = ?;")
+            preparedStatement.setInt(1, pending_request_target_message_id?:return null)
+            val query = preparedStatement.executeQuery()
+            if (!query.next()) return null
+            return query.getLong(1)
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("getUserData error", e)
         }
@@ -342,7 +388,7 @@ class MySQL {
             try {
                 reConnect()
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT * FROM " + ConfigManager.CONFIG!!.mySQLTable + ";")
+                    MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + ";")
                 val query = preparedStatement.executeQuery()
                 while (query.next()) {
                     val user_id = query.getLong(2)
@@ -363,7 +409,7 @@ class MySQL {
             try {
                 reConnect()
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + ConfigManager.CONFIG!!.mySQLTable + ";")
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + ";")
                 val query = preparedStatement.executeQuery()
                 while (query.next()) {
                     val user_id = query.getLong(1)
@@ -380,7 +426,7 @@ class MySQL {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("INSERT INTO " + ConfigManager.CONFIG!!.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nickname = ?, second_nicknames = ?, account_type = ?, data = ?;")
+                MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nickname = ?, second_nicknames = ?, account_type = ?, data = ?;")
             // Updating player data.
             playerCacheMap.forEach { (user_id: Long?, userInfo: TableRow?) ->
                 val nickname: String = userInfo?.nickname?:return@forEach

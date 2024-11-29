@@ -16,6 +16,8 @@ data class TgMessage(
     val forwardFrom: TgUser? = null,
     @SerializedName("forward_from_chat")
     val forwardFromChat: TgChat? = null,
+    @SerializedName("forward_origin")
+    val forwardOrigin: TgChat? = null,
     @SerializedName("reply_to_message")
     val replyToMessage: TgMessage? = null,
     @SerializedName("external_reply")

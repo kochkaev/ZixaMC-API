@@ -24,6 +24,9 @@ interface TgApi {
     @POST("editMessageText")
     suspend fun editMessageText(@Body data: TgEditMessageRequest): TgResponse<TgMessage>
 
+    @POST("editMessageReplyMarkup")
+    suspend fun editMessageReplyMarkup(@Body data: TgEditMessageReplyMarkupRequest): TgResponse<TgMessage>
+
     @POST("deleteMessage")
     suspend fun deleteMessage(@Body data: TgDeleteMessageRequest): TgResponse<Boolean>
 

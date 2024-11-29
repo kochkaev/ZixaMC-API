@@ -28,12 +28,16 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
     private var pollTask: Job? = null
     private val commandHandlers: MutableList<suspend (TgMessage) -> Boolean> = mutableListOf()
     private val messageHandlers: MutableList<suspend (TgMessage) -> Unit> = mutableListOf()
+    private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()
     lateinit var me: TgUser
         private set
 
 
     fun registerMessageHandler(handler: suspend (TgMessage) -> Unit) {
         messageHandlers.add(handler)
+    }
+    fun registerCallbackQueryHandler(handler: suspend (TgCallbackQuery) -> Unit) {
+        callbackQueryHandlers.add(handler)
     }
 
     fun registerCommandHandler(command: String, handler: suspend (TgMessage) -> Unit) {
@@ -72,16 +76,22 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
                     }
                     offset = updates.last().updateId + 1
                     updates.forEach { update ->
-                        if (update.message == null) {
-                            return@forEach
-                        }
-                        for (handler in commandHandlers) {
-                            if (handler.invoke(update.message)) {
-                                return@forEach
+                        when {
+                            update.message != null -> {
+                                for (handler in commandHandlers) {
+                                    if (handler.invoke(update.message)) {
+                                        return@forEach
+                                    }
+                                }
+                                messageHandlers.forEach {
+                                    it.invoke(update.message)
+                                }
                             }
-                        }
-                        messageHandlers.forEach {
-                            it.invoke(update.message)
+                            update.callbackQuery != null -> {
+                                callbackQueryHandlers.forEach {
+                                    it.invoke(update.callbackQuery)
+                                }
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -127,12 +137,21 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
     suspend fun sendMessage(
         chatId: Long,
         text: String,
-        replyToMessageId: Int? = null,
+        messageThreadId: Int? = null,
         parseMode: String = "HTML",
-        disableWebPagePreview: Boolean = true,
         entities: List<TgEntity>? = null,
+        replyParameters: TgReplyParameters? = null,
+        replyMarkup: TgReplyMarkup? = null,
     ): TgMessage = call {
-        client.sendMessage(TgSendMessageRequest(chatId, text, replyToMessageId, parseMode, disableWebPagePreview, entities=entities))
+        client.sendMessage(TgSendMessageRequest(
+            chatId = chatId,
+            messageThreadId = messageThreadId,
+            text = text,
+            parseMode = parseMode,
+            entities = entities,
+            replyParameters = replyParameters,
+            replyMarkup = replyMarkup,
+        ))
     }
 
     suspend fun sendPoll(
@@ -205,6 +224,27 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
         entities: List<TgEntity>? = null,
     ): TgMessage = call {
         client.editMessageText(TgEditMessageRequest(chatId, messageId, text, parseMode, disableWebPagePreview, entities=entities))
+    }
+
+    suspend fun editMessageReplyMarkup(
+        chatId: Long,
+        messageId: Int,
+        replyMarkup: TgReplyMarkup,
+    ) : TgMessage = call {
+        client.editMessageReplyMarkup(TgEditMessageReplyMarkupRequest(
+            chat_id = chatId,
+            message_id = messageId,
+            reply_markup = replyMarkup,
+        ))
+    }
+    suspend fun editMessageReplyMarkup(
+        inlineMessageId: String,
+        replyMarkup: TgReplyMarkup,
+    ) : TgMessage = call {
+        client.editMessageReplyMarkup(TgEditMessageReplyMarkupRequest(
+            inline_message_id = inlineMessageId,
+            reply_markup = replyMarkup,
+        ))
     }
 
     suspend fun deleteMessage(chatId: Long, messageId: Int) = call {

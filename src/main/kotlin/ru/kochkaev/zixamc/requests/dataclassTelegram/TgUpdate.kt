@@ -9,4 +9,6 @@ data class TgUpdate(
     @SerializedName("update_id")
     val updateId: Int,
     val message: TgMessage? = null,
+    @SerializedName("callback_query")
+    val callbackQuery: TgCallbackQuery? = null
 )

@@ -21,6 +21,11 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
         set(account_type) {
             sql.updateUserAccountType(user_id, account_type)
         }
+    var pending_request_target_message_id: Int?
+        get() = sql.getUserPendingRequestTargetMessageId(user_id)
+        set(pending_request_target_message_id) {
+            sql.updateUserPendingRequestTargetMessageId(user_id, pending_request_target_message_id)
+        }
     var rawData: String?
         get() = sql.getUserData(user_id)
         set(rawData) {
@@ -60,7 +65,7 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
             sql.gson.toJson(when (account_type) {
                 0 -> AdminData(0, null)
                 1 -> PlayerData(arrayListOf(), null)
-                2 -> RequesterData(true, arrayListOf())
+                2 -> RequesterData(false, arrayListOf())
                 else -> AccountData()
             })
         )
@@ -68,49 +73,90 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
 
     fun addSecondNickname(nickname: String) : Boolean = sql.addUserSecondNickname(user_id, nickname)
     fun removeSecondNickname(nickname: String) = sql.updateUserSecondNicknames(user_id, second_nicknames?.filter { it!=nickname }?.toTypedArray())
-    fun addMinecraftAccount(account: MinecraftAccountData): Boolean {
-        val accounts = (getPlayerData()?.minecraft_accounts ?: arrayListOf<MinecraftAccountData>().apply {promote(2)})
-        if (accounts.stream().anyMatch{it.nickname == account.nickname}) return false
-        else accounts.add(account)
-        if (second_nicknames?.contains(account.nickname) == false && nickname != account.nickname) addSecondNickname(account.nickname)
-        data = modifyData(
-            data = data,
-            accountType = account_type,
-            insertionAccountTypeLevel = 2,
-            insertData = accounts,
-            insertField = "minecraft_accounts"
-        )
-        return true
-    }
     fun setPreferNickname(nickname: String) {
         if ((getPlayerData()?.minecraft_accounts?:return).stream().anyMatch{it.nickname == nickname}) {
-            if (second_nicknames?.contains(nickname) == true) removeSecondNickname(nickname)
-            val currentNickname = this.nickname
-            if (currentNickname!=null) addSecondNickname(currentNickname)
-            this.nickname = nickname
+            addNickname(nickname)
         }
+    }
+    fun addNickname(nickname: String) {
+        if (second_nicknames?.contains(nickname) == true) removeSecondNickname(nickname)
+        val currentNickname = this.nickname
+        if (currentNickname!=null) addSecondNickname(currentNickname)
+        this.nickname = nickname
     }
     fun getRequesterData(): RequesterData? = when (account_type) {
         0,1 -> getPlayerData()?.requester_data
         2 -> data as RequesterData?
         else -> null
     }
+
     fun getPlayerData(): PlayerData? = when (account_type) {
         0 -> getAdminData()?.player_data
         1 -> data as PlayerData?
         else -> null
     }
     fun getAdminData(): AdminData? = if (account_type == 0) data as AdminData? else null
+    fun getOrCreateAdminData(): AdminData = when (account_type) {
+        0 -> data as AdminData
+        else -> {
+            promote(0)
+            data as AdminData
+        }
+    }
+    fun getOrCreatePlayerData(): PlayerData {
+        when (account_type) {
+            0 -> if (getOrCreatePlayerData().requester_data == null) {
+                data = modifyData(
+                    data = data,
+                    accountType = account_type,
+                    insertionAccountTypeLevel = 0,
+                    insertData = PlayerData(arrayListOf()),
+                    insertField = "player_data",
+                ) ?: data
+            }
+            2,3 -> promote(1)
+        }
+        return getPlayerData()!!
+    }
+    fun getOrCreateRequesterData(): RequesterData {
+        when (account_type) {
+            0,1 -> if (getOrCreatePlayerData().requester_data == null) {
+                data = modifyData(
+                    data = data,
+                    accountType = account_type,
+                    insertionAccountTypeLevel = 1,
+                    insertData = RequesterData(true, arrayListOf()),
+                    insertField = "requester_data",
+                ) ?: data
+            }
+            3 -> promote(2)
+        }
+        return getRequesterData()!!
+    }
 
+    fun addMinecraftAccount(account: MinecraftAccountData): Boolean {
+        val accounts = getOrCreatePlayerData().minecraft_accounts
+        if (accounts.stream().anyMatch{it.nickname == account.nickname}) return false
+        else accounts.add(account)
+        if (second_nicknames?.contains(account.nickname) == false && nickname != account.nickname) addSecondNickname(account.nickname)
+        data = modifyData(
+            data = data,
+            accountType = account_type,
+            insertionAccountTypeLevel = 1,
+            insertData = accounts,
+            insertField = "minecraft_accounts",
+        ) ?: data
+        return true
+    }
     fun addRequest(request_data: RequestData) {
-        val requests = (getRequesterData()?:return).requests
+        val requests = (getOrCreateRequesterData()).requests
         requests.add(request_data)
-        data = MySQLIntegration.modifyData(
-            data,
-            account_type,
-            2,
-            requests,
-            "requests"
+        data = modifyData(
+            data = data,
+            accountType = account_type,
+            insertionAccountTypeLevel = 2,
+            insertData = requests,
+            insertField = "requests",
         ) ?: data
 //        when (account_type) {
 //            3 -> data = RequesterData(true, arrayListOf(request_data))
@@ -118,6 +164,26 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
 //            1 -> data = data.apply { (this as PlayerData?)?.requester_data?.requests?.add(request_data) }
 //            0 -> data = data.apply { (this as AdminData?)?.player_data?.requester_data?.requests?.add(request_data) }
 //        }
+    }
+    fun editRequest(request_data: RequestData) {
+        val requests = (getRequesterData()?:return).requests
+        when (request_data.request_status) {
+            "creating" -> {
+                requests.removeIf {it.request_status == "creating"}
+                requests.add(request_data)
+            }
+            else -> {
+                requests.removeIf {it.message_id_in_chat_with_user == request_data.message_id_in_chat_with_user}
+                requests.add(request_data)
+            }
+        }
+        data = modifyData(
+            data = data,
+            accountType = account_type,
+            insertionAccountTypeLevel = 2,
+            insertData = requests,
+            insertField = "requests",
+        ) ?: data
     }
 
     fun promote(targetAccountType: Int) {
