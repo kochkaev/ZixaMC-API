@@ -18,6 +18,7 @@ data class Config (
     data class RequestsBotDataClass (
         val botToken: String = "",
         val botAPIURL: String = "https://api.telegram.org",
+        val pollTimeout: Int = 60,
         val targetChatId: Long = 0,
         val targetTopicId: Int = 0,
         val playersGroupInviteLink: String = "https:/t.me/",

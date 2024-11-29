@@ -15,7 +15,7 @@ object RequestsBot {
 
     fun startBot() {
         config = ConfigManager.CONFIG!!.requestsBot
-        bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, 20)
+        bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, config.pollTimeout)
         runBlocking {
             bot.init()
         }
