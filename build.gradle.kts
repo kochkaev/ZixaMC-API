@@ -1,5 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+//import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+//import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import net.fabricmc.loom.task.RemapJarTask
 
 //val postgresVersion = "42.3.1"
 //val telegramBotVersion = "5.3.0"
@@ -10,7 +13,11 @@ plugins {
 //    id("org.springframework.boot") version "2.5.6"
 //    id("io.spring.dependency-management") version "1.0.11.RELEASE"
 //    kotlin("plugin.spring") version "1.5.31"
+    id("java")
     kotlin("jvm") version "2.0.21"
+//    id("org.jetbrains.kotlin.jvm") version "2.0.21"
+//    id("com.github.johnrengelman.shadow") version "8.1.1"
+//    id("com.gradleup.shadow") version "8.3.4"
     id("fabric-loom") version "1.7.1"
     id("maven-publish")
 }
@@ -58,6 +65,7 @@ repositories {
             includeGroup("maven.modrinth")
         }
     }
+//    maven ("https://dl.bintray.com/palantir/releases")
     mavenCentral()
 }
 
@@ -74,42 +82,31 @@ dependencies {
 
     // Storage
     // LevelDB database
-    implementation("org.iq80.leveldb:leveldb:${project.property("leveldb_version")}")
-    implementation("org.iq80.leveldb:leveldb-api:${project.property("leveldb_version")}")
+    include(implementation("org.iq80.leveldb:leveldb:${project.property("leveldb_version")}")) {}
+    include(implementation("org.iq80.leveldb:leveldb-api:${project.property("leveldb_version")}")) {}
 
     // MongoDB driver
-    implementation("org.mongodb:mongodb-driver-sync:${project.property("mongodb_version")}")
-    implementation("org.mongodb:mongodb-driver-core:${project.property("mongodb_version")}")
-    implementation("org.mongodb:bson:${project.property("mongodb_version")}")
+    include(implementation("org.mongodb:mongodb-driver-sync:${project.property("mongodb_version")}")) {}
+    include(implementation("org.mongodb:mongodb-driver-core:${project.property("mongodb_version")}")) {}
+    include(implementation("org.mongodb:bson:${project.property("mongodb_version")}")) {}
 
     // MySQL driver
-    implementation ("com.mysql:mysql-connector-j:${project.property("mysql_version")}")
+    include(implementation("com.mysql:mysql-connector-j:${project.property("mysql_version")}")) {}
 
-//    modImplementation("maven.modrinth:tgbridge:$tgbridgeVersion")
-
-//    implementation("org.springframework.boot:spring-boot-starter")
-//    implementation("org.springframework.boot:spring-boot-starter-jooq")
-//    implementation("org.springframework.boot:spring-boot-starter-freemarker")
-//    implementation("org.springframework.boot:spring-boot-starter-web")
-//
-//    implementation("org.telegram:telegrambots:$telegramBotVersion")
-//    implementation("org.telegram:telegrambotsextensions:$telegramBotVersion")
-//    implementation("org.telegram:telegrambots-spring-boot-starter:$telegramBotVersion")
-
-    implementation("com.squareup.retrofit2:retrofit:2.11.0") {
+    include(implementation("com.squareup.retrofit2:retrofit:2.11.0") {
         exclude(module = "kotlin-stdlib")
         exclude(module = "kotlin-reflect")
         exclude(module = "kotlinx-coroutines-core")
         exclude(module = "kotlinx-serialization-core")
         exclude(module = "kotlinx-serialization-json")
-    }
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0") {
+    })
+    include(implementation("com.squareup.retrofit2:converter-gson:2.11.0") {
         exclude(module = "gson")
-    }
-    implementation("com.charleskorn.kaml:kaml:${kamlVersion}") {
+    })
+    include(implementation("com.charleskorn.kaml:kaml:${kamlVersion}") {
         exclude(module = "kotlin-stdlib")
         exclude(module = "kotlinx-serialization-core")
-    }
+    })
     compileOnly("com.google.code.gson:gson:2.10.1")
 }
 //dependencyManagement {
@@ -117,6 +114,7 @@ dependencies {
 //        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
 //    }
 //}
+
 
 tasks.processResources {
     inputs.property("version", project.version)
@@ -132,6 +130,35 @@ tasks.processResources {
             "kotlin_loader_version" to project.property("kotlin_loader_version")
         )
     }
+//    named<ShadowJar>("shadowJar") {
+//        dependsOn("processResources")
+//        finalizedBy("remapJar")
+//
+//        from(sourceSets.main.get().output.classesDirs)
+//        from(sourceSets.main.get().output.resourcesDir)
+//
+//        from("LICENSE") {
+//            rename { "${it}_${project.base.archivesName.get()}" }
+//        }
+//        relocate("okio", "zixamc.requests.shaded.okio")
+//        relocate("okhttp3", "zixamc.requests.shaded.okhttp3")
+//        relocate("retrofit2", "zixamc.requests.shaded.retrofit2")
+//
+//        relocate("it.krzeminski.snakeyaml", "zixamc.requests.shaded.snakeyaml")
+//        relocate("net.thauvin", "zixamc.requests.shaded.net.thauvin")
+//        relocate("com.charleskorn.kaml", "zixamc.requests.shaded.kaml")
+//        mergeServiceFiles()
+//        minimize()
+//
+//        configurations = listOf(project.configurations.shadow.get())
+//        archiveClassifier = jar.get().archiveClassifier
+//        destinationDirectory = jar.get().destinationDirectory
+//    }
+//    named<RemapJarTask>("remapJar") {
+//        inputFile = shadowJar.get().archiveFile
+//        archiveFileName = "${rootProject.name}-${rootProject.version}-${project.name}.jar"
+//        destinationDirectory.set(file("../build/release"))
+//    }
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -146,12 +173,71 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions.jvmTarget.set(JvmTarget.fromTarget(targetJavaVersion.toString()))
 }
-
+//tasks.shadowJar {
+//    configurations = [project.configurations.shadow]
+//    exclude("META-INF")
+//}
 tasks.jar {
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName}" }
     }
+    manifest {
+        attributes["Main-Class"] = "ru.kochkaev.zixamc.requests.ZixaMCRequests"
+    }
 }
+//tasks {
+//    named<ShadowJar>("shadowJar") {
+//        dependsOn("processResources")
+//        finalizedBy("remapJar")
+//        from("LICENSE") {
+//            rename { "${it}_${project.base.archivesName}" }
+//        }
+//        relocate("okio", "tgbridge.shaded.okio")
+//        relocate("okhttp3", "tgbridge.shaded.okhttp3")
+//        relocate("retrofit2", "tgbridge.shaded.retrofit2")
+//        relocate("com.charleskorn.kaml", "tgbridge.shaded.kaml")
+//        relocate("mongodb", "tgbridge.shaded.mongodb")
+//        relocate("mysql", "tgbridge.shaded.mysql")
+//        relocate("leveldb", "tgbridge.shaded.leveldb")
+//
+//        archiveBaseName.set(project.property("archives_base_name") as String)
+//        archiveClassifier.set("all")
+//        archiveVersion.set(version as String)
+//        mergeServiceFiles()
+//
+//        from(sourceSets.main.get().output.classesDirs)
+//        from(sourceSets.main.get().output.resourcesDir)
+////        configurations = listOf(project.configurations.shadow.get()
+////            .filter {
+////                it.name.contains("retrofit") || it.name.contains("okhttp") || it.name.contains("okio") || it.name.contains("kaml")
+////                    || it.name.contains("mongodb") || it.name.contains("leveldb") || it.name.contains("mysql")
+////            }
+////        )
+//
+//
+////        dependencies {
+////            exclude(dependency("com.mojang:minecraft:.*"))
+////            exclude(dependency("net.fabricmc:yarn:.*"))
+////            exclude(dependency("net.fabricmc:fabric-loader:.*"))
+////            exclude(dependency("net.fabricmc:fabric-language-kotlin:.*"))
+////            exclude(dependency("net.fabricmc.fabric-api:.*"))
+////        }
+////        exclude("META-INF")
+////        manifest {
+////            attributes["Main-Class"] = "ru.kochkaev.zixamc.requests.ZixaMCRequests"
+////        }
+//        minimize()
+//
+//    }
+//    named<RemapJarTask>("remapJar") {
+//		inputFile = shadowJar.get().archiveFile
+//		archiveFileName = "${rootProject.name}-${rootProject.version}-${project.name}.jar"
+//		destinationDirectory.set(file("../build/release"))
+//	}
+//}
+//tasks.withType<ShadowJar> {
+//
+//}
 
 // configure the maven publication
 publishing {

@@ -15,6 +15,9 @@ interface TgApi {
     @POST("sendMessage")
     suspend fun sendMessage(@Body data: TgSendMessageRequest): TgResponse<TgMessage>
 
+    @POST("pinChatMessage")
+    suspend fun pinMessage(@Body data: TgPinChatMessageRequest): TgResponse<Boolean>
+
     @POST("sendPoll")
     suspend fun sendPoll(@Body data: TgSendPollRequest): TgResponse<TgMessage>
 
@@ -29,6 +32,12 @@ interface TgApi {
 
     @POST("deleteMessage")
     suspend fun deleteMessage(@Body data: TgDeleteMessageRequest): TgResponse<Boolean>
+
+    @POST("banChatMember")
+    suspend fun banChatMember(@Body data: TgBanChatMemberRequest): TgResponse<Boolean>
+
+    @POST("approveChatJoinRequest")
+    suspend fun approveChatJoinRequest(@Body data: TgApproveChatJoinRequest): TgResponse<Boolean>
 
     @GET("getUpdates")
     suspend fun getUpdates(

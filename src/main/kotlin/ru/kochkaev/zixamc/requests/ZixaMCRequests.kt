@@ -32,17 +32,17 @@ class ZixaMCRequests : ModInitializer {
         }
         fun addToWhitelist(nickname: String) {
             val server = FabricLoader.getInstance().gameInstance as MinecraftServer
-           CommandDispatcher<CommandSource>().execute("easywhitelist add $nickname", server.commandSource);
+           CommandDispatcher<CommandSource>().execute(ConfigManager.CONFIG!!.requestsBot.addWhitelistCommand.replace("{nickname}", nickname), server.commandSource);
         }
         fun removeFromWhitelist(nickname: String) {
             val server = FabricLoader.getInstance().gameInstance as MinecraftServer
-           CommandDispatcher<CommandSource>().execute("easywhitelist remove $nickname", server.commandSource);
+           CommandDispatcher<CommandSource>().execute(ConfigManager.CONFIG!!.requestsBot.removeWhitelistCommand.replace("{nickname}", nickname), server.commandSource);
         }
     }
     override fun onInitialize() {
         ConfigManager.init(false)
-        RequestsBot.startBot()
         MySQLIntegration.startServer()
+        RequestsBot.startBot()
         ServerLifecycleEvents.SERVER_STOPPED.register(this::onServerStopped)
         CommandRegistrationCallback.EVENT.register { dispatcher, dedicated, environment ->
             ZixaMCCommand.registerCommand(dispatcher)

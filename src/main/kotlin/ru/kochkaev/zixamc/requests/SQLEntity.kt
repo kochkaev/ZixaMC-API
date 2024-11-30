@@ -11,10 +11,10 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
             if (nickname != null) sql.addUserSecondNickname(user_id, nickname)
             sql.updateUserNickname(user_id, new_nickname)
         }
-    var second_nicknames: Array<String>?
+    var nicknames: Array<String>?
         get() = sql.getUserSecondNicknames(user_id)
-        set(second_nicknames) {
-            sql.updateUserSecondNicknames(user_id, second_nicknames)
+        set(nicknames) {
+            sql.updateUserSecondNicknames(user_id, nicknames)
         }
     var account_type: Int
         get() = sql.getUserAccountType(user_id)
@@ -72,16 +72,16 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
     }
 
     fun addSecondNickname(nickname: String) : Boolean = sql.addUserSecondNickname(user_id, nickname)
-    fun removeSecondNickname(nickname: String) = sql.updateUserSecondNicknames(user_id, second_nicknames?.filter { it!=nickname }?.toTypedArray())
+    fun removeSecondNickname(nickname: String) = sql.updateUserSecondNicknames(user_id, nicknames?.filter { it!=nickname }?.toTypedArray())
     fun setPreferNickname(nickname: String) {
         if ((getPlayerData()?.minecraft_accounts?:return).stream().anyMatch{it.nickname == nickname}) {
             addNickname(nickname)
         }
     }
     fun addNickname(nickname: String) {
-        if (second_nicknames?.contains(nickname) == true) removeSecondNickname(nickname)
-        val currentNickname = this.nickname
-        if (currentNickname!=null) addSecondNickname(currentNickname)
+        if (nicknames?.contains(nickname) == false) addSecondNickname(nickname)
+//        val currentNickname = this.nickname
+//        if (currentNickname!=null) addSecondNickname(currentNickname)
         this.nickname = nickname
     }
     fun getRequesterData(): RequesterData? = when (account_type) {
@@ -138,7 +138,8 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
         val accounts = getOrCreatePlayerData().minecraft_accounts
         if (accounts.stream().anyMatch{it.nickname == account.nickname}) return false
         else accounts.add(account)
-        if (second_nicknames?.contains(account.nickname) == false && nickname != account.nickname) addSecondNickname(account.nickname)
+        if (nicknames?.contains(account.nickname) == false) addSecondNickname(account.nickname)
+        if (nickname == null) nickname = account.nickname
         data = modifyData(
             data = data,
             accountType = account_type,

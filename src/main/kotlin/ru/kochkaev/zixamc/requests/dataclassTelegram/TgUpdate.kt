@@ -10,5 +10,7 @@ data class TgUpdate(
     val updateId: Int,
     val message: TgMessage? = null,
     @SerializedName("callback_query")
-    val callbackQuery: TgCallbackQuery? = null
+    val callbackQuery: TgCallbackQuery? = null,
+    @SerializedName("chat_join_request")
+    val chatJoinRequest: TgChatJoinRequest? = null,
 )

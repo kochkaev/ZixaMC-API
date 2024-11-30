@@ -27,6 +27,7 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
     private val commandHandlers: MutableList<suspend (TgMessage) -> Boolean> = mutableListOf()
     private val messageHandlers: MutableList<suspend (TgMessage) -> Unit> = mutableListOf()
     private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()
+    private val chatJoinRequestHandlers: MutableList<suspend (TgChatJoinRequest) -> Unit> = mutableListOf()
     lateinit var me: TgUser
         private set
 
@@ -37,9 +38,13 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
     fun registerCallbackQueryHandler(handler: suspend (TgCallbackQuery) -> Unit) {
         callbackQueryHandlers.add(handler)
     }
+    fun registerChatJoinRequestHandlers(handler: suspend (TgChatJoinRequest) -> Unit) {
+        chatJoinRequestHandlers.add(handler)
+    }
 
     fun registerCommandHandler(command: String, handler: suspend (TgMessage) -> Unit) {
-        val cmdRegex = Regex("^/$command(@${me.username})?(\\s|\$)", RegexOption.IGNORE_CASE)
+//        val cmdRegex = Regex("^/$command(@${me.username})?(\\s|\$)", RegexOption.IGNORE_CASE)
+        val cmdRegex = Regex("^/$command(@${me.username})?(?:\\s+(.+))?\$", RegexOption.IGNORE_CASE)
         commandHandlers.add {
             if (cmdRegex.matches(it.effectiveText ?: "")) {
                 handler(it)
@@ -88,6 +93,11 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
                             update.callbackQuery != null -> {
                                 callbackQueryHandlers.forEach {
                                     it.invoke(update.callbackQuery)
+                                }
+                            }
+                            update.chatJoinRequest != null -> {
+                                chatJoinRequestHandlers.forEach {
+                                    it.invoke(update.chatJoinRequest)
                                 }
                             }
                         }
@@ -247,5 +257,17 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
 
     suspend fun deleteMessage(chatId: Long, messageId: Int) = call {
         client.deleteMessage(TgDeleteMessageRequest(chatId, messageId))
+    }
+
+    suspend fun banChatMember(chatId: Long, userId: Long) = call {
+        client.banChatMember(TgBanChatMemberRequest(chatId, userId))
+    }
+
+    suspend fun pinMessage(chatId: Long, messageId: Long, disableNotification: Boolean = false) = call {
+        client.pinMessage(TgPinChatMessageRequest(chatId, messageId, disableNotification))
+    }
+
+    suspend fun approveChatJoinRequest(chatId: Long, userId: Long) = call {
+        client.approveChatJoinRequest(TgApproveChatJoinRequest(chatId, userId))
     }
 }

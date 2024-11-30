@@ -1,7 +1,9 @@
 package ru.kochkaev.zixamc.requests
 
 import kotlinx.coroutines.*
+import retrofit2.Retrofit
 import ru.kochkaev.zixamc.requests.ZixaMCRequests.Companion.logger
+import ru.kochkaev.zixamc.requests.dataclassSQL.MinecraftAccountData
 import ru.kochkaev.zixamc.requests.dataclassSQL.RequestData
 import ru.kochkaev.zixamc.requests.dataclassTelegram.*
 
@@ -21,8 +23,11 @@ object RequestsBot {
         }
         bot.registerMessageHandler(this::onTelegramMessage)
         bot.registerCallbackQueryHandler(this::onTelegramCallbackQuery)
+        bot.registerChatJoinRequestHandlers(this::onTelegramChatJoinRequest)
         bot.registerCommandHandler("accept", this::onTelegramAcceptCommand)
         bot.registerCommandHandler("reject", this::onTelegramRejectCommand)
+        bot.registerCommandHandler("promote", this::onTelegramPromoteCommand)
+        bot.registerCommandHandler("kick", this::onTelegramKickCommand)
         bot.registerCommandHandler("start", this::onTelegramStartCommand)
         bot.registerCommandHandler("new", this::onTelegramNewCommand)
         bot.registerCommandHandler("cancel", this::onTelegramCancelCommand)
@@ -64,7 +69,7 @@ object RequestsBot {
                                         config.text.textInputFieldPlaceholderNickname.ifEmpty { null }
                                     )
                                 )
-                            } else if (MySQLIntegration.isNicknameTaken(msg.text)) {
+                            } else if (MySQLIntegration.isNicknameNotAvailableToTake(entity.user_id, msg.text)) {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
                                     text = config.text.textTakenNickname,
@@ -111,6 +116,11 @@ object RequestsBot {
                             it.message_id_in_chat_with_user = msg.messageId.toLong()
                         }
                         entity.editRequest(it)
+//                        bot.editMessageReplyMarkup(
+//                            chatId = msg.chat.id,
+//                            messageId = msg.replyToMessage.messageId,
+//                            replyMarkup = TgReplyMarkup()
+//                        )
                     }
                     "pending" -> {
 //                        val firstReply = msg.replyToMessage?:return
@@ -165,11 +175,6 @@ object RequestsBot {
                     editedRequest.message_id_in_chat_with_user = newMessage.messageId.toLong()
                     entity.editRequest(editedRequest)
                 }
-                bot.editMessageReplyMarkup(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgReplyMarkup()
-                )
             }
             "redraw_request" -> {
                 entity.data = MySQLIntegration.modifyData(
@@ -180,36 +185,10 @@ object RequestsBot {
                     insertData = entity.getRequesterData()!!.requests.filter {it.request_status != "creating"},
                 )
                 newRequest(entity)
-                bot.editMessageReplyMarkup(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgReplyMarkup()
-                )
             }
-            "cancel_request" -> {
-                cancelRequest(entity)
-                bot.editMessageReplyMarkup(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgReplyMarkup()
-                )
-            }
-            "cancel_sending_request" -> {
-                cancelSendingRequest(entity)
-                bot.editMessageReplyMarkup(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgReplyMarkup()
-                )
-            }
-            "create_request" -> {
-                newRequest(entity)
-                bot.editMessageReplyMarkup(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgReplyMarkup()
-                )
-            }
+            "cancel_request" -> cancelRequest(entity)
+            "cancel_sending_request" -> cancelSendingRequest(entity)
+            "create_request" -> newRequest(entity)
             "send_request" -> {
                 val request = entity.getRequesterData()!!.requests.first {it.request_status == "creating"}
                 val forwardedMessage = bot.forwardMessage(
@@ -239,6 +218,7 @@ object RequestsBot {
                     )
                     entity.addToTempArray(poll.messageId.toString())
                 }
+                bot.pinMessage(config.targetChatId, forwardedMessage.messageId.toLong(), true)
                 bot.sendMessage(
                     chatId = cbq.from.id,
                     text = config.text.textOnSend4User,
@@ -250,12 +230,19 @@ object RequestsBot {
                 request.request_status = "pending"
                 entity.editRequest(request)
                 MySQLIntegration.setNickname(entity.user_id, request.request_nickname!!)
-                bot.editMessageReplyMarkup(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgReplyMarkup()
-                )
             }
+        }
+        bot.editMessageReplyMarkup(
+            chatId = cbq.message.chat.id,
+            messageId = cbq.message.messageId,
+            replyMarkup = TgReplyMarkup()
+        )
+    }
+
+    suspend fun onTelegramChatJoinRequest(request: TgChatJoinRequest) {
+        val entity = MySQLIntegration.getLinkedEntity(request.from.id)?:return
+        if (entity.account_type<=1) {
+            bot.approveChatJoinRequest(request.chat.id, request.from.id)
         }
     }
 
@@ -285,6 +272,7 @@ object RequestsBot {
         entity.editRequest(request)
         entity.promote(1)
         entity.temp_array = arrayOf()
+        entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, "player"))
         ZixaMCRequests.addToWhitelist(request.request_nickname!!)
         return true
     }
@@ -308,6 +296,80 @@ object RequestsBot {
         entity.editRequest(request)
         entity.temp_array = arrayOf()
         return true
+    }
+    suspend fun onTelegramPromoteCommand(msg: TgMessage): Boolean {
+        if (!MySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
+        val args = msg.text?.split(" ")?:return false
+        val isNotArgsPassed = args.size > 1
+        val isArgUserId = if (isNotArgsPassed) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
+        val isReplyToMessage = msg.replyToMessage != null && args.size == 2
+        val isArgTargetId = if (isNotArgsPassed) args[if (isReplyToMessage) 1 else 2].matches("[0-9]+".toRegex()) else false
+        if (!(args.size == 3 && !isReplyToMessage || isReplyToMessage && args.size == 2) || !promoteUser(
+            userId =
+                if (isArgUserId) args[1].toLong()
+//                else if (args[2].startsWith("@")) msg.entities?.firstOrNull {it.type == "mention" }?.
+                else if (isReplyToMessage) msg.replyToMessage!!.from?.id
+                else null,
+            nickname = if (args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16 && !isArgUserId) args[1] else null,
+            targetName = if (!isArgTargetId) args[if (isReplyToMessage) 1 else 2] else null,
+            argTargetId = if (isArgTargetId) args[if (isReplyToMessage) 1 else 2].toInt() else null,
+        )) {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textSyntaxPromoteHelp,
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+            return false
+        } else {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textOnPromote4Target,
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+            return true
+        }
+    }
+    suspend fun onTelegramKickCommand(msg: TgMessage): Boolean {
+        if (!MySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
+        val args = msg.text?.split(" ")?:return false
+        val isArgUserId = if (args.size>1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
+        val isReplyToMessage = msg.replyToMessage != null
+        val entity =
+            if (isArgUserId) MySQLIntegration.getLinkedEntity(args[1].toLong())
+            else if (isReplyToMessage) MySQLIntegration.getLinkedEntity(msg.replyToMessage!!.from?.id?:return false)
+            else if (args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16) MySQLIntegration.getLinkedEntityByNickname(args[1])
+            else null
+        if (entity == null || !promoteUser(
+            argEntity = entity,
+            argTargetId = 2,
+        )) {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textSyntaxKickHelp,
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+            return false
+        } else {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textOnKick4Target.replace("{nickname}", entity.nickname ?: entity.user_id.toString()),
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+            bot.banChatMember(msg.chat.id, entity.user_id)
+            entity.nicknames?.forEach { ZixaMCRequests.removeFromWhitelist(it) }
+            try {
+                bot.sendMessage(
+                    chatId = entity.user_id,
+                    text = config.text.textOnKick4User,
+                    replyParameters = TgReplyParameters(msg.messageId),
+                )
+            } catch (_: Exception) {}
+            return true
+        }
     }
     suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
@@ -337,7 +399,7 @@ object RequestsBot {
         return false
     }
 
-    private suspend fun cancelRequest(entity: SQLEntity): Boolean {
+    suspend fun cancelRequest(entity: SQLEntity): Boolean {
         entity.editRequest((entity.getRequesterData()?:return false).requests.first { it.request_status == "pending" }.apply { this.request_status = "canceled" })
         bot.sendMessage(
             chatId = entity.user_id,
@@ -357,7 +419,7 @@ object RequestsBot {
         entity.temp_array = arrayOf()
         return true
     }
-    private suspend fun cancelSendingRequest(entity: SQLEntity): Boolean {
+    suspend fun cancelSendingRequest(entity: SQLEntity): Boolean {
         entity.data = MySQLIntegration.modifyData(
             data = entity.data,
             accountType = entity.account_type,
@@ -377,7 +439,7 @@ object RequestsBot {
         )
         return true
     }
-    private suspend fun newRequest(entity: SQLEntity): Boolean {
+    suspend fun newRequest(entity: SQLEntity): Boolean {
         when (entity.getOrCreateRequesterData().requests.firstOrNull { listOf("creating", "pending").contains(it.request_status) }?.request_status ?: "") {
             "creating" -> {
                 bot.sendMessage(
@@ -438,5 +500,20 @@ object RequestsBot {
             null,
         ))
         return true
+    }
+
+    fun promoteUser(argEntity: SQLEntity? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null): Boolean {
+        val entity = argEntity ?:
+            if (userId != null) MySQLIntegration.getLinkedEntity(userId) ?: return false
+            else if (nickname != null) MySQLIntegration.getLinkedEntityByNickname(nickname) ?: return false
+            else return false
+        val targetId = argTargetId ?: when (targetName?.lowercase()?:return false) {
+            "admin" -> 0
+            "player" -> 1
+            "requester" -> 2
+            else -> 3
+        }
+        entity.promote(targetId)
+        return entity.account_type==targetId
     }
 }

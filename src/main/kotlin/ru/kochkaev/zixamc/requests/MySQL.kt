@@ -2,7 +2,6 @@ package ru.kochkaev.zixamc.requests
 
 import com.google.gson.Gson
 import com.mysql.cj.jdbc.exceptions.CommunicationsException
-import org.checkerframework.checker.units.qual.A
 import ru.kochkaev.zixamc.requests.dataclassSQL.*
 import java.sql.*
 
@@ -40,7 +39,7 @@ class MySQL {
                                             `id` INT NOT NULL AUTO_INCREMENT,
                                             `user_id` BIGINT NOT NULL,
                                             `nickname` VARCHAR(16),
-                                            `second_nicknames` JSON,
+                                            `nicknames` JSON,
                                             `account_type` INT NOT NULL,
                                             `temp_array` JSON NOT NULL,
                                             `data` JSON NOT NULL,
@@ -109,18 +108,18 @@ class MySQL {
         get() = MySQLConnection == null
 
 
-    fun registerUser(user_id: Long?, nickname: String?, second_nicknames: Array<String>?, account_type: Int?, data: AccountData?): Boolean =
-        registerUser(user_id, nickname, second_nicknames, account_type, Gson().toJson(data))
-    fun registerUser(user_id: Long?, nickname: String?, second_nicknames: Array<String>?, account_type: Int?, data: String?): Boolean {
+    fun registerUser(user_id: Long?, nickname: String?, nicknames: Array<String>?, account_type: Int?, data: AccountData?): Boolean =
+        registerUser(user_id, nickname, nicknames, account_type, Gson().toJson(data))
+    fun registerUser(user_id: Long?, nickname: String?, nicknames: Array<String>?, account_type: Int?, data: String?): Boolean {
         try {
             reConnect()
-            if (!isUserRegistered(user_id) && user_id != null && !isNicknameRegistered(nickname) && (second_nicknames?.any{isNicknameRegistered(it)} != true)) {
+            if (!isUserRegistered(user_id) && user_id != null && !isNicknameRegistered(nickname) && (nicknames?.any{isNicknameRegistered(it)} != true)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, temp_array, data) VALUES (?, ?, ?, ?, ?, ?);")
-//                val sql_array_second_nicknames = MySQLConnection!!.createArrayOf("text", second_nicknames)
+                    MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, nicknames, account_type, temp_array, data) VALUES (?, ?, ?, ?, ?, ?);")
+//                val sql_array_nicknames = MySQLConnection!!.createArrayOf("text", nicknames)
                 preparedStatement.setLong(1, user_id)
                 preparedStatement.setString(2, nickname)
-                preparedStatement.setString(3, "{\"array\":[${second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
+                preparedStatement.setString(3, "{\"array\":[${nicknames?.joinToString(", ") { "\"$this\"" }}]}")
                 preparedStatement.setInt(4, account_type?:3)
                 preparedStatement.setString(5, "{\"array\":[]}")
                 preparedStatement.setString(6, data)
@@ -150,9 +149,23 @@ class MySQL {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
+                MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(nicknames, ?);")
             preparedStatement.setString(1, nickname)
             preparedStatement.setString(2, nickname)
+            return preparedStatement.executeQuery().next()
+        } catch (e: SQLException) {
+            ZixaMCRequests.logger.error("isUserRegistered error", e)
+        }
+        return false
+    }
+    fun isNicknameNotAvailableToRegister(user_id: Long?, nickname: String?): Boolean {
+        try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE user_id = ? AND (nickname = ? OR json_as_array_contains(nicknames, ?));")
+            preparedStatement.setString(1, nickname)
+            preparedStatement.setLong(2, user_id?:return false)
+            preparedStatement.setString(3, nickname)
             return preparedStatement.executeQuery().next()
         } catch (e: SQLException) {
             ZixaMCRequests.logger.error("isUserRegistered error", e)
@@ -258,13 +271,13 @@ class MySQL {
             ZixaMCRequests.logger.error("updateUserData error", e)
         }
     }
-    fun addUserSecondNickname(user_id: Long?, second_nickname: String?) : Boolean {
+    fun addUserSecondNickname(user_id: Long?, nickname: String?) : Boolean {
         try {
             if (user_id == null) return false
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET second_nicknames = json_as_array_append(second_nicknames, ?) WHERE user_id = ?;")
-            preparedStatement.setString(1, second_nickname)
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET nicknames = json_as_array_append(nicknames, ?) WHERE user_id = ?;")
+            preparedStatement.setString(1, nickname)
             preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
             return true
@@ -273,13 +286,13 @@ class MySQL {
         }
         return false
     }
-    fun updateUserSecondNicknames(user_id: Long?, second_nicknames: Array<String>?) {
+    fun updateUserSecondNicknames(user_id: Long?, nicknames: Array<String>?) {
         try {
             if (user_id == null) return
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET second_nicknames = ? WHERE user_id = ?;")
-            preparedStatement.setString(1, "{\"array\":[${second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET nicknames = ? WHERE user_id = ?;")
+            preparedStatement.setString(1, "{\"array\":[${nicknames?.joinToString(", ") { "\"$this\"" }}]}")
             preparedStatement.setLong(2, user_id)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
@@ -356,7 +369,7 @@ class MySQL {
             reConnect()
             if (isUserRegistered(user_id)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT second_nicknames FROM " + config.mySQLTable + " WHERE user_id = ?;")
+                    MySQLConnection!!.prepareStatement("SELECT nicknames FROM " + config.mySQLTable + " WHERE user_id = ?;")
                 preparedStatement.setLong(1, user_id!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
@@ -372,7 +385,7 @@ class MySQL {
             reConnect()
             if (isNicknameRegistered(nickname)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(second_nicknames, ?);")
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(nicknames, ?);")
                 preparedStatement.setString(1, nickname)
                 val query = preparedStatement.executeQuery()
                 if (!query.next()) return null

@@ -51,6 +51,10 @@ object MySQLIntegration {
         val user_id: Long = sql.getUserIdByUserTempArrayMember(message_id.toString())?:return null
         return linkedEntities[user_id]
     }
+    fun getLinkedEntityByNickname(nickname: String): SQLEntity? {
+        val user_id: Long = sql.getUserIdByNickname(nickname)?:return null
+        return linkedEntities[user_id]
+    }
     fun getAllRegisteredUserIds(): List<Long> = linkedEntities.keys.toList()
 
 //    fun promoteToPlayer(user_id: Long, minecraftAccount: MinecraftAccountData) {
@@ -81,6 +85,7 @@ object MySQLIntegration {
     }
 
     fun isNicknameTaken(nickname: String): Boolean = sql.isNicknameRegistered(nickname)
+    fun isNicknameNotAvailableToTake(user_id: Long, nickname: String): Boolean = sql.isNicknameNotAvailableToRegister(user_id, nickname)
     fun setNickname(user_id: Long, nickname: String) {
         linkedEntities[user_id]!!.addNickname(nickname)
     }
