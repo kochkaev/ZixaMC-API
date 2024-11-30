@@ -129,8 +129,8 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
 
     suspend fun shutdown() {
         pollTask?.cancelAndJoin()
-        okhttpClient.dispatcher().executorService().shutdown()
-        okhttpClient.connectionPool().evictAll()
+        okhttpClient.dispatcher.executorService.shutdown()
+        okhttpClient.connectionPool.evictAll()
     }
 
     private suspend fun <T> call(f: suspend () -> TgResponse<T>): T {

@@ -105,7 +105,7 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
     }
     fun getOrCreatePlayerData(): PlayerData {
         when (account_type) {
-            0 -> if (getOrCreatePlayerData().requester_data == null) {
+            0 -> if (getOrCreateAdminData().player_data == null) {
                 data = modifyData(
                     data = data,
                     accountType = account_type,

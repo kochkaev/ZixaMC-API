@@ -93,6 +93,8 @@ dependencies {
     // MySQL driver
     include(implementation("com.mysql:mysql-connector-j:${project.property("mysql_version")}")) {}
 
+    include(implementation("com.squareup.okhttp3:okhttp:4.12.0")) {}
+    include(implementation("com.squareup.okio:okio-jvm:3.6.0")) {}
     include(implementation("com.squareup.retrofit2:retrofit:2.11.0") {
         exclude(module = "kotlin-stdlib")
         exclude(module = "kotlin-reflect")
