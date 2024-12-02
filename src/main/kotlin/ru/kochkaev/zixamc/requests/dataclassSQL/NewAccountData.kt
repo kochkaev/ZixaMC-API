@@ -1,4 +1,4 @@
-namespace ru.kochkaev.zixamc.requests.dataclessSQL
+namespace ru.kochkaev.zixamc.requests.dataclassSQL
 
 data class NewAccountData (
     val minecraft_accounts: List<MinecraftAccountData>
