@@ -24,6 +24,7 @@ plugins {
 
 val kamlVersion = "0.56.0"
 val tgbridgeVersion = "0.5.0"
+val adventureVersion: String by project
 version = project.property("mod_version") as String
 group = project.property("maven_group") as String
 
@@ -109,6 +110,10 @@ dependencies {
         exclude(module = "kotlin-stdlib")
         exclude(module = "kotlinx-serialization-core")
     })
+    include(implementation("net.kyori:adventure-api:${adventureVersion}")!!)
+    include(implementation("net.kyori:adventure-text-serializer-gson:${adventureVersion}") {
+        exclude(module = "gson")
+    })
     compileOnly("com.google.code.gson:gson:2.10.1")
 }
 //dependencyManagement {
@@ -142,13 +147,13 @@ tasks.processResources {
 //        from("LICENSE") {
 //            rename { "${it}_${project.base.archivesName.get()}" }
 //        }
-//        relocate("okio", "zixamc.requests.shaded.okio")
-//        relocate("okhttp3", "zixamc.requests.shaded.okhttp3")
-//        relocate("retrofit2", "zixamc.requests.shaded.retrofit2")
+//        relocate("okio", "zixamc.tgbridge.shaded.okio")
+//        relocate("okhttp3", "zixamc.tgbridge.shaded.okhttp3")
+//        relocate("retrofit2", "zixamc.tgbridge.shaded.retrofit2")
 //
-//        relocate("it.krzeminski.snakeyaml", "zixamc.requests.shaded.snakeyaml")
-//        relocate("net.thauvin", "zixamc.requests.shaded.net.thauvin")
-//        relocate("com.charleskorn.kaml", "zixamc.requests.shaded.kaml")
+//        relocate("it.krzeminski.snakeyaml", "zixamc.tgbridge.shaded.snakeyaml")
+//        relocate("net.thauvin", "zixamc.tgbridge.shaded.net.thauvin")
+//        relocate("com.charleskorn.kaml", "zixamc.tgbridge.shaded.kaml")
 //        mergeServiceFiles()
 //        minimize()
 //
@@ -184,7 +189,7 @@ tasks.jar {
         rename { "${it}_${project.base.archivesName}" }
     }
     manifest {
-        attributes["Main-Class"] = "ru.kochkaev.zixamc.requests.ZixaMCRequests"
+        attributes["Main-Class"] = "ru.kochkaev.zixamc.tgbridge.ZixaMCRequests"
     }
 }
 //tasks {
@@ -226,7 +231,7 @@ tasks.jar {
 ////        }
 ////        exclude("META-INF")
 ////        manifest {
-////            attributes["Main-Class"] = "ru.kochkaev.zixamc.requests.ZixaMCRequests"
+////            attributes["Main-Class"] = "ru.kochkaev.zixamc.tgbridge.ZixaMCRequests"
 ////        }
 //        minimize()
 //

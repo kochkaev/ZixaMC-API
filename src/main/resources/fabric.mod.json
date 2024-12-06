@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "zixamcrequests",
+  "id": "zixamc",
   "version": "${version}",
-  "name": "ZixaMCRequests",
+  "name": "ZixaMCTGBridge",
   "description": "",
   "authors": [],
   "contact": {},
@@ -11,10 +11,10 @@
   "environment": "*",
   "entrypoints": {
     "client": [
-      "ru.kochkaev.zixamc.requests.client.ZixaMCRequestsClient"
+      "ru.kochkaev.zixamc.tgbridge.client.ZixaMCTGBridgeClient"
     ],
     "main": [
-      "ru.kochkaev.zixamc.requests.ZixaMCRequests"
+      "ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge"
     ]
   },
   "depends": {
