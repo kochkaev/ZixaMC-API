@@ -8,7 +8,7 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
     var nickname: String?
         get() = sql.getUserNickname(userId)
         set(new_nickname) {
-            if (nickname != null) sql.addUserSecondNickname(userId, nickname)
+//            if (nickname != null) sql.addUserSecondNickname(userId, nickname)
             sql.updateUserNickname(userId, new_nickname)
         }
     var nicknames: Array<String>?
@@ -96,6 +96,14 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
         if (nickname == null) nickname = account.nickname
         data = data!!.apply { this.minecraftAccounts = accounts }
         return true
+    }
+    fun editMinecraftAccount(nickname: String, newStatus: String) {
+        val accounts = (data?:return).minecraftAccounts
+        val matched = accounts.first { it.nickname == nickname }
+        matched.accountStatus = newStatus
+        accounts.removeIf { it.nickname == nickname }
+        accounts.add(matched)
+        data = data!!.apply { this.minecraftAccounts = accounts }
     }
     fun addRequest(requestData: RequestData) {
         val requests = createAndOrGetData().requests

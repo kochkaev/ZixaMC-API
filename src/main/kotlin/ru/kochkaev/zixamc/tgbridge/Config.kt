@@ -53,6 +53,14 @@ data class Config (
             val textSyntaxKickHelp: String = "",
             val textOnKick4Target: String = "",
             val textOnKick4User: String = "",
+            val textSyntaxLeavedHelp: String = "",
+            val textOnLeave4Target: String = "",
+            val textOnLeave4User: String = "",
+            val textSyntaxReturnHelp: String = "",
+            val textOnReturn4Target: String = "",
+            val textOnReturn4User: String = "",
+            val textOnRulesUpdated4Target: String = "",
+            val textOnRulesUpdated4User: String = "",
             val textOnStart: String = "",
             val textButtonCreateRequest: String = "",
             val textNeedAgreeWithRules: String = "",
@@ -78,6 +86,7 @@ data class Config (
         )
     }
     data class ServerBotDataClass (
+        val isEnabled: Boolean = true,
         val botToken: String = "",
         val botAPIURL: String = "https://api.telegram.org",
         val pollTimeout: Int = 60,
@@ -86,6 +95,7 @@ data class Config (
         val chatSync: ServerBotChatSyncDataClass = ServerBotChatSyncDataClass(),
     ) {
         data class ServerBotChatSyncDataClass (
+            val isEnabled: Boolean = true,
             val chatId: Long = 0,
             val topicId: Int? = 0,
             val messages: ServerBotChatSyncMessageDataClass = ServerBotChatSyncMessageDataClass(),

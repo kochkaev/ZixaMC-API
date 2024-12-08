@@ -57,6 +57,10 @@ object NewMySQLIntegration {
     fun setNickname(userId: Long, nickname: String) {
         linkedEntities[userId]!!.addNickname(nickname)
     }
+    fun getAllActiveNicknamesOfUser(userId: Long): List<String> =
+        linkedEntities[userId]?.data?.minecraftAccounts?.filter { it.accountStatus == "player" || it.accountStatus == "admin" }?.map { it.nickname } ?: listOf()
+    fun getAllFrozenNicknamesOfUser(userId: Long): List<String> =
+        linkedEntities[userId]?.data?.minecraftAccounts?.filter { it.accountStatus == "frozen" }?.map { it.nickname } ?: listOf()
 
     fun parseNewDataType(json: String?): NewAccountData =
         if (json != null) sql.gson.fromJson(json, NewAccountData::class.java) else NewAccountData()

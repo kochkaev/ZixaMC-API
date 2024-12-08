@@ -20,6 +20,7 @@ object ServerBot {
 
     fun startBot() {
         config = ConfigManager.CONFIG!!.serverBot
+        if (!config.isEnabled) return
         bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, config.pollTimeout)
         runBlocking {
             bot.init()
@@ -36,15 +37,19 @@ object ServerBot {
 //        bot.registerCommandHandler("cancel", this::onTelegramCancelCommand)
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
-            ChatSyncBotCore.init()
-            ChatSyncBotLogic.sendServerStartedMessage()
+            if (config.chatSync.isEnabled) {
+                ChatSyncBotCore.init()
+                ChatSyncBotLogic.sendServerStartedMessage()
+            }
         }
     }
     fun stopBot() {
-        coroutineScope.launch {
-            ChatSyncBotLogic.sendServerStoppedMessage()
-            bot.shutdown()
+        if (coroutineScope.isActive) {
+            coroutineScope.launch {
+                if (config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
+                bot.shutdown()
+            }
+            coroutineScope.cancel()
         }
-        coroutineScope.cancel()
     }
 }

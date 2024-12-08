@@ -28,6 +28,9 @@ object RequestsBot {
         bot.registerCommandHandler("reject", this::onTelegramRejectCommand)
         bot.registerCommandHandler("promote", this::onTelegramPromoteCommand)
         bot.registerCommandHandler("kick", this::onTelegramKickCommand)
+        bot.registerCommandHandler("leaved", this::onTelegramLeavedCommand)
+        bot.registerCommandHandler("return", this::onTelegramReturnCommand)
+        bot.registerCommandHandler("rulesUpdated", this::onTelegramRulesUpdatedCommand)
         bot.registerCommandHandler("start", this::onTelegramStartCommand)
         bot.registerCommandHandler("new", this::onTelegramNewCommand)
         bot.registerCommandHandler("cancel", this::onTelegramCancelCommand)
@@ -36,10 +39,12 @@ object RequestsBot {
         }
     }
     fun stopBot() {
-        coroutineScope.launch {
-            ServerBot.bot.shutdown()
+        if (coroutineScope.isActive) {
+            coroutineScope.launch {
+                ServerBot.bot.shutdown()
+            }
+            coroutineScope.cancel()
         }
-        coroutineScope.cancel()
     }
 
     suspend fun onTelegramMessage(msg: TgMessage) {
@@ -178,7 +183,7 @@ object RequestsBot {
                 }
             }
             "redraw_request" -> {
-                entity.data = entity.data.apply { this!!.requests.filter { it.request_status != "creating" } }
+                entity.data = entity.data.let { it!!.requests = ArrayList(it.requests.filter { it1 -> it1.request_status != "creating" }); it }
                 newRequest(entity)
             }
             "cancel_request" -> cancelRequest(entity)
@@ -214,11 +219,18 @@ object RequestsBot {
                     entity.addToTempArray(poll.messageId.toString())
                 }
                 bot.pinMessage(config.targetChatId, forwardedMessage.messageId.toLong(), true)
-                bot.sendMessage(
+                val messageInChatWithUser = bot.sendMessage(
                     chatId = cbq.from.id,
                     text = config.text.textOnSend4User,
                     replyParameters = TgReplyParameters(cbq.message.messageId),
+                    replyMarkup = TgInlineKeyboardMarkup(listOf(listOf(
+                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                            text = config.text.textButtonCancelRequest,
+                            callback_data = "cancel_request"
+                        )
+                    )))
                 )
+                request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
                 request.message_id_in_target_chat = forwardedMessage.messageId.toLong()
                 entity.addToTempArray(forwardedMessage.messageId.toString())
                 entity.addToTempArray(newMessage.messageId.toString())
@@ -227,7 +239,7 @@ object RequestsBot {
                 NewMySQLIntegration.setNickname(entity.userId, request.request_nickname!!)
             }
         }
-        bot.editMessageReplyMarkup(
+        if (cbq.message.chat.id > 0) bot.editMessageReplyMarkup(
             chatId = cbq.message.chat.id,
             messageId = cbq.message.messageId,
             replyMarkup = TgReplyMarkup()
@@ -252,7 +264,7 @@ object RequestsBot {
             text = config.text.textOnAccept4Target.replace("{nickname}", "${request.request_nickname}"),
             replyParameters = TgReplyParameters(replied.messageId),
         )
-        bot.sendMessage(
+        val newMessage = bot.sendMessage(
             chatId = entity.userId,
             text = config.text.textOnAccept4User,
             replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
@@ -263,7 +275,13 @@ object RequestsBot {
                 )
             )))
         )
+        bot.editMessageReplyMarkup(
+            chatId = entity.userId,
+            messageId = request.message_id_in_chat_with_user.toInt(),
+            replyMarkup = TgReplyMarkup()
+        )
         request.request_status = "accepted"
+        request.message_id_in_chat_with_user = newMessage.messageId.toLong()
         entity.editRequest(request)
         entity.accountType = 1
         entity.tempArray = arrayOf()
@@ -286,6 +304,11 @@ object RequestsBot {
             chatId = entity.userId,
             text = config.text.textOnReject4User,
             replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
+        )
+        bot.editMessageReplyMarkup(
+            chatId = entity.userId,
+            messageId = request.message_id_in_chat_with_user.toInt(),
+            replyMarkup = TgReplyMarkup()
         )
         request.request_status = "rejected"
         entity.editRequest(request)
@@ -326,6 +349,150 @@ object RequestsBot {
             return true
         }
     }
+    suspend fun onTelegramRulesUpdatedCommand(msg: TgMessage): Boolean {
+        bot.sendMessage(
+            chatId = config.targetChatId,
+            text = config.text.textOnRulesUpdated4Target,
+            replyMarkup = TgInlineKeyboardMarkup(
+                listOf(listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                    text = config.text.textButtonAgreeWithRules,
+                    callback_data = "agree_with_rules",
+                ))),
+            )
+        )
+        NewMySQLIntegration.getAllRegisteredUserIds().forEach {
+            NewMySQLIntegration.setAgreedWithRules(it, false)
+            bot.sendMessage(
+                chatId = it,
+                text = config.text.textOnRulesUpdated4User,
+                replyMarkup = TgInlineKeyboardMarkup(
+                    listOf(listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                        text = config.text.textButtonAgreeWithRules,
+                        callback_data = "agree_with_rules",
+                    ))),
+                )
+            )
+        }
+        return true
+    }
+    suspend fun onTelegramLeavedCommand(msg: TgMessage): Boolean {
+        if (!NewMySQLIntegration.isAdmin(msg.from?.id ?: return false)) return true
+        val args = msg.text?.split(" ") ?: return false
+        val isArgUserId = if (args.size > 1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
+        val isReplyToMessage = msg.replyToMessage != null
+        val entity =
+            if (isArgUserId) NewMySQLIntegration.getLinkedEntity(args[1].toLong())
+            else if (isReplyToMessage) NewMySQLIntegration.getLinkedEntity(
+                msg.replyToMessage!!.from?.id ?: return false
+            )
+            else if (args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16) NewMySQLIntegration.getLinkedEntityByNickname(
+                args[1]
+            )
+            else null
+        if (entity == null || !promoteUser(
+                argEntity = entity,
+                argTargetId = 2,
+            )
+        ) {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textSyntaxLeavedHelp,
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+            return false
+        } else {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textOnLeave4Target.replace(
+                    "{nickname}",
+                    entity.nickname ?: entity.userId.toString()
+                ),
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+//            bot.banChatMember(msg.chat.id, entity.userId)
+//            entity.nicknames?.forEach { ZixaMCTGBridge.removeFromWhitelist(it) }
+            try{
+                entity.data?.requests?.filter { it.request_status == "accepted" }?.forEach {
+                    bot.editMessageReplyMarkup(
+                        chatId = entity.userId,
+                        messageId = it.message_id_in_chat_with_user.toInt(),
+                        replyMarkup = TgReplyMarkup()
+                    )
+                }
+                bot.sendMessage(
+                    chatId = entity.userId,
+                    text = config.text.textOnLeave4User,
+//                    replyParameters = TgReplyParameters(msg.messageId),
+                )
+            } catch (_: Exception){}
+            NewMySQLIntegration.getAllActiveNicknamesOfUser(entity.userId).forEach {
+                ZixaMCTGBridge.removeFromWhitelist(it)
+                entity.editMinecraftAccount(it, "frozen")
+            }
+            return true
+        }
+    }
+    suspend fun onTelegramReturnCommand(msg: TgMessage): Boolean {
+        if (!NewMySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
+        val args = msg.text?.split(" ")?:return false
+        val isArgUserId = if (args.size>1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
+        val isReplyToMessage = msg.replyToMessage != null
+        val entity =
+            if (isArgUserId) NewMySQLIntegration.getLinkedEntity(args[1].toLong())
+            else if (isReplyToMessage) NewMySQLIntegration.getLinkedEntity(msg.replyToMessage!!.from?.id?:return false)
+            else if (args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16) NewMySQLIntegration.getLinkedEntityByNickname(args[1])
+            else null
+        if (entity == null || !promoteUser(
+                argEntity = entity,
+                argTargetId = 2,
+            )) {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textSyntaxReturnHelp,
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+            return false
+        } else {
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                messageThreadId = msg.messageThreadId,
+                text = config.text.textOnReturn4Target.replace("{nickname}", entity.nickname ?: entity.userId.toString()),
+                replyParameters = TgReplyParameters(msg.messageId),
+            )
+            entity.accountType = 1
+//            bot.banChatMember(msg.chat.id, entity.userId)
+//            entity.nicknames?.forEach { ZixaMCTGBridge.addToWhitelist(it) }
+            var newMessage: TgMessage? = null
+            try {
+                newMessage = bot.sendMessage(
+                    chatId = entity.userId,
+                    text = config.text.textOnReturn4User,
+                    replyMarkup = TgInlineKeyboardMarkup(
+                        listOf(
+                            listOf(
+                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                                    text = config.text.textButtonJoinToPlayersGroup,
+                                    url = config.playersGroupInviteLink
+                                )
+                            )
+                        )
+                    ),
+//                    replyParameters = TgReplyParameters(msg.messageId),
+                )
+            } catch (_: Exception){}
+            entity.data?.requests?.filter { it.request_status == "accepted" } ?.forEach {
+                entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage?.messageId?.toLong()?:message_id_in_chat_with_user })
+            }
+            NewMySQLIntegration.getAllFrozenNicknamesOfUser(entity.userId).forEach {
+                entity.editMinecraftAccount(it, "player")
+                ZixaMCTGBridge.addToWhitelist(it)
+            }
+            return true
+        }
+    }
     suspend fun onTelegramKickCommand(msg: TgMessage): Boolean {
         if (!NewMySQLIntegration.isAdmin(msg.from?.id?:return false)) return true
         val args = msg.text?.split(" ")?:return false
@@ -354,15 +521,22 @@ object RequestsBot {
                 text = config.text.textOnKick4Target.replace("{nickname}", entity.nickname ?: entity.userId.toString()),
                 replyParameters = TgReplyParameters(msg.messageId),
             )
+            entity.data?.requests?.filter { it.request_status == "accepted" }?.forEach {
+                bot.editMessageReplyMarkup(
+                    chatId = entity.userId,
+                    messageId = it.message_id_in_chat_with_user.toInt(),
+                    replyMarkup = TgReplyMarkup()
+                )
+            }
             bot.banChatMember(msg.chat.id, entity.userId)
             entity.nicknames?.forEach { ZixaMCTGBridge.removeFromWhitelist(it) }
-            try {
-                bot.sendMessage(
-                    chatId = entity.userId,
-                    text = config.text.textOnKick4User,
-                    replyParameters = TgReplyParameters(msg.messageId),
-                )
-            } catch (_: Exception) {}
+            bot.sendMessage(
+                chatId = entity.userId,
+                text = config.text.textOnKick4User,
+//                    replyParameters = TgReplyParameters(msg.messageId),
+            )
+            NewMySQLIntegration.getAllActiveNicknamesOfUser(entity.userId).forEach { entity.editMinecraftAccount(it, "banned") }
+            NewMySQLIntegration.getAllFrozenNicknamesOfUser(entity.userId).forEach { entity.editMinecraftAccount(it, "banned") }
             return true
         }
     }
@@ -490,6 +664,7 @@ object RequestsBot {
             "creating",
             null,
         ))
+        if (entity.accountType>2) entity.accountType = 2
         return true
     }
 
