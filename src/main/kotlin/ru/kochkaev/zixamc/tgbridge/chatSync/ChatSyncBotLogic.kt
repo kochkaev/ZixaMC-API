@@ -63,8 +63,8 @@ object ChatSyncBotLogic {
         core.broadcastMessage(TextParser.toMinecraft(msg, bot.me.id))
     }
 
-    private fun registerMinecraftHandlers() {
-        core.registerCommand(arrayOf("tgbridge", "reload"), this::onReloadCommand)
+    fun registerMinecraftHandlers() {
+//        core.registerCommand(arrayOf("tgbridge", "reload"), this::onReloadCommand)
         core.registerChatMessageListener(this::onChatMessage)
         core.registerPlayerDeathListener(this::onPlayerDeath)
         core.registerPlayerJoinListener(this::onPlayerJoin)
@@ -102,10 +102,9 @@ object ChatSyncBotLogic {
         } else {
             rawMinecraftText.removePrefix(prefix)
         }
-        val escapedText: String = TextParser.escapeHTML(textWithoutPrefix).apply {
-            if (config.messages.parseMarkdownInMinecraftToTelegramMessages)
-                Markdown2HTMLParser.parse(this)
-        }
+        var escapedText = TextParser.escapeHTML(textWithoutPrefix)
+        if (config.messages.parseMarkdownInMinecraftToTelegramMessages)
+            escapedText = Markdown2HTMLParser.parse(escapedText)
 
         val currText = TextParser.formatLang(
             lang.telegram.chatMessage,

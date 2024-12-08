@@ -29,11 +29,11 @@ class ZixaMCTGBridge : ModInitializer {
         }
         fun addToWhitelist(nickname: String) {
             val server = FabricLoader.getInstance().gameInstance as MinecraftServer
-           CommandDispatcher<CommandSource>().execute(ConfigManager.CONFIG!!.requestsBot.addWhitelistCommand.replace("{nickname}", nickname), server.commandSource);
+            CommandDispatcher<CommandSource>().execute(ConfigManager.CONFIG!!.requestsBot.addWhitelistCommand.replace("{nickname}", nickname), server.commandSource);
         }
         fun removeFromWhitelist(nickname: String) {
             val server = FabricLoader.getInstance().gameInstance as MinecraftServer
-           CommandDispatcher<CommandSource>().execute(ConfigManager.CONFIG!!.requestsBot.removeWhitelistCommand.replace("{nickname}", nickname), server.commandSource);
+            CommandDispatcher<CommandSource>().execute(ConfigManager.CONFIG!!.requestsBot.removeWhitelistCommand.replace("{nickname}", nickname), server.commandSource);
         }
     }
     override fun onInitialize() {
@@ -49,6 +49,6 @@ class ZixaMCTGBridge : ModInitializer {
     fun onServerStopped(server: MinecraftServer) {
         ServerBot.stopBot()
         RequestsBot.stopBot()
-        MySQLIntegration.stopServer()
+        NewMySQLIntegration.stopServer()
     }
 }

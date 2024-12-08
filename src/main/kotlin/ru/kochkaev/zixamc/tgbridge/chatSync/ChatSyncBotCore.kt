@@ -27,6 +27,7 @@ object ChatSyncBotCore {
         config = ConfigManager.CONFIG!!.serverBot.chatSync
         lang = ConfigManager.CONFIG!!.serverBot.chatSync.lang
         ChatSyncBotLogic.registerTelegramHandlers()
+        ChatSyncBotLogic.registerMinecraftHandlers()
     }
     fun registerChatMessageListener(handler: (TBPlayerEventData) -> Unit) {
         ServerMessageEvents.CHAT_MESSAGE.register { message: SignedMessage, sender, _ ->
@@ -43,12 +44,12 @@ object ChatSyncBotCore {
     }
 
     fun registerPlayerDeathListener(handler: (TBPlayerEventData) -> Unit) {
-        ServerLivingEntityEvents.AFTER_DEATH.register { player, damageSource ->
-            if (vanishInstance == null || !vanishInstance!!.isVanished(player)) {
-                val deathMessage = damageSource.getDeathMessage(player)
+        ServerLivingEntityEvents.AFTER_DEATH.register { entity, damageSource ->
+            if (entity is ServerPlayerEntity && (vanishInstance == null || !vanishInstance!!.isVanished(entity))) {
+                val deathMessage = damageSource.getDeathMessage(entity)
                 handler(
                     TBPlayerEventData(
-                        player.displayName?.string ?: return@register,
+                        entity.displayName?.string ?: return@register,
                         MinecraftAdventureConverter.minecraftToAdventure(deathMessage),
                     )
                 )

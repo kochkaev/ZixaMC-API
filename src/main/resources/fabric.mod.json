@@ -17,6 +17,9 @@
       "ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge"
     ]
   },
+  "mixins": [
+    "zixamc.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-language-kotlin": ">=${kotlin_loader_version}",
