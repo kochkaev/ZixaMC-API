@@ -58,6 +58,7 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    maven("https://maven.nucleoid.xyz/") { name = "Nucleoid" }
     exclusiveContent {
         forRepository {
             maven ("https://api.modrinth.com/maven") { name = "Modrinth" }
@@ -115,6 +116,11 @@ dependencies {
         exclude(module = "gson")
     })
     compileOnly("com.google.code.gson:gson:2.10.1")
+    modImplementation("maven.modrinth:vanish:1.5.7+1.21.1")
+    modImplementation("eu.pb4:player-data-api:0.6.0+1.21")
+    modImplementation("me.lucko:fabric-permissions-api:0.3.1")
+    modImplementation("eu.pb4:predicate-api:0.5.2+1.21")
+    modImplementation("eu.pb4:placeholder-api:2.4.1+1.21")
 }
 //dependencyManagement {
 //    imports {

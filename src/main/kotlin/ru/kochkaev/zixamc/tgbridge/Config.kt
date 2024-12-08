@@ -20,6 +20,7 @@ data class Config (
         val mySQLTable: String = "",
     )
     data class RequestsBotDataClass (
+        val isEnabled: Boolean = true,
         val botToken: String = "",
         val botAPIURL: String = "https://api.telegram.org",
         val pollTimeout: Int = 60,
@@ -85,6 +86,10 @@ data class Config (
         val chatSync: ServerBotChatSyncDataClass = ServerBotChatSyncDataClass(),
     ) {
         data class ServerBotChatSyncDataClass (
+            val chatId: Long = 0,
+            val topicId: Int? = 0,
+            val messages: ServerBotChatSyncMessageDataClass = ServerBotChatSyncMessageDataClass(),
+            val events: ServerBotChatSyncGameEventsDataClass = ServerBotChatSyncGameEventsDataClass(),
             val lang: ServerBotChatSyncLangDataClass = ServerBotChatSyncLangDataClass(),
         ) {
             data class ServerBotChatSyncLangDataClass (
@@ -159,6 +164,30 @@ data class Config (
                 data class LangMinecraft(
                     val messageMeta: MessageMeta = MessageMeta(),
                     val messageFormatting: MessageFormatting = MessageFormatting(),
+                )
+            }
+            data class ServerBotChatSyncMessageDataClass (
+                val bluemapUrl: String? = null,
+                val requirePrefixInMinecraft: String? = "",
+                val keepPrefix: Boolean = false,
+                val mergeWindow: Int? = 0,
+                val replyInDifferentLine: Boolean = false,
+                val styledTelegramMessagesInMinecraft: Boolean = true,
+                val parseMarkdownInMinecraftToTelegramMessages: Boolean = true,
+            )
+            data class ServerBotChatSyncGameEventsDataClass (
+                val advancementMessages: ServerBotChatSyncAdvancementsDataClass = ServerBotChatSyncAdvancementsDataClass(),
+                val enableDeathMessages: Boolean = true,
+                val enableJoinMessages: Boolean = true,
+                val enableLeaveMessages: Boolean = true,
+                val leaveJoinMergeWindow: Int? = 0,
+            ) {
+                data class ServerBotChatSyncAdvancementsDataClass(
+                    val enable: Boolean = true,
+                    val enableTask: Boolean = true,
+                    val enableGoal: Boolean = true,
+                    val enableChallenge: Boolean = true,
+                    val showDescription: Boolean = true,
                 )
             }
         }

@@ -47,6 +47,7 @@ class ZixaMCTGBridge : ModInitializer {
         }
     }
     fun onServerStopped(server: MinecraftServer) {
+        ServerBot.stopBot()
         RequestsBot.stopBot()
         MySQLIntegration.stopServer()
     }

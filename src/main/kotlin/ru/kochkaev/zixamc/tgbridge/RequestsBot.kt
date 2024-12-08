@@ -16,6 +16,7 @@ object RequestsBot {
 
     fun startBot() {
         config = ConfigManager.CONFIG!!.requestsBot
+        if (!config.isEnabled) return
         bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, config.pollTimeout)
         runBlocking {
             bot.init()
@@ -36,8 +37,9 @@ object RequestsBot {
     }
     fun stopBot() {
         coroutineScope.launch {
-            bot.shutdown()
+            ServerBot.bot.shutdown()
         }
+        coroutineScope.cancel()
     }
 
     suspend fun onTelegramMessage(msg: TgMessage) {
