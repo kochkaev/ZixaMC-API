@@ -151,7 +151,7 @@ object RequestsLogic {
                 NewMySQLIntegration.getLinkedEntity(args[1].toLong())
             else if (isItLegalReply)
                 NewMySQLIntegration.getLinkedEntity(msg.replyToMessage!!.from?.id ?: return null)
-            else if (!isReplyToMessage && args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16)
+            else if (!isReplyToMessage && args.size>1 && args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16)
                 NewMySQLIntegration.getLinkedEntityByNickname(args[1])
             else if (allowedIfSpendByItself)
                 NewMySQLIntegration.getLinkedEntity(msg.from!!.id)
