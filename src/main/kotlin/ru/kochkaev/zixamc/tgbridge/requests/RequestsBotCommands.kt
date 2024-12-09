@@ -158,7 +158,7 @@ object RequestsBotCommands {
         RequestsLogic.executeUpdateServerPlayerStatusCommand(
             message = msg,
             allowedExecutionAccountTypes = listOf(0),
-            allowedExecutionIfSpendByItself = true,
+            allowedExecutionIfSpendByItself = false,
             applyAccountStatuses = listOf("frozen"),
             targetAccountStatus = "player",
             editWhitelist = true,
