@@ -111,10 +111,19 @@ dependencies {
         exclude(module = "kotlin-stdlib")
         exclude(module = "kotlinx-serialization-core")
     })
+
     include(implementation("net.kyori:adventure-api:${adventureVersion}")!!)
+    include(implementation("net.kyori:adventure-key:${adventureVersion}")!!)
     include(implementation("net.kyori:adventure-text-serializer-gson:${adventureVersion}") {
         exclude(module = "gson")
     })
+    include(implementation("net.kyori:adventure-text-serializer-json:${adventureVersion}") {
+        exclude(module = "gson")
+    })
+    include(implementation("net.kyori:examination-api:1.3.0")!!)
+    include(implementation("net.kyori:examination-string:1.3.0")!!)
+    include(implementation("net.kyori:option:1.0.0")!!)
+
     compileOnly("com.google.code.gson:gson:2.10.1")
     modImplementation("maven.modrinth:vanish:1.5.7+1.21.1")
     modImplementation("eu.pb4:player-data-api:0.6.0+1.21")

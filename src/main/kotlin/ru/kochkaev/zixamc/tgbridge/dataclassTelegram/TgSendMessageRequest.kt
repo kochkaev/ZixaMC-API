@@ -28,6 +28,8 @@ data class TgSendMessageRequest(
     @SerializedName("parse_mode")
     val parseMode: String = "HTML",
     val entities: List<TgEntity>? = null,
+    @SerializedName("protect_content")
+    val protectContent: Boolean = false,
     @SerializedName("message_effect_id")
     val messageEffectId: String? = null,
     @SerializedName("reply_parameters")

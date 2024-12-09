@@ -38,6 +38,10 @@ object NewMySQLIntegration {
     fun isAdmin(userId: Long): Boolean = linkedEntities[userId]?.accountType == 0
 
     fun getLinkedEntity(userId: Long): NewSQLEntity? = linkedEntities[userId]
+    fun getOrRegisterLinkedEntity(userId: Long): NewSQLEntity {
+        if (!sql.isUserRegistered(userId)) addUser(userId)
+        return linkedEntities[userId]!!
+    }
     fun getLinkedEntityByTempArrayMessagesId(messageId: Long): NewSQLEntity? {
         val userId: Long = sql.getUserIdByUserTempArrayMember(messageId.toString())?:return null
         return linkedEntities[userId]

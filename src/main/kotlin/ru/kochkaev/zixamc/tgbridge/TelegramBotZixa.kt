@@ -150,6 +150,7 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
         entities: List<TgEntity>? = null,
         replyParameters: TgReplyParameters? = null,
         replyMarkup: TgReplyMarkup? = null,
+        protectContent: Boolean = false,
     ): TgMessage = call {
         client.sendMessage(TgSendMessageRequest(
             chatId = chatId,
@@ -159,6 +160,7 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
             entities = entities,
             replyParameters = replyParameters,
             replyMarkup = replyMarkup,
+            protectContent = protectContent,
         ))
     }
 

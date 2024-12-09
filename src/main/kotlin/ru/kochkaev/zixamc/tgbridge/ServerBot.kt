@@ -44,7 +44,7 @@ object ServerBot {
         }
     }
     fun stopBot() {
-        if (coroutineScope.isActive) {
+        if (config.isEnabled) {
             coroutineScope.launch {
                 if (config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
                 bot.shutdown()

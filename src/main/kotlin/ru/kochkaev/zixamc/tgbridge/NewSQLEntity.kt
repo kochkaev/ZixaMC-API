@@ -112,16 +112,18 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
     }
     fun editRequest(requestData: RequestData) {
         val requests = (data?:return).requests
-        when (requestData.request_status) {
-            "creating" -> {
-                requests.removeIf {it.request_status == "creating"}
-                requests.add(requestData)
-            }
-            else -> {
-                requests.removeIf {it.message_id_in_chat_with_user == requestData.message_id_in_chat_with_user}
-                requests.add(requestData)
-            }
-        }
+        requests.removeIf {it.user_request_id == requestData.user_request_id}
+        requests.add(requestData)
+//        when (requestData.request_status) {
+//            "creating" -> {
+//                requests.removeIf {it.request_status == "creating"}
+//                requests.add(requestData)
+//            }
+//            else -> {
+//                requests.removeIf {it.message_id_in_chat_with_user == requestData.message_id_in_chat_with_user}
+//                requests.add(requestData)
+//            }
+//        }
         data = data!!.apply { this.requests = requests }
     }
 

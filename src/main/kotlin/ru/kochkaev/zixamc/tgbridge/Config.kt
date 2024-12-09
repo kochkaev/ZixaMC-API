@@ -83,6 +83,7 @@ data class Config (
             val textRequestCanceled4Target: String = "",
             val textYouAreNowPlayer: String = "",
             val textButtonJoinToPlayersGroup: String = "",
+            val textCommandPermissionDenied: String = "",
         )
     }
     data class ServerBotDataClass (
