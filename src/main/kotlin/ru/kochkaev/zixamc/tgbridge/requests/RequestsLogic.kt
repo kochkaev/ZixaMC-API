@@ -15,10 +15,11 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 object RequestsLogic {
 
     suspend fun cancelRequest(entity: NewSQLEntity): Boolean {
-        entity.editRequest((entity.data?:return false).requests.first { it.request_status == "pending" }.apply { this.request_status = "canceled" })
+        val request = (entity.data?:return false).requests.firstOrNull { it.request_status == "pending" } ?: return false
+        entity.editRequest(entity.data!!.requests.first { it.request_status == "pending" }.apply { this.request_status = "canceled" })
         bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.events.forUser.textRequestCanceled4User,
+            text = BotLogic.escapePlaceholders(config.text.events.forUser.textRequestCanceled4User, entity.nickname),
             replyMarkup = TgInlineKeyboardMarkup(
                 inline_keyboard = listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
@@ -30,7 +31,10 @@ object RequestsLogic {
         bot.sendMessage(
             chatId = config.targetChatId,
             messageThreadId = config.targetTopicId,
-            text = config.text.events.forTarget.textRequestCanceled4Target,
+            text = BotLogic.escapePlaceholders(config.text.events.forTarget.textRequestCanceled4Target, entity.nickname),
+            replyParameters = TgReplyParameters(
+                message_id = request.message_id_in_chat_with_user.toInt()
+            )
         )
         entity.tempArray = arrayOf()
         return true
@@ -45,7 +49,7 @@ object RequestsLogic {
             replyMarkup = TgInlineKeyboardMarkup(
                 inline_keyboard = listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.buttons.textButtonCreateRequest,
+                    text = BotLogic.escapePlaceholders(config.text.buttons.textButtonCreateRequest),
                     callback_data = "create_request",
                 )))
             )
@@ -57,7 +61,7 @@ object RequestsLogic {
             "creating" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
-                    text = config.text.messages.textYouAreNowCreatingRequest,
+                    text = BotLogic.escapePlaceholders(config.text.messages.textYouAreNowCreatingRequest),
                     replyMarkup = TgInlineKeyboardMarkup(
                         inline_keyboard = listOf(listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
@@ -71,7 +75,7 @@ object RequestsLogic {
             "pending" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
-                    text = config.text.messages.textYouHavePendingRequest,
+                    text = BotLogic.escapePlaceholders(config.text.messages.textYouHavePendingRequest, entity.nickname),
                     replyMarkup = TgInlineKeyboardMarkup(
                         inline_keyboard = listOf(listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
@@ -86,7 +90,7 @@ object RequestsLogic {
         if (entity.accountType<2) {
             bot.sendMessage(
                 chatId = entity.userId,
-                text = config.text.messages.textYouAreNowPlayer,
+                text = BotLogic.escapePlaceholders(config.text.messages.textYouAreNowPlayer, entity.nickname),
             )
             return false
         }
@@ -100,7 +104,7 @@ object RequestsLogic {
         )
         else bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.messages.textNeedAgreeWithRules,
+            text = BotLogic.escapePlaceholders(config.text.messages.textNeedAgreeWithRules),
             replyMarkup = TgInlineKeyboardMarkup(
                 listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(

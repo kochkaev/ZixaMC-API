@@ -7,6 +7,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
 import ru.kochkaev.zixamc.tgbridge.ConfigManager.CONFIG
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 
 object BotLogic {
 
@@ -62,5 +63,22 @@ object BotLogic {
             senderBotId = bot.me.id,
         )
         return newMessage
+    }
+
+    fun getMentionOfAllPlayers() : String {
+        val output = StringBuilder()
+        val placeholder = CONFIG?.serverBot?.mentionAllReplaceWith?:"+"
+        NewMySQLIntegration.linkedEntities.filter { it.value.accountType <= 1 } .forEach {
+            output.append("<a href=\"tg://user?id=${it.key}\">$placeholder</a>")
+        }
+        return output.toString()
+    }
+
+    fun escapePlaceholders(text: String, nickname: String? = null) : String {
+        return TextParser.formatLang(text,
+            "nickname" to (nickname?:""),
+            "mentionAll" to getMentionOfAllPlayers(),
+            "serverIP" to (CONFIG?.requestsBot?.serverIP?:""),
+        )
     }
 }

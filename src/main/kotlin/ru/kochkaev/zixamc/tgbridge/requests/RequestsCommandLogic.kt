@@ -57,18 +57,15 @@ object RequestsCommandLogic {
                 chatId = message.chat.id,
                 messageThreadId = message.messageThreadId,
                 text =
-                    if (!havePermission) config.text.commands.textCommandPermissionDenied
-                    else helpText,
+                    if (!havePermission) BotLogic.escapePlaceholders(config.text.commands.textCommandPermissionDenied, entity?.nickname)
+                    else BotLogic.escapePlaceholders(helpText, entity?.nickname),
                 replyParameters = TgReplyParameters(message.messageId),
             )
         } else {
             if (text4Target!=null) bot.sendMessage(
                 chatId = message.chat.id,
                 messageThreadId = message.messageThreadId,
-                text = TextParser.formatLang(
-                    text4Target,
-                    "nickname" to (entity!!.nickname ?: entity.userId.toString()),
-                ),
+                text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
                 replyParameters = TgReplyParameters(message.messageId),
             )
             var newMessage: TgMessage? = null
@@ -76,7 +73,7 @@ object RequestsCommandLogic {
                 if (text4User!=null) {
                     newMessage = bot.sendMessage(
                         chatId = entity!!.userId,
-                        text = text4User,
+                        text = BotLogic.escapePlaceholders(text4User, entity.nickname ?: entity.userId.toString()),
                         replyMarkup = replyMarkup4Message4User,
                         protectContent = protectContentInMessage4User,
                     )
@@ -122,10 +119,14 @@ object RequestsCommandLogic {
                 message, entity, listOf(0), false
             )) return true
         val request = entity.data!!.requests.firstOrNull {it.request_status == "pending"} ?: return false
-        val message4User = (if (isAccepted) config.text.events.forUser.textOnAccept4User else config.text.events.forUser.textOnReject4User)
-            .replace("{nickname}", "${request.request_nickname}")
-        val message4Target = (if (isAccepted) config.text.events.forTarget.textOnAccept4Target else config.text.events.forTarget.textOnReject4Target)
-            .replace("{nickname}", "${request.request_nickname}")
+        val message4User = BotLogic.escapePlaceholders(
+            text = if (isAccepted) config.text.events.forUser.textOnAccept4User else config.text.events.forUser.textOnReject4User,
+            nickname = request.request_nickname,
+        )
+        val message4Target = BotLogic.escapePlaceholders(
+            text = if (isAccepted) config.text.events.forTarget.textOnAccept4Target else config.text.events.forTarget.textOnReject4Target,
+            nickname = request.request_nickname,
+        )
         bot.sendMessage(
             chatId = config.targetChatId,
             text = message4Target,

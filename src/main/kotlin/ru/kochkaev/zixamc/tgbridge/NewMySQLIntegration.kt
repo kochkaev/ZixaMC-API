@@ -5,7 +5,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
 object NewMySQLIntegration {
 
     private val sql = NewMySQL()
-    private lateinit var linkedEntities: HashMap<Long, NewSQLEntity>
+    lateinit var linkedEntities: HashMap<Long, NewSQLEntity>
 
     fun startServer() {
         sql.connect()

@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
+import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
@@ -30,7 +31,7 @@ object RequestsBotUpdateManager {
                             if ((msg.text?.length ?: return) !in 3..16 || !msg.text.matches(Regex("[a-zA-Z0-9_]+"))) {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
-                                    text = config.text.messages.textWrongNickname,
+                                    text = BotLogic.escapePlaceholders(config.text.messages.textWrongNickname, msg.text),
                                     replyParameters = TgReplyParameters(msg.messageId),
                                     replyMarkup = TgForceReply(
                                         true,
@@ -40,7 +41,7 @@ object RequestsBotUpdateManager {
                             } else if (NewMySQLIntegration.isNicknameNotAvailableToTake(entity.userId, msg.text)) {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
-                                    text = config.text.messages.textTakenNickname,
+                                    text = BotLogic.escapePlaceholders(config.text.messages.textTakenNickname, msg.text),
                                     replyParameters = TgReplyParameters(msg.messageId),
                                     replyMarkup = TgForceReply(
                                         true,
@@ -50,7 +51,7 @@ object RequestsBotUpdateManager {
                             } else {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
-                                    text = config.text.messages.textOnNewRequest,
+                                    text = BotLogic.escapePlaceholders(config.text.messages.textOnNewRequest, msg.text),
                                     replyParameters = TgReplyParameters(msg.messageId),
                                     replyMarkup = TgForceReply(
                                         true,
@@ -64,7 +65,7 @@ object RequestsBotUpdateManager {
                         else {
                             newMessage = bot.sendMessage(
                                 chatId = msg.chat.id,
-                                text = config.text.messages.textConfirmSendRequest,
+                                text = BotLogic.escapePlaceholders(config.text.messages.textConfirmSendRequest, it.request_nickname),
                                 replyParameters = TgReplyParameters(msg.messageId),
                                 replyMarkup = TgInlineKeyboardMarkup(
                                     listOf(
@@ -134,7 +135,7 @@ object RequestsBotUpdateManager {
                     val editedRequest = requests.first{it.request_status == "creating"}
                     val newMessage = bot.sendMessage(
                         chatId = cbq.from.id,
-                        text = config.text.messages.textNeedNickname,
+                        text = BotLogic.escapePlaceholders(config.text.messages.textNeedNickname),
                         replyMarkup = TgForceReply(
                             true,
                             config.text.inputFields.textInputFieldPlaceholderNickname.ifEmpty { null }
@@ -161,14 +162,14 @@ object RequestsBotUpdateManager {
                 )
                 val newMessage = bot.sendMessage(
                     chatId = config.targetChatId,
-                    text = config.text.events.forTarget.textOnSend4Target,
+                    text = BotLogic.escapePlaceholders(config.text.events.forTarget.textOnSend4Target, request.request_nickname),
                     replyParameters = TgReplyParameters(forwardedMessage.messageId),
                 )
                 if (config.poll.autoCreatePoll) {
                     val poll = bot.sendPoll(
                         chatId = config.targetChatId,
                         messageThreadId = config.targetTopicId,
-                        question = config.poll.pollQuestion.replace("{nickname}", "${request.request_nickname}"),
+                        question = BotLogic.escapePlaceholders(config.poll.pollQuestion, request.request_nickname),
                         options = listOf(
                             TgInputPollOption(config.poll.pollAnswerTrue),
                             TgInputPollOption(config.poll.pollAnswerNull),
@@ -183,7 +184,7 @@ object RequestsBotUpdateManager {
                 bot.pinMessage(config.targetChatId, forwardedMessage.messageId.toLong(), true)
                 val messageInChatWithUser = bot.sendMessage(
                     chatId = cbq.from.id,
-                    text = config.text.events.forUser.textOnSend4User,
+                    text = BotLogic.escapePlaceholders(config.text.events.forUser.textOnSend4User, request.request_nickname),
                     replyParameters = TgReplyParameters(cbq.message.messageId),
                     replyMarkup = TgInlineKeyboardMarkup(listOf(listOf(
                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(

@@ -119,6 +119,7 @@ data class Config (
         val pollTimeout: Int = 60,
         val targetChatId: Long = 0,
         val targetTopicId: Int = 0,
+        val mentionAllReplaceWith: String = "+",
         val chatSync: ServerBotChatSyncDataClass = ServerBotChatSyncDataClass(),
     ) {
         data class ServerBotChatSyncDataClass (

@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
+import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
@@ -24,14 +25,14 @@ object RequestsBotCommands {
         if (!promoteUser(entity)) {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                text = config.text.commands.textSyntaxPromoteHelp,
+                text = BotLogic.escapePlaceholders(config.text.commands.textSyntaxPromoteHelp),
                 replyParameters = TgReplyParameters(msg.messageId),
             )
             return false
         } else {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                text = config.text.events.forTarget.textOnPromote4Target,
+                text = BotLogic.escapePlaceholders(config.text.events.forTarget.textOnPromote4Target, entity.nickname?:entity.userId.toString()),
                 replyParameters = TgReplyParameters(msg.messageId),
             )
             return true
@@ -44,7 +45,7 @@ object RequestsBotCommands {
             )) return true
         bot.sendMessage(
             chatId = config.targetChatId,
-            text = config.text.events.forTarget.textOnRulesUpdated4Target,
+            text = BotLogic.escapePlaceholders(config.text.events.forTarget.textOnRulesUpdated4Target),
             replyMarkup = TgInlineKeyboardMarkup(
                 listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
@@ -57,7 +58,7 @@ object RequestsBotCommands {
             NewMySQLIntegration.setAgreedWithRules(it, false)
             bot.sendMessage(
                 chatId = it,
-                text = config.text.events.forUser.textOnRulesUpdated4User,
+                text = BotLogic.escapePlaceholders(config.text.events.forUser.textOnRulesUpdated4User),
                 replyMarkup = TgInlineKeyboardMarkup(
                     listOf(listOf(
                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(
