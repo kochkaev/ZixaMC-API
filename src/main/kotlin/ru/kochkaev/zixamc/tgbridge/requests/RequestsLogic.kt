@@ -33,7 +33,7 @@ object RequestsLogic {
             messageThreadId = config.targetTopicId,
             text = BotLogic.escapePlaceholders(config.text.events.forTarget.textRequestCanceled4Target, entity.nickname),
             replyParameters = TgReplyParameters(
-                message_id = request.message_id_in_chat_with_user.toInt()
+                message_id = request.message_id_in_target_chat!!.toInt()
             )
         )
         entity.tempArray = arrayOf()
