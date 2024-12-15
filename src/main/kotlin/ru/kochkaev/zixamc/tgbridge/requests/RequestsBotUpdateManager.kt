@@ -50,7 +50,7 @@ object RequestsBotUpdateManager {
                             } else {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
-                                    text = config.text.events.forTarget.textOnNewRequest,
+                                    text = config.text.messages.textOnNewRequest,
                                     replyParameters = TgReplyParameters(msg.messageId),
                                     replyMarkup = TgForceReply(
                                         true,
