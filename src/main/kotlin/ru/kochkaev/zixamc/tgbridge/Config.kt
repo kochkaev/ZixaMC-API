@@ -45,7 +45,7 @@ data class Config (
             val inputFields: RequestsBotTextInputFieldsDataClass = RequestsBotTextInputFieldsDataClass(),
             val commands: RequestsBotTextCommandsDataClass = RequestsBotTextCommandsDataClass(),
             val events: RequestsBotTextEventsDataClass = RequestsBotTextEventsDataClass(),
-            val messages: RequestsBotTextMessagesDataClass = RequestsBotTextMessagesDataClass(),
+            val messages: RequestsBotTextCreateRequestDataClass = RequestsBotTextCreateRequestDataClass(),
         ) {
             data class RequestsBotTextButtonsDataClass (
                 val textButtonCreateRequest: String = "",
@@ -82,7 +82,6 @@ data class Config (
                     val textOnLeave4Target: String = "",
                     val textOnReturn4Target: String = "",
                     val textOnRulesUpdated4Target: String = "",
-                    val textOnNewRequest: String = "",
                     val textRequestCanceled4Target: String = "",
                 )
                 data class RequestsBotTextEvents4UserDataClass (
@@ -97,7 +96,7 @@ data class Config (
                     val textRequestCanceled4User: String = "",
                 )
             }
-            data class RequestsBotTextMessagesDataClass (
+            data class RequestsBotTextCreateRequestDataClass (
                 val textNeedAgreeWithRules: String = "",
                 val textMustAgreeWithRules: String = "",
                 val textNeedNickname: String = "",
@@ -109,6 +108,7 @@ data class Config (
                 val textCancelRequest: String = "",
                 val textYouAreNowPlayer: String = "",
                 val textInfoMessage: String = "",
+                val textOnNewRequest: String = "",
             )
         }
     }
