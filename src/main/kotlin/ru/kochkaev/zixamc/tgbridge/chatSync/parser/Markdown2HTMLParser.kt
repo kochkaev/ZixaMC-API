@@ -86,6 +86,7 @@ object Markdown2HTMLParser {
         while (stack.isNotEmpty()) {
             val key = stack.removeAt(stack.lastIndex)
             val tag = tagMap[key] ?: ""
+//            result.replace(result.lastIndexOf("<$tag>"), tag.length+2, key)
             result.append("</${tag}>")
             if (codeOrPreList.contains(key)) stack.clear()
         }

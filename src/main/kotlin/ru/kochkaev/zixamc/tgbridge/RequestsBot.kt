@@ -15,6 +15,7 @@ object RequestsBot {
     lateinit var bot: TelegramBotZixa
     lateinit var config: Config.RequestsBotDataClass
     private val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
+    var isInitialized = false
 
     fun startBot() {
         config = ConfigManager.CONFIG!!.requestsBot
@@ -39,6 +40,7 @@ object RequestsBot {
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
         }
+        isInitialized = true
     }
     fun stopBot() {
         if (config.isEnabled) {
@@ -47,5 +49,6 @@ object RequestsBot {
             }
             coroutineScope.cancel()
         }
+        isInitialized = false
     }
 }

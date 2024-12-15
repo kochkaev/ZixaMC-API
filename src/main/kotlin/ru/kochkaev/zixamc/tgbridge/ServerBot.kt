@@ -17,6 +17,7 @@ object ServerBot {
     lateinit var bot: TelegramBotZixa
     private lateinit var config: Config.ServerBotDataClass
     val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
+    var isInitialized = false
 
     fun startBot() {
         config = ConfigManager.CONFIG!!.serverBot
@@ -42,6 +43,7 @@ object ServerBot {
                 ChatSyncBotLogic.sendServerStartedMessage()
             }
         }
+        isInitialized = true
     }
     fun stopBot() {
         if (config.isEnabled) {
@@ -51,5 +53,6 @@ object ServerBot {
             }
             coroutineScope.cancel()
         }
+        isInitialized = false
     }
 }

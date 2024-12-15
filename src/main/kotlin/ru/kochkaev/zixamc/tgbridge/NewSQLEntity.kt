@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge
 
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.legecySQL.*
 
 class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
@@ -128,4 +129,19 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
     }
 
     fun addToTempArray(value: String) : Boolean = sql.addToUserTempArray(userId, value)
+
+    fun setProtectedInfoMessage(
+        message: TgMessage,
+        protectLevel: Int,
+        protectedType: String,
+        senderBotId: Long,
+    ) {
+        data = data?.apply { this.protectedMessages.add(ProtectedMessageData(
+            message_id = message.messageId.toLong(),
+            chat_id = message.chat.id,
+            protect_level = protectLevel,
+            protected_type = protectedType,
+            sender_bot_id = senderBotId,
+        )) }
+    }
 }

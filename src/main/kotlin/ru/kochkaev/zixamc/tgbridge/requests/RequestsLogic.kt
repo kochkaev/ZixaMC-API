@@ -4,8 +4,11 @@ import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.NewSQLEntity
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
+import ru.kochkaev.zixamc.tgbridge.TelegramBotZixa
+import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ProtectedMessageData
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 
@@ -15,11 +18,11 @@ object RequestsLogic {
         entity.editRequest((entity.data?:return false).requests.first { it.request_status == "pending" }.apply { this.request_status = "canceled" })
         bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.textRequestCanceled4User,
+            text = config.text.events.forUser.textRequestCanceled4User,
             replyMarkup = TgInlineKeyboardMarkup(
                 inline_keyboard = listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.textButtonCreateRequest,
+                    text = config.text.buttons.textButtonCreateRequest,
                     callback_data = "create_request",
                 )))
             )
@@ -27,7 +30,7 @@ object RequestsLogic {
         bot.sendMessage(
             chatId = config.targetChatId,
             messageThreadId = config.targetTopicId,
-            text = config.text.textRequestCanceled4Target,
+            text = config.text.events.forTarget.textRequestCanceled4Target,
         )
         entity.tempArray = arrayOf()
         return true
@@ -38,11 +41,11 @@ object RequestsLogic {
         }
         bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.textRequestCanceled4User,
+            text = config.text.events.forUser.textRequestCanceled4User,
             replyMarkup = TgInlineKeyboardMarkup(
                 inline_keyboard = listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.textButtonCreateRequest,
+                    text = config.text.buttons.textButtonCreateRequest,
                     callback_data = "create_request",
                 )))
             )
@@ -54,11 +57,11 @@ object RequestsLogic {
             "creating" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
-                    text = config.text.textYouAreNowCreatingRequest,
+                    text = config.text.messages.textYouAreNowCreatingRequest,
                     replyMarkup = TgInlineKeyboardMarkup(
                         inline_keyboard = listOf(listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.text.textButtonRedrawRequest,
+                            text = config.text.buttons.textButtonRedrawRequest,
                             callback_data = "redraw_request",
                         )))
                     )
@@ -68,11 +71,11 @@ object RequestsLogic {
             "pending" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
-                    text = config.text.textYouHavePendingRequest,
+                    text = config.text.messages.textYouHavePendingRequest,
                     replyMarkup = TgInlineKeyboardMarkup(
                         inline_keyboard = listOf(listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.text.textButtonCancelRequest,
+                            text = config.text.buttons.textButtonCancelRequest,
                             callback_data = "cancel_request",
                         )))
                     )
@@ -83,25 +86,25 @@ object RequestsLogic {
         if (entity.accountType<2) {
             bot.sendMessage(
                 chatId = entity.userId,
-                text = config.text.textYouAreNowPlayer,
+                text = config.text.messages.textYouAreNowPlayer,
             )
             return false
         }
         val forReplyMessage = if (NewMySQLIntegration.isAgreedWithRules(entity.userId)) bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.textNeedNickname,
+            text = config.text.messages.textNeedNickname,
             replyMarkup = TgForceReply(
                 true,
-                config.text.textInputFieldPlaceholderNickname.ifEmpty { null }
+                config.text.inputFields.textInputFieldPlaceholderNickname.ifEmpty { null }
             )
         )
         else bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.textNeedAgreeWithRules,
+            text = config.text.messages.textNeedAgreeWithRules,
             replyMarkup = TgInlineKeyboardMarkup(
                 listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.textButtonAgreeWithRules,
+                    text = config.text.buttons.textButtonAgreeWithRules,
                     callback_data = "agree_with_rules",
                 ))),
             )
@@ -186,88 +189,6 @@ object RequestsLogic {
             return true
         }
     }
-    suspend fun executeUpdateServerPlayerStatusCommand(
-        message: TgMessage,
-        allowedExecutionAccountTypes: List<Int> = listOf(0),
-        allowedExecutionIfSpendByItself: Boolean = false,
-        applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),
-        targetAccountStatus: String = "player",
-        editWhitelist: Boolean = false,
-        helpText: String? = null,
-        text4User: String? = null,
-        text4Target: String? = null,
-        removePreviousTgReplyMarkup: Boolean = true,
-        additionalConsumer: suspend (Boolean, NewSQLEntity?) -> Unit = { _, _ -> },
-        replyMarkup4Message4User: TgReplyMarkup? = null,
-        protectContentInMessage4User: Boolean = false,
-    ) : Boolean {
-        var errorDueExecuting = false
-        var havePermission = true
-        val entity = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself)
-        if (entity == null) errorDueExecuting = true
-        else havePermission = checkPermissionToExecute(
-            message = message,
-            entity = entity,
-            allowedAccountTypes = allowedExecutionAccountTypes,
-            allowedIfSpendByItself = allowedExecutionIfSpendByItself,
-        )
-        if (!havePermission) errorDueExecuting = true
-        if (!errorDueExecuting && !updateServerPlayerStatus(
-                entity = entity!!,
-                applyAccountStatuses = applyAccountStatuses,
-                targetAccountStatus = targetAccountStatus,
-                editWhitelist = editWhitelist,
-            )) errorDueExecuting = true
-        if (errorDueExecuting && helpText != null) {
-            bot.sendMessage(
-                chatId = message.chat.id,
-                messageThreadId = message.messageThreadId,
-                text =
-                    if (!havePermission) config.text.textCommandPermissionDenied
-                    else helpText,
-                replyParameters = TgReplyParameters(message.messageId),
-            )
-        } else {
-            if (text4Target!=null) bot.sendMessage(
-                chatId = message.chat.id,
-                messageThreadId = message.messageThreadId,
-                text = TextParser.formatLang(
-                    text4Target,
-                    "nickname" to (entity!!.nickname ?: entity.userId.toString()),
-                ),
-                replyParameters = TgReplyParameters(message.messageId),
-            )
-            var newMessage: TgMessage? = null
-            try {
-                if (text4User!=null) {
-                    newMessage = bot.sendMessage(
-                        chatId = entity!!.userId,
-                        text = text4User,
-                        replyMarkup = replyMarkup4Message4User,
-                        protectContent = protectContentInMessage4User,
-                    )
-                }
-            } catch (_: Exception) {}
-            try {
-                if (removePreviousTgReplyMarkup)
-                    entity!!.data?.requests?.filter { it.request_status == "accepted" }?.forEach {
-                        bot.editMessageReplyMarkup(
-                            chatId = entity.userId,
-                            messageId = it.message_id_in_chat_with_user.toInt(),
-                            replyMarkup = TgReplyMarkup()
-                        )
-                }
-            } catch (_: Exception) {}
-            if (newMessage!=null)
-                entity!!.data?.requests?.filter { it.request_status == "accepted" } ?.forEach {
-//                    val request = it.copy(message_id_in_chat_with_user = newMessage.messageId.toLong())
-//                    request.message_id_in_chat_with_user = newMessage.messageId.toLong()
-                    entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage.messageId.toLong() })
-            }
-        }
-        additionalConsumer.invoke(errorDueExecuting, entity)
-        return errorDueExecuting
-    }
 
     fun matchAccountTypeFromMinecraftAccountStatus(status: String): Int = when (status) {
         "admin" -> 0
@@ -276,4 +197,33 @@ object RequestsLogic {
         else -> 3
     }
     fun isPlayer(accountType: Int): Boolean = accountType<=1
+
+    suspend fun deleteProtected(
+        protected: List<ProtectedMessageData>,
+        protectLevel: Int,
+    ) = BotLogic.deleteProtected(
+        bot = bot,
+        protected = protected,
+        protectLevel = protectLevel,
+    )
+
+    suspend fun sendOnJoinInfoMessage(
+        entity: NewSQLEntity,
+        replyToMessageID: Int? = null,
+    ) : TgMessage? = BotLogic.sendInfoMessage(
+            bot = bot,
+            chatId = entity.userId,
+            replyParameters = if (replyToMessageID!=null) TgReplyParameters(replyToMessageID) else null,
+            replyMarkup = TgInlineKeyboardMarkup(listOf(
+                listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                    text = config.text.buttons.textButtonJoinToPlayersGroup,
+                    url = config.playersGroupInviteLink,
+                )),
+                listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                    text = config.text.buttons.textButtonCopyServerIP,
+                    copy_text = TgInlineKeyboardMarkup.TgInlineKeyboardButton.TgCopyTextButton(config.serverIP),
+                )),
+            )),
+            entity = entity,
+        )
 }

@@ -17,7 +17,7 @@ object RequestsBotUpdateManager {
                 if (!requesterData.agreedWithRules) {
                     bot.sendMessage(
                         msg.chat.id,
-                        config.text.textMustAgreeWithRules,
+                        config.text.messages.textMustAgreeWithRules,
                     )
                     return
                 }
@@ -30,31 +30,31 @@ object RequestsBotUpdateManager {
                             if ((msg.text?.length ?: return) !in 3..16 || !msg.text.matches(Regex("[a-zA-Z0-9_]+"))) {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
-                                    text = config.text.textWrongNickname,
+                                    text = config.text.messages.textWrongNickname,
                                     replyParameters = TgReplyParameters(msg.messageId),
                                     replyMarkup = TgForceReply(
                                         true,
-                                        config.text.textInputFieldPlaceholderNickname.ifEmpty { null }
+                                        config.text.inputFields.textInputFieldPlaceholderNickname.ifEmpty { null }
                                     )
                                 )
                             } else if (NewMySQLIntegration.isNicknameNotAvailableToTake(entity.userId, msg.text)) {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
-                                    text = config.text.textTakenNickname,
+                                    text = config.text.messages.textTakenNickname,
                                     replyParameters = TgReplyParameters(msg.messageId),
                                     replyMarkup = TgForceReply(
                                         true,
-                                        config.text.textInputFieldPlaceholderNickname.ifEmpty { null }
+                                        config.text.inputFields.textInputFieldPlaceholderNickname.ifEmpty { null }
                                     )
                                 )
                             } else {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
-                                    text = config.text.textOnNewRequest,
+                                    text = config.text.events.forTarget.textOnNewRequest,
                                     replyParameters = TgReplyParameters(msg.messageId),
                                     replyMarkup = TgForceReply(
                                         true,
-                                        config.text.textInputFieldPlaceholderRequest.ifEmpty { null }
+                                        config.text.inputFields.textInputFieldPlaceholderRequest.ifEmpty { null }
                                     )
                                 )
                                 it.request_nickname = msg.text
@@ -64,17 +64,17 @@ object RequestsBotUpdateManager {
                         else {
                             newMessage = bot.sendMessage(
                                 chatId = msg.chat.id,
-                                text = config.text.textConfirmSendRequest,
+                                text = config.text.messages.textConfirmSendRequest,
                                 replyParameters = TgReplyParameters(msg.messageId),
                                 replyMarkup = TgInlineKeyboardMarkup(
                                     listOf(
                                         listOf(
                                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                                text = config.text.textButtonConfirmSending,
+                                                text = config.text.buttons.textButtonConfirmSending,
                                                 callback_data = "send_request"
                                             ),
                                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                                text = config.text.textButtonCancelRequest,
+                                                text = config.text.buttons.textButtonCancelRequest,
                                                 callback_data = "cancel_sending_request"
                                             ),
                                         )
@@ -134,10 +134,10 @@ object RequestsBotUpdateManager {
                     val editedRequest = requests.first{it.request_status == "creating"}
                     val newMessage = bot.sendMessage(
                         chatId = cbq.from.id,
-                        text = config.text.textNeedNickname,
+                        text = config.text.messages.textNeedNickname,
                         replyMarkup = TgForceReply(
                             true,
-                            config.text.textInputFieldPlaceholderNickname.ifEmpty { null }
+                            config.text.inputFields.textInputFieldPlaceholderNickname.ifEmpty { null }
                         )
                     )
                     editedRequest.message_id_in_chat_with_user = newMessage.messageId.toLong()
@@ -161,7 +161,7 @@ object RequestsBotUpdateManager {
                 )
                 val newMessage = bot.sendMessage(
                     chatId = config.targetChatId,
-                    text = config.text.textOnSend4Target,
+                    text = config.text.events.forTarget.textOnSend4Target,
                     replyParameters = TgReplyParameters(forwardedMessage.messageId),
                 )
                 if (config.poll.autoCreatePoll) {
@@ -183,11 +183,11 @@ object RequestsBotUpdateManager {
                 bot.pinMessage(config.targetChatId, forwardedMessage.messageId.toLong(), true)
                 val messageInChatWithUser = bot.sendMessage(
                     chatId = cbq.from.id,
-                    text = config.text.textOnSend4User,
+                    text = config.text.events.forUser.textOnSend4User,
                     replyParameters = TgReplyParameters(cbq.message.messageId),
                     replyMarkup = TgInlineKeyboardMarkup(listOf(listOf(
                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.text.textButtonCancelRequest,
+                            text = config.text.buttons.textButtonCancelRequest,
                             callback_data = "cancel_request"
                         )
                     )))
