@@ -11,7 +11,7 @@ import java.sql.*
 /**
  * @author NikitaCartes
  */
-class MySQL {
+class LegacyMySQL {
     private var MySQLConnection: Connection? = null
     private lateinit var config: Config.MySQLDataClass
     val gson = Gson()
@@ -111,7 +111,7 @@ class MySQL {
         get() = MySQLConnection == null
 
 
-    fun registerUser(user_id: Long?, nickname: String?, nicknames: Array<String>?, account_type: Int?, data: AccountData?): Boolean =
+    fun registerUser(user_id: Long?, nickname: String?, nicknames: Array<String>?, account_type: Int?, data: LegacyAccountData?): Boolean =
         registerUser(user_id, nickname, nicknames, account_type, Gson().toJson(data))
     fun registerUser(user_id: Long?, nickname: String?, nicknames: Array<String>?, account_type: Int?, data: String?): Boolean {
         try {
@@ -435,9 +435,9 @@ class MySQL {
 //            }
 //            return registeredUsers
 //        }
-    val getAllLinkedEntities: HashMap<Long, SQLEntity>
+    val getAllLinkedEntities: HashMap<Long, LegacySQLEntity>
         get() {
-            val linkedEntities = HashMap<Long, SQLEntity>()
+            val linkedEntities = HashMap<Long, LegacySQLEntity>()
             try {
                 reConnect()
                 val preparedStatement =
@@ -445,14 +445,14 @@ class MySQL {
                 val query = preparedStatement.executeQuery()
                 while (query.next()) {
                     val user_id = query.getLong(1)
-                    linkedEntities[user_id] = SQLEntity(this, user_id)
+                    linkedEntities[user_id] = LegacySQLEntity(this, user_id)
                 }
             } catch (e: SQLException) {
                 ZixaMCTGBridge.logger.error("getAllData error", e)
             }
             return linkedEntities
         }
-    fun getLinkedEntity(user_id: Long?): SQLEntity? = if (user_id != null && isUserRegistered(user_id)) SQLEntity(this, user_id) else null
+    fun getLinkedEntity(user_id: Long?): LegacySQLEntity? = if (user_id != null && isUserRegistered(user_id)) LegacySQLEntity(this, user_id) else null
 
 //    fun saveAll(playerCacheMap: HashMap<Long?, TableRow?>) {
 //        try {

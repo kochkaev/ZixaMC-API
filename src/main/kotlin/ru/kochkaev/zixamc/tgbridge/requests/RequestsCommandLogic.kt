@@ -34,37 +34,20 @@ object RequestsCommandLogic {
         protectContentInMessage4User: Boolean = false,
         removeProtectedContent: Boolean = false,
     ) : Boolean {
-        var errorDueExecuting = false
-        var havePermission = true
         val entity = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself)
-        if (entity == null) errorDueExecuting = true
-        else havePermission = checkPermissionToExecute(
+        val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
             entity = entity,
-            allowedAccountTypes = allowedExecutionAccountTypes,
-            allowedIfSpendByItself = allowedExecutionIfSpendByItself,
+            allowedExecutionAccountTypes = allowedExecutionAccountTypes,
+            allowedExecutionIfSpendByItself = allowedExecutionIfSpendByItself,
+            applyAccountStatuses = applyAccountStatuses,
+            targetAccountStatus = targetAccountStatus,
+            editWhitelist = editWhitelist,
+            helpText = helpText,
         )
-        if (!havePermission) errorDueExecuting = true
-        if (!errorDueExecuting && !updateServerPlayerStatus(
-                entity = entity!!,
-                applyAccountStatuses = applyAccountStatuses,
-                targetAccountStatus = targetAccountStatus,
-                editWhitelist = editWhitelist,
-            )
-        ) errorDueExecuting = true
-        if (errorDueExecuting && helpText != null) {
-            bot.sendMessage(
-                chatId = message.chat.id,
-                messageThreadId = message.messageThreadId,
-                text =
-                    if (!havePermission) BotLogic.escapePlaceholders(config.text.commands.textCommandPermissionDenied, entity?.nickname)
-                    else BotLogic.escapePlaceholders(helpText, entity?.nickname),
-                replyParameters = TgReplyParameters(message.messageId),
-            )
-        } else {
+        if (!errorDueExecuting) {
             if (text4Target!=null) bot.sendMessage(
                 chatId = message.chat.id,
-                messageThreadId = message.messageThreadId,
                 text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
                 replyParameters = TgReplyParameters(message.messageId),
             )

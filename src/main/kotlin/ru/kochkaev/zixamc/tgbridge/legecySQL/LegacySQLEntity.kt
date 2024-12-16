@@ -1,9 +1,9 @@
 package ru.kochkaev.zixamc.tgbridge.legecySQL
 
-import ru.kochkaev.zixamc.tgbridge.legecySQL.MySQLIntegration.modifyData
+import ru.kochkaev.zixamc.tgbridge.legecySQL.LegacyMySQLIntegration.modifyData
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
 
-class SQLEntity(val sql: MySQL, val user_id: Long) {
+class LegacySQLEntity(val sql: LegacyMySQL, val user_id: Long) {
 
     var nickname: String?
         get() = sql.getUserNickname(user_id)
@@ -31,42 +31,42 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
         set(rawData) {
             sql.updateUserData(user_id, rawData)
         }
-    var data: AccountData?
-        get() = MySQLIntegration.parseJsonToPOJO(rawData, account_type)
+    var data: LegacyAccountData?
+        get() = LegacyMySQLIntegration.parseJsonToPOJO(rawData, account_type)
         set(data) {
             rawData = sql.gson.toJson(data)
         }
 
     // Add user to table
-    constructor(sql: MySQL, user_id: Long, data: AccountData) : this(sql, user_id, null, data)
-    constructor(sql: MySQL, user_id: Long, nickname: String?, data: AccountData) : this(sql, user_id, nickname, emptyArray(), data)
-    constructor(sql: MySQL, user_id: Long, nickname: String?, second_nicknames: Array<String>, data: AccountData) : this(sql, user_id) {
+    constructor(sql: LegacyMySQL, user_id: Long, data: LegacyAccountData) : this(sql, user_id, null, data)
+    constructor(sql: LegacyMySQL, user_id: Long, nickname: String?, data: LegacyAccountData) : this(sql, user_id, nickname, emptyArray(), data)
+    constructor(sql: LegacyMySQL, user_id: Long, nickname: String?, second_nicknames: Array<String>, data: LegacyAccountData) : this(sql, user_id) {
         sql.registerUser(
             user_id,
             nickname,
             second_nicknames,
             when (data) {
-                is RequesterData -> 2
-                is PlayerData -> 1
-                is AdminData -> 0
+                is LegacyRequesterData -> 2
+                is LegacyPlayerData -> 1
+                is LegacyAdminData -> 0
                 else -> 3
             },
             sql.gson.toJson(data)
         )
     }
-    constructor(sql: MySQL, user_id: Long, account_type: Int) : this(sql, user_id, null, account_type)
-    constructor(sql: MySQL, user_id: Long, nickname: String?, account_type: Int) : this(sql, user_id, nickname, emptyArray(), account_type)
-    constructor(sql: MySQL, user_id: Long, nickname: String?, second_nicknames: Array<String>, account_type: Int) : this(sql, user_id) {
+    constructor(sql: LegacyMySQL, user_id: Long, account_type: Int) : this(sql, user_id, null, account_type)
+    constructor(sql: LegacyMySQL, user_id: Long, nickname: String?, account_type: Int) : this(sql, user_id, nickname, emptyArray(), account_type)
+    constructor(sql: LegacyMySQL, user_id: Long, nickname: String?, second_nicknames: Array<String>, account_type: Int) : this(sql, user_id) {
         sql.registerUser(
             user_id,
             nickname,
             second_nicknames,
             account_type,
             sql.gson.toJson(when (account_type) {
-                0 -> AdminData(0, null)
-                1 -> PlayerData(arrayListOf(), null)
-                2 -> RequesterData(false, arrayListOf())
-                else -> AccountData()
+                0 -> LegacyAdminData(0, null)
+                1 -> LegacyPlayerData(arrayListOf(), null)
+                2 -> LegacyRequesterData(false, arrayListOf())
+                else -> LegacyAccountData()
             })
         )
     }
@@ -84,33 +84,33 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
 //        if (currentNickname!=null) addSecondNickname(currentNickname)
         this.nickname = nickname
     }
-    fun getRequesterData(): RequesterData? = when (account_type) {
+    fun getRequesterData(): LegacyRequesterData? = when (account_type) {
         0,1 -> getPlayerData()?.requester_data
-        2 -> data as RequesterData?
+        2 -> data as LegacyRequesterData?
         else -> null
     }
 
-    fun getPlayerData(): PlayerData? = when (account_type) {
+    fun getPlayerData(): LegacyPlayerData? = when (account_type) {
         0 -> getAdminData()?.player_data
-        1 -> data as PlayerData?
+        1 -> data as LegacyPlayerData?
         else -> null
     }
-    fun getAdminData(): AdminData? = if (account_type == 0) data as AdminData? else null
-    fun getOrCreateAdminData(): AdminData = when (account_type) {
-        0 -> data as AdminData
+    fun getAdminData(): LegacyAdminData? = if (account_type == 0) data as LegacyAdminData? else null
+    fun getOrCreateAdminData(): LegacyAdminData = when (account_type) {
+        0 -> data as LegacyAdminData
         else -> {
             promote(0)
-            data as AdminData
+            data as LegacyAdminData
         }
     }
-    fun getOrCreatePlayerData(): PlayerData {
+    fun getOrCreatePlayerData(): LegacyPlayerData {
         when (account_type) {
             0 -> if (getOrCreateAdminData().player_data == null) {
                 data = modifyData(
                     data = data,
                     accountType = account_type,
                     insertionAccountTypeLevel = 0,
-                    insertData = PlayerData(arrayListOf()),
+                    insertData = LegacyPlayerData(arrayListOf()),
                     insertField = "player_data",
                 ) ?: data
             }
@@ -118,14 +118,14 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
         }
         return getPlayerData()!!
     }
-    fun getOrCreateRequesterData(): RequesterData {
+    fun getOrCreateRequesterData(): LegacyRequesterData {
         when (account_type) {
             0,1 -> if (getOrCreatePlayerData().requester_data == null) {
                 data = modifyData(
                     data = data,
                     accountType = account_type,
                     insertionAccountTypeLevel = 1,
-                    insertData = RequesterData(true, arrayListOf()),
+                    insertData = LegacyRequesterData(true, arrayListOf()),
                     insertField = "requester_data",
                 ) ?: data
             }
@@ -191,12 +191,12 @@ class SQLEntity(val sql: MySQL, val user_id: Long) {
         when (account_type) {
             targetAccountType -> return
             in 0..targetAccountType -> {
-                data = MySQLIntegration.getLowerTypeData(data)
+                data = LegacyMySQLIntegration.getLowerTypeData(data)
                 account_type = account_type+1
                 promote(targetAccountType)
             }
             else -> {
-                data = MySQLIntegration.createHigherTypeData(data)
+                data = LegacyMySQLIntegration.createHigherTypeData(data)
                 account_type = account_type-1
                 promote(targetAccountType)
             }

@@ -13,9 +13,10 @@ object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
         if (msg.chat.id>=0) {
             val entity = NewMySQLIntegration.getLinkedEntity(msg.from!!.id)?:return
+            if (entity.isRestricted) return
             if (entity.accountType == 2) {
                 val requesterData = entity.data?:return
-                if (!requesterData.agreedWithRules) {
+                if (!entity.agreedWithRules) {
                     bot.sendMessage(
                         msg.chat.id,
                         config.text.messages.textMustAgreeWithRules,
@@ -127,9 +128,10 @@ object RequestsBotUpdateManager {
     }
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
         val entity = NewMySQLIntegration.getLinkedEntity(cbq.from.id)?:return
+        if (entity.isRestricted) return
         when (cbq.data) {
             "agree_with_rules" -> {
-                NewMySQLIntegration.setAgreedWithRules(cbq.from.id, true)
+                entity.agreedWithRules = true
                 val requests = entity.data?.requests?:return
                 if (requests.any {it.request_status == "creating"}) {
                     val editedRequest = requests.first{it.request_status == "creating"}
@@ -211,6 +213,7 @@ object RequestsBotUpdateManager {
 
     suspend fun onTelegramChatJoinRequest(request: TgChatJoinRequest) {
         val entity = NewMySQLIntegration.getLinkedEntity(request.from.id)?:return
+        if (entity.isRestricted) return
         if (entity.accountType<=1) {
             bot.approveChatJoinRequest(request.chat.id, request.from.id)
         }

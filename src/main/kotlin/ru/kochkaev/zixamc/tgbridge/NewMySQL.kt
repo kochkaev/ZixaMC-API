@@ -3,7 +3,7 @@ package ru.kochkaev.zixamc.tgbridge
 import com.google.gson.Gson
 import com.mysql.cj.jdbc.exceptions.CommunicationsException
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
-import ru.kochkaev.zixamc.tgbridge.legecySQL.AccountData
+import ru.kochkaev.zixamc.tgbridge.legecySQL.LegacyAccountData
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ArrayData
 import java.sql.*
 
@@ -40,10 +40,12 @@ class NewMySQL {
                                             `id` INT NOT NULL AUTO_INCREMENT,
                                             `user_id` BIGINT NOT NULL,
                                             `nickname` VARCHAR(16),
-                                            `nicknames` JSON,
-                                            `account_type` INT NOT NULL,
-                                            `temp_array` JSON NOT NULL,
-                                            `data` JSON NOT NULL,
+                                            `nicknames` JSON DEFAULT "{\"array\":[]}",
+                                            `account_type` INT NOT NULL DEFAULT 3,
+                                            `temp_array` JSON NOT NULL DEFAULT "{\"array\":[]}",
+                                            `agreed_with_rules` BOOLEAN NOT NULL DEFAULT FALSE,
+                                            `is_restricted` BOOLEAN NOT NULL DEFAULT FALSE,
+                                            `data` JSON NOT NULL DEFAULT "{}",
                                             PRIMARY KEY (`id`), UNIQUE (`user_id`)
                                         ) ENGINE = InnoDB;
                                         """.trimIndent(),
@@ -108,7 +110,7 @@ class NewMySQL {
         get() = MySQLConnection == null
 
 
-    fun registerUser(userId: Long?, nickname: String?, nicknames: Array<String>?, accountType: Int?, data: AccountData?): Boolean =
+    fun registerUser(userId: Long?, nickname: String?, nicknames: Array<String>?, accountType: Int?, data: LegacyAccountData?): Boolean =
         registerUser(userId, nickname, nicknames, accountType, Gson().toJson(data))
     fun registerUser(userId: Long?, nickname: String?, nicknames: Array<String>?, accountType: Int?, data: String?): Boolean {
         try {
@@ -280,6 +282,32 @@ class NewMySQL {
             ZixaMCTGBridge.logger.error("updateUserData error", e)
         }
     }
+    fun updateUserAgreedWithRules(userId: Long?, agreedWithRules: Boolean?) {
+        try {
+            if (userId == null) return
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET agreed_with_rules = ? WHERE user_id = ?;")
+            preparedStatement.setBoolean(1, agreedWithRules?:false)
+            preparedStatement.setLong(2, userId)
+            preparedStatement.executeUpdate()
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("updateUserData error", e)
+        }
+    }
+    fun updateUserRestricted(userId: Long?, isRestricted: Boolean?) {
+        try {
+            if (userId == null) return
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET is_restricted = ? WHERE user_id = ?;")
+            preparedStatement.setBoolean(1, isRestricted?:false)
+            preparedStatement.setLong(2, userId)
+            preparedStatement.executeUpdate()
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("updateUserData error", e)
+        }
+    }
 
     fun getUserData(userId: Long?): String {
         try {
@@ -360,6 +388,38 @@ class NewMySQL {
             ZixaMCTGBridge.logger.error("getUserData error", e)
         }
         return null
+    }
+    fun isUserAgreedWithRules(userId: Long?): Boolean {
+        try {
+            reConnect()
+            if (isUserRegistered(userId)) {
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("SELECT agreed_with_rules FROM " + config.mySQLTable + " WHERE user_id = ?;")
+                preparedStatement.setLong(1, userId!!)
+                val query = preparedStatement.executeQuery()
+                query.next()
+                return query.getBoolean(1)
+            }
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("getUserData error", e)
+        }
+        return false
+    }
+    fun isUserRestricted(userId: Long?): Boolean {
+        try {
+            reConnect()
+            if (isUserRegistered(userId)) {
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("SELECT is_restricted FROM " + config.mySQLTable + " WHERE user_id = ?;")
+                preparedStatement.setLong(1, userId!!)
+                val query = preparedStatement.executeQuery()
+                query.next()
+                return query.getBoolean(1)
+            }
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("getUserData error", e)
+        }
+        return false
     }
     fun getUserIdByNickname(nickname: String?): Long? {
         try {

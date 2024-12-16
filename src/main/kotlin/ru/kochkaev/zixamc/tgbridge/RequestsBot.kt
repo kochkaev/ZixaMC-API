@@ -31,6 +31,7 @@ object RequestsBot {
         bot.registerCommandHandler("reject", RequestsBotCommands::onTelegramRejectCommand)
         bot.registerCommandHandler("promote", RequestsBotCommands::onTelegramPromoteCommand)
         bot.registerCommandHandler("kick", RequestsBotCommands::onTelegramKickCommand)
+        bot.registerCommandHandler("restrict", RequestsBotCommands::onTelegramRestrictCommand)
         bot.registerCommandHandler("leave", RequestsBotCommands::onTelegramLeaveCommand)
         bot.registerCommandHandler("return", RequestsBotCommands::onTelegramReturnCommand)
         bot.registerCommandHandler("rulesUpdated", RequestsBotCommands::onTelegramRulesUpdatedCommand)

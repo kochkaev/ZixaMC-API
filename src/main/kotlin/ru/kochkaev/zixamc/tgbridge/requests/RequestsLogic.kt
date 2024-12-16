@@ -94,7 +94,7 @@ object RequestsLogic {
             )
             return false
         }
-        val forReplyMessage = if (NewMySQLIntegration.isAgreedWithRules(entity.userId)) bot.sendMessage(
+        val forReplyMessage = if (entity.agreedWithRules) bot.sendMessage(
             chatId = entity.userId,
             text = config.text.messages.textNeedNickname,
             replyMarkup = TgForceReply(
@@ -170,13 +170,13 @@ object RequestsLogic {
         entity: NewSQLEntity,
         applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),
         targetAccountStatus: String = "player",
-        editWhitelist: Boolean = false,
+        targetAccountType: Int = matchAccountTypeFromMinecraftAccountStatus(targetAccountStatus),
+        editWhitelist: Boolean = false
     ) : Boolean {
-        val accountType = matchAccountTypeFromMinecraftAccountStatus(targetAccountStatus)
-        val isTargetPlayer = isPlayer(accountType)
+        val isTargetPlayer = isPlayer(targetAccountType)
         if (!promoteUser(
                 argEntity = entity,
-                argTargetId = accountType,
+                argTargetId = targetAccountType,
             )
         ) return false
         else {
@@ -185,8 +185,10 @@ object RequestsLogic {
                 ?.map { it.nickname }
                 ?.forEach {
                     if (editWhitelist) ZixaMCTGBridge.let { main ->
-                        if (isTargetPlayer) main.addToWhitelist(it)
-                        else main.removeFromWhitelist(it)
+                        try {
+                            if (isTargetPlayer) main.addToWhitelist(it)
+                            else main.removeFromWhitelist(it)
+                        } catch (_: Exception) {}
                     }
                     entity.editMinecraftAccount(it, targetAccountStatus)
                 }
@@ -230,4 +232,49 @@ object RequestsLogic {
             )),
             entity = entity,
         )
+
+    suspend fun executeCheckPermissionsAndExceptions(
+        message: TgMessage,
+        entity: NewSQLEntity?,
+        allowedExecutionAccountTypes: List<Int> = listOf(0),
+        allowedExecutionIfSpendByItself: Boolean = false,
+        applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),
+        targetAccountStatus: String = "player",
+        targetAccountType: Int = matchAccountTypeFromMinecraftAccountStatus(targetAccountStatus),
+        editWhitelist: Boolean = false,
+        helpText: String? = null,
+    ) : Boolean {
+        var errorDueExecuting = false
+        var havePermission = true
+        if (entity == null) errorDueExecuting = true
+        else havePermission = checkPermissionToExecute(
+            message = message,
+            entity = entity,
+            allowedAccountTypes = allowedExecutionAccountTypes,
+            allowedIfSpendByItself = allowedExecutionIfSpendByItself,
+        )
+        if (!havePermission) errorDueExecuting = true
+        if (!errorDueExecuting && !updateServerPlayerStatus(
+                entity = entity!!,
+                applyAccountStatuses = applyAccountStatuses,
+                targetAccountStatus = targetAccountStatus,
+                targetAccountType = targetAccountType,
+                editWhitelist = editWhitelist,
+            )
+        ) errorDueExecuting = true
+        if (errorDueExecuting && helpText != null) {
+            bot.sendMessage(
+                chatId = message.chat.id,
+                messageThreadId = message.messageThreadId,
+                text =
+                    if (!havePermission) BotLogic.escapePlaceholders(
+                        config.text.commands.textCommandPermissionDenied,
+                        entity?.nickname
+                    )
+                    else BotLogic.escapePlaceholders(helpText, entity?.nickname),
+                replyParameters = TgReplyParameters(message.messageId),
+            )
+        }
+        return errorDueExecuting
+    }
 }

@@ -1,3 +1,3 @@
 package ru.kochkaev.zixamc.tgbridge.legecySQL
 
-open class AccountData
+open class LegacyAccountData

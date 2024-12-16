@@ -2,10 +2,10 @@ package ru.kochkaev.zixamc.tgbridge.legecySQL
 
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
 
-object MySQLIntegration {
+object LegacyMySQLIntegration {
 
-    private val sql = MySQL()
-    private lateinit var linkedEntities: HashMap<Long, SQLEntity>
+    private val sql = LegacyMySQL()
+    private lateinit var linkedEntities: HashMap<Long, LegacySQLEntity>
 
     fun startServer() {
         sql.connect()
@@ -17,13 +17,13 @@ object MySQLIntegration {
     }
 
     fun addPlayer(user_id: Long) {
-        if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = SQLEntity(sql, user_id, 1)
+        if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = LegacySQLEntity(sql, user_id, 1)
     }
     fun addRequester(user_id: Long) {
-        if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = SQLEntity(sql, user_id, 2)
+        if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = LegacySQLEntity(sql, user_id, 2)
     }
     fun addUser(user_id: Long) {
-        if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = SQLEntity(sql, user_id, 3)
+        if (!sql.isUserRegistered(user_id)) linkedEntities[user_id] = LegacySQLEntity(sql, user_id, 3)
     }
 
     fun addRequest(user_id: Long, requestData: RequestData) {
@@ -45,12 +45,12 @@ object MySQLIntegration {
 
     fun isAdmin(user_id: Long): Boolean = linkedEntities[user_id]?.account_type == 0
 
-    fun getLinkedEntity(user_id: Long): SQLEntity? = linkedEntities[user_id]
-    fun getLinkedEntityByTempArrayMessagesId(message_id: Long): SQLEntity? {
+    fun getLinkedEntity(user_id: Long): LegacySQLEntity? = linkedEntities[user_id]
+    fun getLinkedEntityByTempArrayMessagesId(message_id: Long): LegacySQLEntity? {
         val user_id: Long = sql.getUserIdByUserTempArrayMember(message_id.toString())?:return null
         return linkedEntities[user_id]
     }
-    fun getLinkedEntityByNickname(nickname: String): SQLEntity? {
+    fun getLinkedEntityByNickname(nickname: String): LegacySQLEntity? {
         val user_id: Long = sql.getUserIdByNickname(nickname)?:return null
         return linkedEntities[user_id]
     }
@@ -89,38 +89,38 @@ object MySQLIntegration {
         linkedEntities[user_id]!!.addNickname(nickname)
     }
 
-    fun parseJsonToPOJO(json: String?, account_type: Int): AccountData =
+    fun parseJsonToPOJO(json: String?, account_type: Int): LegacyAccountData =
         if (json != null) sql.gson.fromJson(json,
             when (account_type) {
-                0 -> AdminData::class.java
-                1 -> PlayerData::class.java
-                2 -> RequesterData::class.java
-                else -> AccountData::class.java
+                0 -> LegacyAdminData::class.java
+                1 -> LegacyPlayerData::class.java
+                2 -> LegacyRequesterData::class.java
+                else -> LegacyAccountData::class.java
             }
-        ) else AccountData()
+        ) else LegacyAccountData()
 
     fun parseNewDataType(json: String?): NewAccountData =
         if (json != null) sql.gson.fromJson(json, NewAccountData::class.java) else NewAccountData()
 
-    fun getLowerTypeData(data: AccountData?): AccountData? = when (data) {
-        is AdminData -> data.player_data
-        is PlayerData -> data.requester_data
+    fun getLowerTypeData(data: LegacyAccountData?): LegacyAccountData? = when (data) {
+        is LegacyAdminData -> data.player_data
+        is LegacyPlayerData -> data.requester_data
         else -> data
     }
-    fun createHigherTypeData(data: AccountData?): AccountData? = when (data) {
-        is RequesterData -> PlayerData(arrayListOf(), data)
-        is PlayerData -> AdminData(0, data)
+    fun createHigherTypeData(data: LegacyAccountData?): LegacyAccountData? = when (data) {
+        is LegacyRequesterData -> LegacyPlayerData(arrayListOf(), data)
+        is LegacyPlayerData -> LegacyAdminData(0, data)
         null -> null
-        else -> RequesterData(false, arrayListOf())
+        else -> LegacyRequesterData(false, arrayListOf())
     }
 
     fun modifyData(
-        data: AccountData?,
+        data: LegacyAccountData?,
         accountType: Int,
         insertionAccountTypeLevel: Int,
         insertData: Any,
         insertField: String
-    ): AccountData? {
+    ): LegacyAccountData? {
         if (data == null) return null
         if (accountType == insertionAccountTypeLevel) {
             data::class.java.declaredFields.forEach {
@@ -141,8 +141,8 @@ object MySQLIntegration {
                 insertField
             )
             when (data) {
-                is AdminData -> data.player_data = (modified as PlayerData)
-                is PlayerData -> data.requester_data = (modified as RequesterData)
+                is LegacyAdminData -> data.player_data = (modified as LegacyPlayerData)
+                is LegacyPlayerData -> data.requester_data = (modified as LegacyRequesterData)
             }
             return data
         }

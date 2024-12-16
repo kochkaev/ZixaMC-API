@@ -10,7 +10,11 @@ import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.promoteUser
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
+import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.checkPermissionToExecute
+import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
+import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.updateServerPlayerStatus
 
 object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean =
@@ -54,19 +58,24 @@ object RequestsBotCommands {
                 ))),
             )
         )
-        NewMySQLIntegration.getAllRegisteredUserIds().forEach {
-            NewMySQLIntegration.setAgreedWithRules(it, false)
-            bot.sendMessage(
-                chatId = it,
-                text = BotLogic.escapePlaceholders(config.text.events.forUser.textOnRulesUpdated4User),
-                replyMarkup = TgInlineKeyboardMarkup(
-                    listOf(listOf(
-                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                        text = config.text.buttons.textButtonAgreeWithRules,
-                        callback_data = "agree_with_rules",
-                    ))),
+        NewMySQLIntegration.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
+            it.agreedWithRules = false
+            try {
+                bot.sendMessage(
+                    chatId = it.userId,
+                    text = BotLogic.escapePlaceholders(config.text.events.forUser.textOnRulesUpdated4User),
+                    replyMarkup = TgInlineKeyboardMarkup(
+                        listOf(
+                            listOf(
+                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                                    text = config.text.buttons.textButtonAgreeWithRules,
+                                    callback_data = "agree_with_rules",
+                                )
+                            )
+                        ),
+                    )
                 )
-            )
+            } catch (_: Exception) {}
         }
         return true
     }
@@ -121,13 +130,72 @@ object RequestsBotCommands {
             text4Target = config.text.events.forTarget.textOnKick4Target,
             removePreviousTgReplyMarkup = true,
             additionalConsumer = { hasError, entity ->
-                if (!hasError) bot.banChatMember(msg.chat.id, entity!!.userId)
+                if (!hasError) try {
+                    bot.banChatMember(msg.chat.id, entity!!.userId)
+                } catch (_: Exception) {}
             },
             removeProtectedContent = true,
         )
+    suspend fun onTelegramRestrictCommand(message: TgMessage): Boolean {
+        val entity = NewMySQLIntegration.getLinkedEntityByTempArrayMessagesId(message.replyToMessage?.messageId?.toLong()?:0)
+            ?: matchEntityFromUpdateServerPlayerStatusCommand(message, false)
+        val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
+            message = message,
+            entity = entity,
+            allowedExecutionAccountTypes = listOf(0),
+            allowedExecutionIfSpendByItself = false,
+            applyAccountStatuses = listOf("admin", "player", "frozen"),
+            targetAccountStatus = "banned",
+            targetAccountType = 3,
+            editWhitelist = true,
+            helpText = config.text.commands.textSyntaxRestrictHelp,
+        )
+        if (!errorDueExecuting) {
+            val text4Target = config.text.events.forTarget.textOnRestrict4Target
+            if (text4Target.isNotEmpty()) bot.sendMessage(
+                chatId = message.chat.id,
+                text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
+                replyParameters = TgReplyParameters(message.messageId),
+            )
+            var newMessage: TgMessage? = null
+            try {
+                val text4User = config.text.events.forUser.textOnRestrict4User
+                if (text4User.isNotEmpty()) {
+                    newMessage = bot.sendMessage(
+                        chatId = entity!!.userId,
+                        text = BotLogic.escapePlaceholders(text4User, entity.nickname ?: entity.userId.toString()),
+                    )
+                }
+            } catch (_: Exception) {}
+            try {
+                entity!!.data?.requests?.filter { it.request_status == "accepted" }?.forEach {
+                    bot.editMessageReplyMarkup(
+                        chatId = entity.userId,
+                        messageId = it.message_id_in_chat_with_user.toInt(),
+                        replyMarkup = TgReplyMarkup()
+                    )
+                }
+            } catch (_: Exception) {}
+            BotLogic.deleteAllProtected(entity!!.data?.protectedMessages?:listOf(), 3)
+            entity.data = entity.data.let { it!!.requests = ArrayList(it.requests.filter { it1 -> it1.request_status != "creating" }); it }
+            entity.data?.requests?.firstOrNull { it.request_status == "pending" } ?.let {
+                entity.editRequest(it.apply { this.request_status = "rejected" })
+            }
+            if (newMessage!=null)
+                entity.data?.requests?.filter { it.request_status == "accepted" } ?.forEach {
+                    entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage.messageId.toLong() })
+                }
+            try {
+                bot.banChatMember(message.chat.id, entity.userId)
+            } catch (_: Exception) {}
+            entity.isRestricted = true
+        }
+        return errorDueExecuting
+    }
     suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        NewMySQLIntegration.addUser(msg.from?.id?:return false)
+        val entity = NewMySQLIntegration.getOrAddUser(msg.from?.id?:return false)
+        if (entity.isRestricted) return false
         bot.sendMessage(
             chatId = msg.chat.id,
             text = config.text.events.forUser.textOnStart,
@@ -143,6 +211,7 @@ object RequestsBotCommands {
         if (msg.chat.id < 0) return true
         if (msg.from == null) return false
         val entity = NewMySQLIntegration.getLinkedEntity(msg.from.id)?:return false
+        if (entity.isRestricted) return false
         return newRequest(entity)
     }
     suspend fun onTelegramCancelCommand(msg: TgMessage): Boolean {

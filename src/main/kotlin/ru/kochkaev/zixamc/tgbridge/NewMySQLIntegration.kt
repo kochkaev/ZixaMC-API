@@ -23,17 +23,23 @@ object NewMySQLIntegration {
         if (!sql.isUserRegistered(userId)) linkedEntities[userId] = NewSQLEntity(sql, userId, accountType)
     }
 
+    fun getOrAddUser(userId: Long) : NewSQLEntity = getOrAddUser(userId, 3)
+    fun getOrAddUser(userId: Long, accountType: Int) : NewSQLEntity {
+        if (!sql.isUserRegistered(userId)) linkedEntities[userId] = NewSQLEntity(sql, userId, accountType)
+        return linkedEntities[userId]!!
+    }
+
     fun addRequest(userId: Long, requestData: RequestData) {
         if (!sql.isUserRegistered(userId)) addRequester(userId)
         linkedEntities[userId]!!.addRequest(requestData)
     }
-    fun isAgreedWithRules(userId: Long): Boolean =
-        linkedEntities[userId]?.data?.agreedWithRules ?: false
-    fun setAgreedWithRules(userId: Long, agreed: Boolean) {
-        if (!sql.isUserRegistered(userId)) addRequester(userId)
-        val entity = linkedEntities[userId]!!
-        entity.data = entity.createAndOrGetData().apply { this.agreedWithRules = agreed }
-    }
+//    fun isAgreedWithRules(userId: Long): Boolean =
+//        linkedEntities[userId]?.data?.agreedWithRules ?: false
+//    fun setAgreedWithRules(userId: Long, agreed: Boolean) {
+//        if (!sql.isUserRegistered(userId)) addRequester(userId)
+//        val entity = linkedEntities[userId]!!
+//        entity.data = entity.createAndOrGetData().apply { this.agreedWithRules = agreed }
+//    }
 
     fun isAdmin(userId: Long): Boolean = linkedEntities[userId]?.accountType == 0
 

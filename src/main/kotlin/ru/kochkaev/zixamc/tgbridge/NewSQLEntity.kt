@@ -8,9 +8,9 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
 
     var nickname: String?
         get() = sql.getUserNickname(userId)
-        set(new_nickname) {
+        set(nickname) {
 //            if (nickname != null) sql.addUserSecondNickname(userId, nickname)
-            sql.updateUserNickname(userId, new_nickname)
+            sql.updateUserNickname(userId, nickname)
         }
     var nicknames: Array<String>?
         get() = sql.getUserSecondNicknames(userId)
@@ -27,29 +27,39 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
         set(tempArray) {
             sql.updateUserTempArray(userId, tempArray)
         }
+    var agreedWithRules: Boolean
+        get() = sql.isUserAgreedWithRules(userId)
+        set(agreedWithRules) {
+            sql.updateUserAgreedWithRules(userId, agreedWithRules)
+        }
+    var isRestricted: Boolean
+        get() = sql.isUserRestricted(userId)
+        set(isRestricted) {
+            sql.updateUserRestricted(userId, isRestricted)
+        }
     var rawData: String?
         get() = sql.getUserData(userId)
         set(rawData) {
             sql.updateUserData(userId, rawData)
         }
     var data: NewAccountData?
-        get() = MySQLIntegration.parseNewDataType(rawData)
+        get() = LegacyMySQLIntegration.parseNewDataType(rawData)
         set(data) {
             rawData = sql.gson.toJson(data)
         }
 
     // Add user to table
-    constructor(sql: NewMySQL, userId: Long, data: AccountData) : this(sql, userId, null, data)
-    constructor(sql: NewMySQL, userId: Long, nickname: String?, data: AccountData) : this(sql, userId, nickname, emptyArray(), data)
-    constructor(sql: NewMySQL, userId: Long, nickname: String?, nicknames: Array<String>, data: AccountData) : this(sql, userId) {
+    constructor(sql: NewMySQL, userId: Long, data: LegacyAccountData) : this(sql, userId, null, data)
+    constructor(sql: NewMySQL, userId: Long, nickname: String?, data: LegacyAccountData) : this(sql, userId, nickname, emptyArray(), data)
+    constructor(sql: NewMySQL, userId: Long, nickname: String?, nicknames: Array<String>, data: LegacyAccountData) : this(sql, userId) {
         sql.registerUser(
             userId,
             nickname,
             nicknames,
             when (data) {
-                is RequesterData -> 2
-                is PlayerData -> 1
-                is AdminData -> 0
+                is LegacyRequesterData -> 2
+                is LegacyPlayerData -> 1
+                is LegacyAdminData -> 0
                 else -> 3
             },
             sql.gson.toJson(data)
@@ -64,10 +74,10 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
             nicknames,
             accountType,
             sql.gson.toJson(when (accountType) {
-                0 -> AdminData(0, null)
-                1 -> PlayerData(arrayListOf(), null)
-                2 -> RequesterData(false, arrayListOf())
-                else -> AccountData()
+                0 -> LegacyAdminData(0, null)
+                1 -> LegacyPlayerData(arrayListOf(), null)
+                2 -> LegacyRequesterData(false, arrayListOf())
+                else -> LegacyAccountData()
             })
         )
     }

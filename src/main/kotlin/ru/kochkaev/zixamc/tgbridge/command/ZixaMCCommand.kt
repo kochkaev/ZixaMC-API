@@ -7,7 +7,6 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
-import ru.kochkaev.zixamc.tgbridge.legecySQL.MySQLIntegration
 
 
 object ZixaMCCommand {
