@@ -1,11 +1,16 @@
 package ru.kochkaev.zixamc.tgbridge.easyAuth
 
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.TextComponent
+import net.kyori.adventure.text.event.ClickEvent
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.*
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.StyleManager
 import xyz.nikitacartes.easyauth.EasyAuth.config as easyAuthConfig
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
@@ -27,10 +32,12 @@ object AuthManager {
         (player as PlayerAuth).`easyAuth$restoreLastLocation`()
         EasyAuth.playerCacheMap[uuid]?.loginTries?.set(0)
         player.sendMessage(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.onApprove, nickname)))
-        bot.sendMessage(
-            chatId = entity.userId,
-            text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onApprove, nickname),
-        )
+        try {
+            bot.sendMessage(
+                chatId = entity.userId,
+                text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onApprove, nickname),
+            )
+        } catch (_: Exception) {}
     }
     suspend fun deny(entity: SQLEntity, nickname: String) {
         val player = server.playerManager.getPlayer(nickname)
@@ -39,10 +46,12 @@ object AuthManager {
         val cache = EasyAuth.playerCacheMap[uuid]
         cache?.lastKicked = System.currentTimeMillis()
         cache?.loginTries?.set(0)
-        bot.sendMessage(
-            chatId = entity.userId,
-            text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onDeny, nickname),
-        )
+        try {
+            bot.sendMessage(
+                chatId = entity.userId,
+                text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onDeny, nickname),
+            )
+        } catch (_: Exception) {}
     }
     suspend fun onJoin(player: ServerPlayerEntity) {
         val uuid = (player as PlayerAuth).`easyAuth$getFakeUuid`()
@@ -52,23 +61,36 @@ object AuthManager {
         val entity = MySQLIntegration.getLinkedEntityByNickname(nickname)?:return kickYouAreNotPlayer(player)
         if ((player as PlayerAuth).`easyAuth$canSkipAuth`() || (player as PlayerAuth).`easyAuth$isAuthenticated`()) return
         player.sendMessage(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.onJoinTip, nickname)))
-        val message = bot.sendMessage(
-            chatId = entity.userId,
-            text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onJoinTip, nickname),
-            replyMarkup = TgInlineKeyboardMarkup(
-                listOf(listOf(
-                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                        text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonApprove, nickname),
-                        callback_data = "easyauth\$approve/$nickname"
-                    ),
-                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                        text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonDeny, nickname),
-                        callback_data = "easyauth\$deny/$nickname"
-                    ),
-                ))
+        try {
+            val message = bot.sendMessage(
+                chatId = entity.userId,
+                text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onJoinTip, nickname),
+                replyMarkup = TgInlineKeyboardMarkup(
+                    listOf(listOf(
+                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                            text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonApprove, nickname),
+                            callback_data = "easyauth\$approve/$nickname"
+                        ),
+                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                            text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonDeny, nickname),
+                            callback_data = "easyauth\$deny/$nickname"
+                        ),
+                    ))
+                )
             )
-        )
-        entity.addToTempArray(message.messageId.toString())
+            entity.addToTempArray(message.messageId.toString())
+        } catch (_: Exception) {
+            val botUsername = config.easyAuth.langMinecraft.botUsername
+            player.sendMessage(
+                MinecraftAdventureConverter.adventureToMinecraft(
+                    Component.text(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.noHaveChatWithBot, botUsername))
+                        .toBuilder()
+                            .hoverEvent(Component.text(BotLogic.escapePlaceholders(config.chatSync.lang.minecraft.messageMeta.hoverOpenInTelegram, nickname)))
+                            .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.OPEN_URL, "https://t.me/${botUsername.replace("@", "")}"))
+                        .build()
+                )
+            )
+        }
     }
     suspend fun onLeave(nickname: String) {
         val entity = MySQLIntegration.getLinkedEntityByNickname(nickname)?:return

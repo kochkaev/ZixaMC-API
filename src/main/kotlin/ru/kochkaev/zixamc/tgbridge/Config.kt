@@ -243,6 +243,8 @@ data class Config (
                 val onDeny: String = "",
                 val youAreNotPlayer: String = "",
                 val onJoinTip: String = "",
+                val noHaveChatWithBot: String = "",
+                val botUsername: String = "",
             )
             data class ServerBotEasyAuthLangTelegram (
                 val onApprove: String = "",
