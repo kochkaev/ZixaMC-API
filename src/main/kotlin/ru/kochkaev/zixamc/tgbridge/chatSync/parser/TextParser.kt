@@ -5,6 +5,7 @@ import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
 import net.kyori.adventure.text.event.ClickEvent
 import net.minecraft.util.Language
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessageMedia
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
@@ -220,11 +221,12 @@ object TextParser {
             message.entities
         ) else Component.text(it))) }
 
+        val senderNickname = MySQLIntegration.getLinkedEntity(message.from?.id?:0)?.nickname
         return Component.text(lang.minecraft.messageMeta.messageFormat)
             .replaceText {it.matchLiteral("{sender}")
                 .replacement(
-                    Component.text(message.senderName)
-                        .clickEvent(ClickEvent.suggestCommand("@${message.senderUserName}"))
+                    Component.text(senderNickname?:message.senderName)
+                        .clickEvent(ClickEvent.suggestCommand("@${senderNickname?:message.senderUserName}"))
                         .hoverEvent(Component.text(lang.minecraft.messageMeta.hoverTagToReply).asHoverEvent())
                 )}
             .replaceText { it.matchLiteral("{text}").replacement(components

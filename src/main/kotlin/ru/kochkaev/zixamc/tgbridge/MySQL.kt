@@ -427,6 +427,7 @@ class MySQL {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + " WHERE nickname = ? OR json_as_array_contains(nicknames, ?);")
                 preparedStatement.setString(1, nickname)
+                preparedStatement.setString(2, nickname)
                 val query = preparedStatement.executeQuery()
                 if (!query.next()) return null
                 return query.getLong(1)

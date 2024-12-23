@@ -1,5 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.chatSync.parser
 
+import com.ibm.icu.impl.TimeZoneGenericNames.Pattern
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import java.util.*
 
 object Markdown2HTMLParser {
@@ -105,7 +107,17 @@ object Markdown2HTMLParser {
                     displayTextMatched.value.substring(1, displayTextMatched.value.length - 2)
                 }</a>"
             }
+        parsed = escapeMentions(parsed)
         return parsed
     }
+
+    fun escapeMentions(text: String): String =
+        text.replace(Regex("(@[A-Za-z0-9_]*+)")) {
+            val mention = it.value
+            val nickname = mention.replace("@", "")
+            if (MySQLIntegration.isNicknameTaken(nickname))
+                "<a href=\"tg://user?id=${MySQLIntegration.getLinkedEntityByNickname(nickname)?.userId}\">$mention</a>"
+            else mention
+        }
 
 }

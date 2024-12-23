@@ -6,7 +6,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import net.minecraft.server.command.ServerCommandSource
-import ru.kochkaev.zixamc.tgbridge.legecySQL.LegacyMySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import java.util.concurrent.CompletableFuture
 
 
@@ -16,7 +16,7 @@ class UserIDSuggestionProvider : SuggestionProvider<ServerCommandSource?> {
         context: CommandContext<ServerCommandSource?>,
         builder: SuggestionsBuilder
     ): CompletableFuture<Suggestions> {
-        LegacyMySQLIntegration.getAllRegisteredUserIds().forEach { builder.suggest(it.toString()) }
+        MySQLIntegration.getAllRegisteredUserIds().forEach { builder.suggest(it.toString()) }
         return builder.buildFuture()
     }
 }
