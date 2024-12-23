@@ -1,9 +1,9 @@
 package ru.kochkaev.zixamc.tgbridge.dataclassSQL
 
 import com.google.gson.annotations.SerializedName
-import ru.kochkaev.zixamc.tgbridge.legecySQL.LegacyAccountData
+import java.util.*
 
-data class NewAccountData (
+data class AccountData (
     @SerializedName("minecraft_accounts")
     var minecraftAccounts: ArrayList<MinecraftAccountData> = arrayListOf(),
     var requests: ArrayList<RequestData> = arrayListOf(),
@@ -11,4 +11,4 @@ data class NewAccountData (
 //    var agreedWithRules: Boolean = false,
     @SerializedName("protected_messages")
     var protectedMessages: ArrayList<ProtectedMessageData> = arrayListOf(),
-) : LegacyAccountData()
+)

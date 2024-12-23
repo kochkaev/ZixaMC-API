@@ -31,7 +31,7 @@ class ZixaMCTGBridge : ModInitializer {
     }
     override fun onInitialize() {
         ConfigManager.init(false)
-        NewMySQLIntegration.startServer()
+        MySQLIntegration.startServer()
         RequestsBot.startBot()
         ServerBot.startBot()
         ServerLifecycleEvents.SERVER_STOPPED.register(this::onServerStopped)
@@ -42,6 +42,6 @@ class ZixaMCTGBridge : ModInitializer {
     fun onServerStopped(server: MinecraftServer) {
         ServerBot.stopBot()
         RequestsBot.stopBot()
-        NewMySQLIntegration.stopServer()
+        MySQLIntegration.stopServer()
     }
 }

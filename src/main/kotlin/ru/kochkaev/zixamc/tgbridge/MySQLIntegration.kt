@@ -2,10 +2,10 @@ package ru.kochkaev.zixamc.tgbridge
 
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
 
-object NewMySQLIntegration {
+object MySQLIntegration {
 
-    private val sql = NewMySQL()
-    lateinit var linkedEntities: HashMap<Long, NewSQLEntity>
+    private val sql = MySQL()
+    lateinit var linkedEntities: HashMap<Long, SQLEntity>
 
     fun startServer() {
         sql.connect()
@@ -20,12 +20,12 @@ object NewMySQLIntegration {
     fun addRequester(userId: Long)  = addUser(userId, 2)
     fun addUser(userId: Long) = addUser(userId, 3)
     fun addUser(userId: Long, accountType: Int) {
-        if (!sql.isUserRegistered(userId)) linkedEntities[userId] = NewSQLEntity(sql, userId, accountType)
+        if (!sql.isUserRegistered(userId)) linkedEntities[userId] = SQLEntity(sql, userId, accountType)
     }
 
-    fun getOrAddUser(userId: Long) : NewSQLEntity = getOrAddUser(userId, 3)
-    fun getOrAddUser(userId: Long, accountType: Int) : NewSQLEntity {
-        if (!sql.isUserRegistered(userId)) linkedEntities[userId] = NewSQLEntity(sql, userId, accountType)
+    fun getOrAddUser(userId: Long) : SQLEntity = getOrAddUser(userId, 3)
+    fun getOrAddUser(userId: Long, accountType: Int) : SQLEntity {
+        if (!sql.isUserRegistered(userId)) linkedEntities[userId] = SQLEntity(sql, userId, accountType)
         return linkedEntities[userId]!!
     }
 
@@ -43,16 +43,16 @@ object NewMySQLIntegration {
 
     fun isAdmin(userId: Long): Boolean = linkedEntities[userId]?.accountType == 0
 
-    fun getLinkedEntity(userId: Long): NewSQLEntity? = linkedEntities[userId]
-    fun getOrRegisterLinkedEntity(userId: Long): NewSQLEntity {
+    fun getLinkedEntity(userId: Long): SQLEntity? = linkedEntities[userId]
+    fun getOrRegisterLinkedEntity(userId: Long): SQLEntity {
         if (!sql.isUserRegistered(userId)) addUser(userId)
         return linkedEntities[userId]!!
     }
-    fun getLinkedEntityByTempArrayMessagesId(messageId: Long): NewSQLEntity? {
+    fun getLinkedEntityByTempArrayMessagesId(messageId: Long): SQLEntity? {
         val userId: Long = sql.getUserIdByUserTempArrayMember(messageId.toString())?:return null
         return linkedEntities[userId]
     }
-    fun getLinkedEntityByNickname(nickname: String): NewSQLEntity? {
+    fun getLinkedEntityByNickname(nickname: String): SQLEntity? {
         val userId: Long = sql.getUserIdByNickname(nickname)?:return null
         return linkedEntities[userId]
     }
@@ -72,6 +72,6 @@ object NewMySQLIntegration {
     fun getAllFrozenNicknamesOfUser(userId: Long): List<String> =
         linkedEntities[userId]?.data?.minecraftAccounts?.filter { it.accountStatus == "frozen" }?.map { it.nickname } ?: listOf()
 
-    fun parseNewDataType(json: String?): NewAccountData =
-        if (json != null) sql.gson.fromJson(json, NewAccountData::class.java) else NewAccountData()
+    fun parseNewDataType(json: String?): AccountData =
+        if (json != null) sql.gson.fromJson(json, AccountData::class.java) else AccountData()
 }

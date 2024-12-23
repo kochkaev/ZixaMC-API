@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
 import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelRequest
@@ -12,9 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
-import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.checkPermissionToExecute
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
-import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.updateServerPlayerStatus
 
 object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean =
@@ -43,7 +41,7 @@ object RequestsBotCommands {
         }
     }
     suspend fun onTelegramRulesUpdatedCommand(msg: TgMessage): Boolean {
-        val entity = NewMySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
+        val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
         if (!RequestsLogic.checkPermissionToExecute(
                 msg, entity, listOf(0), false
             )) return true
@@ -58,7 +56,7 @@ object RequestsBotCommands {
                 ))),
             )
         )
-        NewMySQLIntegration.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
+        MySQLIntegration.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
             it.agreedWithRules = false
             try {
                 bot.sendMessage(
@@ -137,7 +135,7 @@ object RequestsBotCommands {
             removeProtectedContent = true,
         )
     suspend fun onTelegramRestrictCommand(message: TgMessage): Boolean {
-        val entity = NewMySQLIntegration.getLinkedEntityByTempArrayMessagesId(message.replyToMessage?.messageId?.toLong()?:0)
+        val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(message.replyToMessage?.messageId?.toLong()?:0)
             ?: matchEntityFromUpdateServerPlayerStatusCommand(message, false)
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
@@ -194,7 +192,7 @@ object RequestsBotCommands {
     }
     suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = NewMySQLIntegration.getOrAddUser(msg.from?.id?:return false)
+        val entity = MySQLIntegration.getOrAddUser(msg.from?.id?:return false)
         if (entity.isRestricted) return false
         bot.sendMessage(
             chatId = msg.chat.id,
@@ -210,13 +208,13 @@ object RequestsBotCommands {
     suspend fun onTelegramNewCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
         if (msg.from == null) return false
-        val entity = NewMySQLIntegration.getLinkedEntity(msg.from.id)?:return false
+        val entity = MySQLIntegration.getLinkedEntity(msg.from.id)?:return false
         if (entity.isRestricted) return false
         return newRequest(entity)
     }
     suspend fun onTelegramCancelCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = NewMySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
+        val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
         val requests = (entity.data?:return false).requests
         if (requests.any {it.request_status == "pending"}) return cancelRequest(entity)
         else if (requests.any {it.request_status == "creating"}) return cancelSendingRequest(entity)

@@ -1,17 +1,15 @@
-package ru.kochkaev.zixamc.tgbridge.legecySQL
+package ru.kochkaev.zixamc.tgbridge
 
 import com.google.gson.Gson
 import com.mysql.cj.jdbc.exceptions.CommunicationsException
-import ru.kochkaev.zixamc.tgbridge.Config
-import ru.kochkaev.zixamc.tgbridge.ConfigManager
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ArrayData
 import java.sql.*
 
 /**
  * @author NikitaCartes
  */
-class LegacyMySQL {
+class MySQL {
     private var MySQLConnection: Connection? = null
     private lateinit var config: Config.MySQLDataClass
     val gson = Gson()
@@ -29,7 +27,6 @@ class LegacyMySQL {
             Class.forName("com.mysql.cj.jdbc.Driver")
             val uri =
                 "jdbc:mysql://" + config.mySQLHost + "/" + config.mySQLDatabase + "?autoReconnect=true"
-//            LogDebug(String.format("connecting to %s", uri))
             MySQLConnection = DriverManager.getConnection(uri, config.mySQLUser, config.mySQLPassword)
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?;")
@@ -42,10 +39,12 @@ class LegacyMySQL {
                                             `id` INT NOT NULL AUTO_INCREMENT,
                                             `user_id` BIGINT NOT NULL,
                                             `nickname` VARCHAR(16),
-                                            `nicknames` JSON,
-                                            `account_type` INT NOT NULL,
-                                            `temp_array` JSON NOT NULL,
-                                            `data` JSON NOT NULL,
+                                            `nicknames` JSON DEFAULT "{\"array\":[]}",
+                                            `account_type` INT NOT NULL DEFAULT 3,
+                                            `temp_array` JSON NOT NULL DEFAULT "{\"array\":[]}",
+                                            `agreed_with_rules` BOOLEAN NOT NULL DEFAULT FALSE,
+                                            `is_restricted` BOOLEAN NOT NULL DEFAULT FALSE,
+                                            `data` JSON NOT NULL DEFAULT "{}",
                                             PRIMARY KEY (`id`), UNIQUE (`user_id`)
                                         ) ENGINE = InnoDB;
                                         """.trimIndent(),
@@ -98,7 +97,6 @@ class LegacyMySQL {
             if (MySQLConnection != null) {
                 MySQLConnection!!.close()
                 MySQLConnection = null
-//                LogInfo("Database connection closed successfully.")
             }
         } catch (e: CommunicationsException) {
             ZixaMCTGBridge.logger.error("Can't connect to database while closing", e)
@@ -111,19 +109,18 @@ class LegacyMySQL {
         get() = MySQLConnection == null
 
 
-    fun registerUser(user_id: Long?, nickname: String?, nicknames: Array<String>?, account_type: Int?, data: LegacyAccountData?): Boolean =
-        registerUser(user_id, nickname, nicknames, account_type, Gson().toJson(data))
-    fun registerUser(user_id: Long?, nickname: String?, nicknames: Array<String>?, account_type: Int?, data: String?): Boolean {
+    fun registerUser(userId: Long?, nickname: String?, nicknames: Array<String>?, accountType: Int?, data: AccountData?): Boolean =
+        registerUser(userId, nickname, nicknames, accountType, Gson().toJson(data))
+    fun registerUser(userId: Long?, nickname: String?, nicknames: Array<String>?, accountType: Int?, data: String?): Boolean {
         try {
             reConnect()
-            if (!isUserRegistered(user_id) && user_id != null && !isNicknameRegistered(nickname) && (nicknames?.any{isNicknameRegistered(it)} != true)) {
+            if (!isUserRegistered(userId) && userId != null && !isNicknameRegistered(nickname) && (nicknames?.any{isNicknameRegistered(it)} != true)) {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, nicknames, account_type, temp_array, data) VALUES (?, ?, ?, ?, ?, ?);")
-//                val sql_array_nicknames = MySQLConnection!!.createArrayOf("text", nicknames)
-                preparedStatement.setLong(1, user_id)
+                preparedStatement.setLong(1, userId)
                 preparedStatement.setString(2, nickname)
                 preparedStatement.setString(3, "{\"array\":[${nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-                preparedStatement.setInt(4, account_type?:3)
+                preparedStatement.setInt(4, accountType?:3)
                 preparedStatement.setString(5, "{\"array\":[]}")
                 preparedStatement.setString(6, data)
                 preparedStatement.executeUpdate()
@@ -135,13 +132,13 @@ class LegacyMySQL {
         return false
     }
 
-    fun isUserRegistered(user_id: Long?): Boolean {
+    fun isUserRegistered(userId: Long?): Boolean {
         try {
-            if (user_id == null) return false
+            if (userId == null) return false
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE user_id = ?;")
-            preparedStatement.setLong(1, user_id)
+            preparedStatement.setLong(1, userId)
             return preparedStatement.executeQuery().next()
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("isUserRegistered error", e)
@@ -161,13 +158,13 @@ class LegacyMySQL {
         }
         return false
     }
-    fun isNicknameNotAvailableToRegister(user_id: Long?, nickname: String?): Boolean {
+    fun isNicknameNotAvailableToRegister(userId: Long?, nickname: String?): Boolean {
         try {
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE user_id = ? AND (nickname = ? OR json_as_array_contains(nicknames, ?));")
             preparedStatement.setString(1, nickname)
-            preparedStatement.setLong(2, user_id?:return false)
+            preparedStatement.setLong(2, userId?:return false)
             preparedStatement.setString(3, nickname)
             return preparedStatement.executeQuery().next()
         } catch (e: SQLException) {
@@ -175,85 +172,67 @@ class LegacyMySQL {
         }
         return false
     }
-//    fun isNicknamesRegistered(nicknames: Array<String>?): Boolean {
-//        try {
-//            reConnect()
-//            if (nicknames == null) return false
-//            var contains = false;
-//            for (nickname in nicknames) {
-//                val preparedStatement =
-//                    MySQLConnection!!.prepareStatement("SELECT * FROM " + ConfigManager.CONFIG!!.mySQLTable + " WHERE nickname = ? OR ARRAY_CONTAINS(second_nicknames, ?);")
-//                preparedStatement.setString(1, nickname)
-//                preparedStatement.setString(2, nickname)
-//                contains = preparedStatement.executeQuery().next()
-//            }
-//            return contains
-//        } catch (e: SQLException) {
-//            ZixaMCTGBridge.logger.error("isUserRegistered error", e)
-//        }
-//        return false
-//    }
 
-    fun deleteUser(user_id: Long?) {
+    fun deleteUser(userId: Long?) {
         try {
-            if (user_id == null) return
+            if (userId == null) return
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("DELETE FROM " + config.mySQLTable + " WHERE user_id = ?;")
-            preparedStatement.setLong(1, user_id)
+            preparedStatement.setLong(1, userId)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("deleteUserData error", e)
         }
     }
 
-    fun updateUserData(user_id: Long?, data: String?) {
+    fun updateUserData(userId: Long?, data: String?) {
         try {
-            if (user_id == null) return
+            if (userId == null) return
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET data = ? WHERE user_id = ?;")
             preparedStatement.setString(1, data)
-            preparedStatement.setLong(2, user_id)
+            preparedStatement.setLong(2, userId)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("updateUserData error", e)
         }
     }
-    fun updateUserAccountType(user_id: Long?, account_type: Int?) {
+    fun updateUserAccountType(userId: Long?, accountType: Int?) {
         try {
-            if (user_id == null) return
+            if (userId == null) return
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET account_type = ? WHERE user_id = ?;")
-            preparedStatement.setInt(1, account_type?:3)
-            preparedStatement.setLong(2, user_id)
+            preparedStatement.setInt(1, accountType?:3)
+            preparedStatement.setLong(2, userId)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("updateUserData error", e)
         }
     }
-    fun updateUserTempArray(user_id: Long?, temp_array: Array<String>?) {
+    fun updateUserTempArray(userId: Long?, tempArray: Array<String>?) {
         try {
-            if (user_id == null) return
+            if (userId == null) return
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET temp_array = ? WHERE user_id = ?;")
-            preparedStatement.setString(1, "{\"array\":[${temp_array?.joinToString(", ") { "\"$this\"" }}]}")
-            preparedStatement.setLong(2, user_id)
+            preparedStatement.setString(1, "{\"array\":[${tempArray?.joinToString(", ") { "\"$this\"" }}]}")
+            preparedStatement.setLong(2, userId)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("updateUserData error", e)
         }
     }
-    fun addToUserTempArray(user_id: Long?, value: String?) : Boolean {
+    fun addToUserTempArray(userId: Long?, value: String?) : Boolean {
         try {
-            if (user_id == null) return false
+            if (userId == null) return false
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET temp_array = json_as_array_append(temp_array, ?) WHERE user_id = ?;")
             preparedStatement.setString(1, value?:return false)
-            preparedStatement.setLong(2, user_id)
+            preparedStatement.setLong(2, userId)
             preparedStatement.executeUpdate()
             return true
         } catch (e: SQLException) {
@@ -261,27 +240,27 @@ class LegacyMySQL {
         }
         return false
     }
-    fun updateUserNickname(user_id: Long?, nickname: String?) {
+    fun updateUserNickname(userId: Long?, nickname: String?) {
         try {
-            if (user_id == null) return
+            if (userId == null) return
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET nickname = ? WHERE user_id = ?;")
             preparedStatement.setString(1, nickname)
-            preparedStatement.setLong(2, user_id)
+            preparedStatement.setLong(2, userId)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("updateUserData error", e)
         }
     }
-    fun addUserSecondNickname(user_id: Long?, nickname: String?) : Boolean {
+    fun addUserSecondNickname(userId: Long?, nickname: String?) : Boolean {
         try {
-            if (user_id == null) return false
+            if (userId == null) return false
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET nicknames = json_as_array_append(nicknames, ?) WHERE user_id = ?;")
             preparedStatement.setString(1, nickname)
-            preparedStatement.setLong(2, user_id)
+            preparedStatement.setLong(2, userId)
             preparedStatement.executeUpdate()
             return true
         } catch (e: SQLException) {
@@ -289,27 +268,53 @@ class LegacyMySQL {
         }
         return false
     }
-    fun updateUserSecondNicknames(user_id: Long?, nicknames: Array<String>?) {
+    fun updateUserSecondNicknames(userId: Long?, nicknames: Array<String>?) {
         try {
-            if (user_id == null) return
+            if (userId == null) return
             reConnect()
             val preparedStatement =
                 MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET nicknames = ? WHERE user_id = ?;")
             preparedStatement.setString(1, "{\"array\":[${nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-            preparedStatement.setLong(2, user_id)
+            preparedStatement.setLong(2, userId)
+            preparedStatement.executeUpdate()
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("updateUserData error", e)
+        }
+    }
+    fun updateUserAgreedWithRules(userId: Long?, agreedWithRules: Boolean?) {
+        try {
+            if (userId == null) return
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET agreed_with_rules = ? WHERE user_id = ?;")
+            preparedStatement.setBoolean(1, agreedWithRules?:false)
+            preparedStatement.setLong(2, userId)
+            preparedStatement.executeUpdate()
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("updateUserData error", e)
+        }
+    }
+    fun updateUserRestricted(userId: Long?, isRestricted: Boolean?) {
+        try {
+            if (userId == null) return
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE " + config.mySQLTable + " SET is_restricted = ? WHERE user_id = ?;")
+            preparedStatement.setBoolean(1, isRestricted?:false)
+            preparedStatement.setLong(2, userId)
             preparedStatement.executeUpdate()
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("updateUserData error", e)
         }
     }
 
-    fun getUserData(user_id: Long?): String {
+    fun getUserData(userId: Long?): String {
         try {
             reConnect()
-            if (isUserRegistered(user_id)) {
+            if (isUserRegistered(userId)) {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("SELECT data FROM " + config.mySQLTable + " WHERE user_id = ?;")
-                preparedStatement.setLong(1, user_id!!)
+                preparedStatement.setLong(1, userId!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
                 return query.getString(1)
@@ -319,13 +324,13 @@ class LegacyMySQL {
         }
         return ""
     }
-    fun getUserAccountType(user_id: Long?): Int {
+    fun getUserAccountType(userId: Long?): Int {
         try {
             reConnect()
-            if (isUserRegistered(user_id)) {
+            if (isUserRegistered(userId)) {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("SELECT account_type FROM " + config.mySQLTable + " WHERE user_id = ?;")
-                preparedStatement.setLong(1, user_id!!)
+                preparedStatement.setLong(1, userId!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
                 return query.getInt(1)
@@ -335,13 +340,13 @@ class LegacyMySQL {
         }
         return 3
     }
-    fun getUserTempArray(user_id: Long?): Array<String>? {
+    fun getUserTempArray(userId: Long?): Array<String>? {
         try {
             reConnect()
-            if (isUserRegistered(user_id)) {
+            if (isUserRegistered(userId)) {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("SELECT temp_array FROM " + config.mySQLTable + " WHERE user_id = ?;")
-                preparedStatement.setLong(1, user_id!!)
+                preparedStatement.setLong(1, userId!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
                 return gson.fromJson(query.getString(1), ArrayData::class.java).array
@@ -351,13 +356,13 @@ class LegacyMySQL {
         }
         return null
     }
-    fun getUserNickname(user_id: Long?): String? {
+    fun getUserNickname(userId: Long?): String? {
         try {
             reConnect()
-            if (isUserRegistered(user_id)) {
+            if (isUserRegistered(userId)) {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("SELECT nickname FROM " + config.mySQLTable + " WHERE user_id = ?;")
-                preparedStatement.setLong(1, user_id!!)
+                preparedStatement.setLong(1, userId!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
                 return query.getString(1)
@@ -367,13 +372,13 @@ class LegacyMySQL {
         }
         return ""
     }
-    fun getUserSecondNicknames(user_id: Long?): Array<String>? {
+    fun getUserSecondNicknames(userId: Long?): Array<String>? {
         try {
             reConnect()
-            if (isUserRegistered(user_id)) {
+            if (isUserRegistered(userId)) {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("SELECT nicknames FROM " + config.mySQLTable + " WHERE user_id = ?;")
-                preparedStatement.setLong(1, user_id!!)
+                preparedStatement.setLong(1, userId!!)
                 val query = preparedStatement.executeQuery()
                 query.next()
                 return gson.fromJson(query.getString(1), ArrayData::class.java).array
@@ -382,6 +387,38 @@ class LegacyMySQL {
             ZixaMCTGBridge.logger.error("getUserData error", e)
         }
         return null
+    }
+    fun isUserAgreedWithRules(userId: Long?): Boolean {
+        try {
+            reConnect()
+            if (isUserRegistered(userId)) {
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("SELECT agreed_with_rules FROM " + config.mySQLTable + " WHERE user_id = ?;")
+                preparedStatement.setLong(1, userId!!)
+                val query = preparedStatement.executeQuery()
+                query.next()
+                return query.getBoolean(1)
+            }
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("getUserData error", e)
+        }
+        return false
+    }
+    fun isUserRestricted(userId: Long?): Boolean {
+        try {
+            reConnect()
+            if (isUserRegistered(userId)) {
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("SELECT is_restricted FROM " + config.mySQLTable + " WHERE user_id = ?;")
+                preparedStatement.setLong(1, userId!!)
+                val query = preparedStatement.executeQuery()
+                query.next()
+                return query.getBoolean(1)
+            }
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("getUserData error", e)
+        }
+        return false
     }
     fun getUserIdByNickname(nickname: String?): Long? {
         try {
@@ -414,77 +451,23 @@ class LegacyMySQL {
         return null
     }
 
-//    val allData: HashMap<Long, TableRow>
-//        get() {
-//            val registeredUsers = HashMap<Long, TableRow>()
-//            try {
-//                reConnect()
-//                val preparedStatement =
-//                    MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + ";")
-//                val query = preparedStatement.executeQuery()
-//                while (query.next()) {
-//                    val user_id = query.getLong(2)
-//                    val nickname = query.getString(3)
-//                    val second_nicknames = gson.fromJson(query.getString(4), ArrayData::class.java).array
-//                    val account_type = query.getInt(5)
-//                    val data: AccountData = MySQLIntegration.parseJsonToPOJO(query.getString(6), account_type)
-//                    registeredUsers[user_id] = TableRow(nickname, second_nicknames, account_type, data)
-//                }
-//            } catch (e: SQLException) {
-//                ZixaMCTGBridge.logger.error("getAllData error", e)
-//            }
-//            return registeredUsers
-//        }
-    val getAllLinkedEntities: HashMap<Long, LegacySQLEntity>
+    val getAllLinkedEntities: HashMap<Long, SQLEntity>
         get() {
-            val linkedEntities = HashMap<Long, LegacySQLEntity>()
+            val linkedEntities = HashMap<Long, SQLEntity>()
             try {
                 reConnect()
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("SELECT user_id FROM " + config.mySQLTable + ";")
                 val query = preparedStatement.executeQuery()
                 while (query.next()) {
-                    val user_id = query.getLong(1)
-                    linkedEntities[user_id] = LegacySQLEntity(this, user_id)
+                    val userId = query.getLong(1)
+                    linkedEntities[userId] = SQLEntity(this, userId)
                 }
             } catch (e: SQLException) {
                 ZixaMCTGBridge.logger.error("getAllData error", e)
             }
             return linkedEntities
         }
-    fun getLinkedEntity(user_id: Long?): LegacySQLEntity? = if (user_id != null && isUserRegistered(user_id)) LegacySQLEntity(this, user_id) else null
-
-//    fun saveAll(playerCacheMap: HashMap<Long?, TableRow?>) {
-//        try {
-//            reConnect()
-//            val preparedStatement =
-//                MySQLConnection!!.prepareStatement("INSERT INTO " + config.mySQLTable + " (user_id, nickname, second_nicknames, account_type, data) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nickname = ?, second_nicknames = ?, account_type = ?, data = ?;")
-//            // Updating player data.
-//            playerCacheMap.forEach { (user_id: Long?, userInfo: TableRow?) ->
-//                val nickname: String = userInfo?.nickname?:return@forEach
-//                val account_type: Int = userInfo.account_type
-//                val data: String = gson.toJson(userInfo.data)
-//                try {
-//                    preparedStatement.setLong(1, user_id?:return@forEach)
-//                    preparedStatement.setString(2, nickname)
-//                    preparedStatement.setString(3, "{\"array\":[${userInfo.second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-//                    preparedStatement.setInt(4, account_type)
-//                    preparedStatement.setString(5, data)
-//                    preparedStatement.setString(6, nickname)
-//                    preparedStatement.setString(3, "{\"array\":[${userInfo.second_nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-//                    preparedStatement.setInt(8, account_type)
-//                    preparedStatement.setString(9, data)
-//
-//                    preparedStatement.addBatch()
-//                } catch (e: SQLException) {
-//                    ZixaMCTGBridge.logger.error(String.format("Error saving player data! %s ", user_id))
-//                }
-//            }
-//            preparedStatement.executeBatch()
-//        } catch (e: SQLException) {
-//            ZixaMCTGBridge.logger.error("Error saving players data", e)
-//        } catch (e: NullPointerException) {
-//            ZixaMCTGBridge.logger.error("Error saving players data", e)
-//        }
-//    }
+    fun getLinkedEntity(userId: Long?): SQLEntity? =
+        if (userId != null && isUserRegistered(userId)) SQLEntity(this, userId) else null
 }

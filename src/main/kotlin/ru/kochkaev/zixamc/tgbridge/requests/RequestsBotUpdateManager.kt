@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
 import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelRequest
@@ -12,7 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
         if (msg.chat.id>=0) {
-            val entity = NewMySQLIntegration.getLinkedEntity(msg.from!!.id)?:return
+            val entity = MySQLIntegration.getLinkedEntity(msg.from!!.id)?:return
             if (entity.isRestricted) return
             if (entity.accountType == 2) {
                 val requesterData = entity.data?:return
@@ -39,7 +39,7 @@ object RequestsBotUpdateManager {
                                         config.text.inputFields.textInputFieldPlaceholderNickname.ifEmpty { null }
                                     )
                                 )
-                            } else if (NewMySQLIntegration.isNicknameNotAvailableToTake(entity.userId, msg.text)) {
+                            } else if (MySQLIntegration.isNicknameNotAvailableToTake(entity.userId, msg.text)) {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
                                     text = BotLogic.escapePlaceholders(config.text.messages.textTakenNickname, msg.text),
@@ -116,7 +116,7 @@ object RequestsBotUpdateManager {
         }
         else {
             val replied = msg.replyToMessage?:return
-            val entity = NewMySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return
+            val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return
             if (!entity.tempArray!!.contains(replied.messageId.toString()) || !entity.data!!.requests.any {it.request_status == "pending"}) return
             bot.forwardMessage(
                 chatId = entity.userId,
@@ -127,7 +127,7 @@ object RequestsBotUpdateManager {
         }
     }
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
-        val entity = NewMySQLIntegration.getLinkedEntity(cbq.from.id)?:return
+        val entity = MySQLIntegration.getLinkedEntity(cbq.from.id)?:return
         if (entity.isRestricted) return
         when (cbq.data) {
             "agree_with_rules" -> {
@@ -201,7 +201,7 @@ object RequestsBotUpdateManager {
                 entity.addToTempArray(newMessage.messageId.toString())
                 request.request_status = "pending"
                 entity.editRequest(request)
-                NewMySQLIntegration.setNickname(entity.userId, request.request_nickname!!)
+                MySQLIntegration.setNickname(entity.userId, request.request_nickname!!)
             }
         }
         if (cbq.message.chat.id > 0) bot.editMessageReplyMarkup(
@@ -212,7 +212,7 @@ object RequestsBotUpdateManager {
     }
 
     suspend fun onTelegramChatJoinRequest(request: TgChatJoinRequest) {
-        val entity = NewMySQLIntegration.getLinkedEntity(request.from.id)?:return
+        val entity = MySQLIntegration.getLinkedEntity(request.from.id)?:return
         if (entity.isRestricted) return
         if (entity.accountType<=1) {
             bot.approveChatJoinRequest(request.chat.id, request.from.id)

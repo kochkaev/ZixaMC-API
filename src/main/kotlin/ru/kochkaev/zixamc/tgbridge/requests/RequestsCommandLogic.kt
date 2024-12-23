@@ -1,12 +1,11 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
 import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
-import ru.kochkaev.zixamc.tgbridge.NewSQLEntity
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
@@ -14,7 +13,6 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.checkPermissionToExecute
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchAccountTypeFromMinecraftAccountStatus
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
-import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.updateServerPlayerStatus
 
 object RequestsCommandLogic {
 
@@ -29,7 +27,7 @@ object RequestsCommandLogic {
         text4User: String? = null,
         text4Target: String? = null,
         removePreviousTgReplyMarkup: Boolean = true,
-        additionalConsumer: suspend (Boolean, NewSQLEntity?) -> Unit = { _, _ -> },
+        additionalConsumer: suspend (Boolean, SQLEntity?) -> Unit = { _, _ -> },
         replyMarkup4Message4User: TgReplyMarkup? = null,
         protectContentInMessage4User: Boolean = false,
         removeProtectedContent: Boolean = false,
@@ -97,7 +95,7 @@ object RequestsCommandLogic {
     ) : Boolean {
         if (message.chat.id >= 0) return true
         val replied = message.replyToMessage?:return false
-        val entity = NewMySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return false
+        val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return false
         if (!checkPermissionToExecute(
                 message, entity, listOf(0), false
             )) return true

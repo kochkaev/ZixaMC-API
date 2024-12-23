@@ -2,9 +2,8 @@ package ru.kochkaev.zixamc.tgbridge
 
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
-import ru.kochkaev.zixamc.tgbridge.legecySQL.*
 
-class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
+class SQLEntity(val sql: MySQL, val userId: Long) {
 
     var nickname: String?
         get() = sql.getUserNickname(userId)
@@ -42,43 +41,38 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
         set(rawData) {
             sql.updateUserData(userId, rawData)
         }
-    var data: NewAccountData?
-        get() = LegacyMySQLIntegration.parseNewDataType(rawData)
+    var data: AccountData?
+        get() = MySQLIntegration.parseNewDataType(rawData)
         set(data) {
             rawData = sql.gson.toJson(data)
         }
 
     // Add user to table
-    constructor(sql: NewMySQL, userId: Long, data: LegacyAccountData) : this(sql, userId, null, data)
-    constructor(sql: NewMySQL, userId: Long, nickname: String?, data: LegacyAccountData) : this(sql, userId, nickname, emptyArray(), data)
-    constructor(sql: NewMySQL, userId: Long, nickname: String?, nicknames: Array<String>, data: LegacyAccountData) : this(sql, userId) {
-        sql.registerUser(
-            userId,
-            nickname,
-            nicknames,
-            when (data) {
-                is LegacyRequesterData -> 2
-                is LegacyPlayerData -> 1
-                is LegacyAdminData -> 0
-                else -> 3
-            },
-            sql.gson.toJson(data)
-        )
-    }
-    constructor(sql: NewMySQL, userId: Long, accountType: Int) : this(sql, userId, null, accountType)
-    constructor(sql: NewMySQL, userId: Long, nickname: String?, accountType: Int) : this(sql, userId, nickname, emptyArray(), accountType)
-    constructor(sql: NewMySQL, userId: Long, nickname: String?, nicknames: Array<String>, accountType: Int) : this(sql, userId) {
+//    constructor(sql: MySQL, userId: Long, data: AccountData) : this(sql, userId, null, data)
+//    constructor(sql: MySQL, userId: Long, nickname: String?, data: AccountData) : this(sql, userId, nickname, emptyArray(), data)
+//    constructor(sql: MySQL, userId: Long, nickname: String?, nicknames: Array<String>, data: AccountData) : this(sql, userId) {
+//        sql.registerUser(
+//            userId,
+//            nickname,
+//            nicknames,
+//            when (data) {
+//                is LegacyRequesterData -> 2
+//                is LegacyPlayerData -> 1
+//                is LegacyAdminData -> 0
+//                else -> 3
+//            },
+//            sql.gson.toJson(data)
+//        )
+//    }
+    constructor(sql: MySQL, userId: Long, accountType: Int) : this(sql, userId, null, accountType)
+    constructor(sql: MySQL, userId: Long, nickname: String?, accountType: Int) : this(sql, userId, nickname, emptyArray(), accountType)
+    constructor(sql: MySQL, userId: Long, nickname: String?, nicknames: Array<String>, accountType: Int) : this(sql, userId) {
         sql.registerUser(
             userId,
             nickname,
             nicknames,
             accountType,
-            sql.gson.toJson(when (accountType) {
-                0 -> LegacyAdminData(0, null)
-                1 -> LegacyPlayerData(arrayListOf(), null)
-                2 -> LegacyRequesterData(false, arrayListOf())
-                else -> LegacyAccountData()
-            })
+            sql.gson.toJson(AccountData())
         )
     }
 
@@ -94,8 +88,8 @@ class NewSQLEntity(val sql: NewMySQL, val userId: Long) {
         this.nickname = nickname
     }
 
-    fun createAndOrGetData(): NewAccountData {
-        if (data == null) data = NewAccountData()
+    fun createAndOrGetData(): AccountData {
+        if (data == null) data = AccountData()
         return data!!
     }
 

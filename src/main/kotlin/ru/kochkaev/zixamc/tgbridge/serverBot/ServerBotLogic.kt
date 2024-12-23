@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.serverBot
 
 import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.NewSQLEntity
+import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config as configRequests
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ProtectedMessageData
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
@@ -21,7 +21,7 @@ object ServerBotLogic {
     )
 
     suspend fun sendOnJoinInfoMessage(
-        entity: NewSQLEntity,
+        entity: SQLEntity,
         replyToMessageID: Int? = null,
     ) : TgMessage? = BotLogic.sendInfoMessage(
             bot = bot,

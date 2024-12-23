@@ -1,20 +1,18 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
-import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
-import ru.kochkaev.zixamc.tgbridge.NewSQLEntity
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
-import ru.kochkaev.zixamc.tgbridge.TelegramBotZixa
 import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ProtectedMessageData
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 
 object RequestsLogic {
 
-    suspend fun cancelRequest(entity: NewSQLEntity): Boolean {
+    suspend fun cancelRequest(entity: SQLEntity): Boolean {
         val request = (entity.data?:return false).requests.firstOrNull { it.request_status == "pending" } ?: return false
         entity.editRequest(entity.data!!.requests.first { it.request_status == "pending" }.apply { this.request_status = "canceled" })
         bot.sendMessage(
@@ -39,7 +37,7 @@ object RequestsLogic {
         entity.tempArray = arrayOf()
         return true
     }
-    suspend fun cancelSendingRequest(entity: NewSQLEntity): Boolean {
+    suspend fun cancelSendingRequest(entity: SQLEntity): Boolean {
         entity.data = entity.data.apply {
             (this ?: return false).requests.filter { it.request_status == "creating" }
         }
@@ -56,7 +54,7 @@ object RequestsLogic {
         )
         return true
     }
-    suspend fun newRequest(entity: NewSQLEntity): Boolean {
+    suspend fun newRequest(entity: SQLEntity): Boolean {
         when (entity.createAndOrGetData().requests.firstOrNull { listOf("creating", "pending").contains(it.request_status) }?.request_status ?: "") {
             "creating" -> {
                 bot.sendMessage(
@@ -113,7 +111,7 @@ object RequestsLogic {
                 ))),
             )
         )
-        NewMySQLIntegration.addRequest(entity.userId, RequestData(
+        MySQLIntegration.addRequest(entity.userId, RequestData(
             (entity.data?.requests?.maxOfOrNull { it.user_request_id } ?: -1)+1,
             null,
             forReplyMessage.messageId.toLong(),
@@ -125,10 +123,10 @@ object RequestsLogic {
         return true
     }
 
-    fun promoteUser(argEntity: NewSQLEntity? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null): Boolean {
+    fun promoteUser(argEntity: SQLEntity? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null): Boolean {
         val entity = argEntity ?:
-        if (userId != null) NewMySQLIntegration.getLinkedEntity(userId) ?: return false
-        else if (nickname != null) NewMySQLIntegration.getLinkedEntityByNickname(nickname) ?: return false
+        if (userId != null) MySQLIntegration.getLinkedEntity(userId) ?: return false
+        else if (nickname != null) MySQLIntegration.getLinkedEntityByNickname(nickname) ?: return false
         else return false
         val targetId = argTargetId ?: when (targetName?.lowercase()?:return false) {
             "admin" -> 0
@@ -142,32 +140,32 @@ object RequestsLogic {
 
     fun checkPermissionToExecute(
         message: TgMessage,
-        entity: NewSQLEntity = NewMySQLIntegration.getOrRegisterLinkedEntity(message.from!!.id),
+        entity: SQLEntity = MySQLIntegration.getOrRegisterLinkedEntity(message.from!!.id),
         allowedAccountTypes: List<Int> = listOf(0),
         allowedIfSpendByItself: Boolean = false,
     ): Boolean =
         !(entity.accountType in allowedAccountTypes && (!allowedIfSpendByItself || message.from!!.id==entity.userId))
 
-    fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage, allowedIfSpendByItself: Boolean = false): NewSQLEntity? {
+    fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage, allowedIfSpendByItself: Boolean = false): SQLEntity? {
         val args = msg.text!!.split(" ")
         val isArgUserId = if (args.size > 1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
         val isReplyToMessage = msg.replyToMessage != null
         val isItLegalReply = isReplyToMessage && msg.replyToMessage!!.messageId != config.targetTopicId
         val entity =
             if (isArgUserId)
-                NewMySQLIntegration.getLinkedEntity(args[1].toLong())
+                MySQLIntegration.getLinkedEntity(args[1].toLong())
             else if (isItLegalReply)
-                NewMySQLIntegration.getLinkedEntity(msg.replyToMessage!!.from?.id ?: return null)
+                MySQLIntegration.getLinkedEntity(msg.replyToMessage!!.from?.id ?: return null)
             else if (!isReplyToMessage && args.size>1 && args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16)
-                NewMySQLIntegration.getLinkedEntityByNickname(args[1])
+                MySQLIntegration.getLinkedEntityByNickname(args[1])
             else if (allowedIfSpendByItself)
-                NewMySQLIntegration.getLinkedEntity(msg.from!!.id)
+                MySQLIntegration.getLinkedEntity(msg.from!!.id)
             else null
         return entity
     }
 
     fun updateServerPlayerStatus(
-        entity: NewSQLEntity,
+        entity: SQLEntity,
         applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),
         targetAccountStatus: String = "player",
         targetAccountType: Int = matchAccountTypeFromMinecraftAccountStatus(targetAccountStatus),
@@ -214,7 +212,7 @@ object RequestsLogic {
     )
 
     suspend fun sendOnJoinInfoMessage(
-        entity: NewSQLEntity,
+        entity: SQLEntity,
         replyToMessageID: Int? = null,
     ) : TgMessage? = BotLogic.sendInfoMessage(
             bot = bot,
@@ -235,7 +233,7 @@ object RequestsLogic {
 
     suspend fun executeCheckPermissionsAndExceptions(
         message: TgMessage,
-        entity: NewSQLEntity?,
+        entity: SQLEntity?,
         allowedExecutionAccountTypes: List<Int> = listOf(0),
         allowedExecutionIfSpendByItself: Boolean = false,
         applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),

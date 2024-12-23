@@ -6,7 +6,7 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
-import ru.kochkaev.zixamc.tgbridge.NewMySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 
 
 object ZixaMCCommand {
@@ -22,7 +22,7 @@ object ZixaMCCommand {
                             .executes { context ->
                                 val userId = context.getArgument("user_id", Long::class.java)
                                 val accountType = context.getArgument("account_type", String::class.java)
-                                NewMySQLIntegration.getLinkedEntity(userId)!!
+                                MySQLIntegration.getLinkedEntity(userId)!!
                                     .accountType = when (accountType.lowercase()) {
                                         "admin" -> 0
                                         "player" -> 1

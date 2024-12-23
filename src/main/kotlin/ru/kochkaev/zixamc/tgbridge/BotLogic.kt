@@ -47,7 +47,7 @@ object BotLogic {
         chatId: Long,
         replyParameters: TgReplyParameters? = null,
         replyMarkup: TgReplyMarkup? = null,
-        entity: NewSQLEntity? = null
+        entity: SQLEntity? = null
     ) : TgMessage? {
         val newMessage = bot.sendMessage(
             chatId = chatId,
@@ -68,7 +68,7 @@ object BotLogic {
     fun getMentionOfAllPlayers() : String {
         val output = StringBuilder()
         val placeholder = CONFIG?.serverBot?.mentionAllReplaceWith?:"+"
-        NewMySQLIntegration.linkedEntities.filter { it.value.accountType <= 1 } .forEach {
+        MySQLIntegration.linkedEntities.filter { it.value.accountType <= 1 } .forEach {
             output.append("<a href=\"tg://user?id=${it.key}\">$placeholder</a>")
         }
         return output.toString()
