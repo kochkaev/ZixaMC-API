@@ -6,6 +6,7 @@ import ru.kochkaev.zixamc.tgbridge.*
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
+import xyz.nikitacartes.easyauth.EasyAuth.config as easyAuthConfig
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import xyz.nikitacartes.easyauth.EasyAuth
@@ -44,6 +45,9 @@ object AuthManager {
         )
     }
     suspend fun onJoin(player: ServerPlayerEntity) {
+        val uuid = (player as PlayerAuth).`easyAuth$getFakeUuid`()
+        val cache = EasyAuth.playerCacheMap[uuid]
+        if (!easyAuthConfig.enableGlobalPassword && (cache == null || cache.password.isEmpty())) return
         val nickname = player.nameForScoreboard
         val entity = MySQLIntegration.getLinkedEntityByNickname(nickname)?:return kickYouAreNotPlayer(player)
         if ((player as PlayerAuth).`easyAuth$canSkipAuth`()) return
