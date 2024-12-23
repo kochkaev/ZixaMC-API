@@ -10,10 +10,12 @@ object ServerBotUpdateManager {
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
         val data = cbq.data?:return
         if (data.startsWith("easyauth")) EasyAuthIntegration.onTelegramCallbackQuery(cbq)
-        if (cbq.message.chat.id > 0) bot.editMessageReplyMarkup(
-            chatId = cbq.message.chat.id,
-            messageId = cbq.message.messageId,
-            replyMarkup = TgReplyMarkup()
-        )
+        if (cbq.message.chat.id > 0) try {
+            bot.editMessageReplyMarkup(
+                chatId = cbq.message.chat.id,
+                messageId = cbq.message.messageId,
+                replyMarkup = TgReplyMarkup()
+            )
+        } catch (_: Exception) {}
     }
 }

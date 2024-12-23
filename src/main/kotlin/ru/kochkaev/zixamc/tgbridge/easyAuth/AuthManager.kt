@@ -37,8 +37,8 @@ object AuthManager {
         val uuid = (player as PlayerAuth).`easyAuth$getFakeUuid`()
         player.networkHandler.disconnect(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.onDeny, nickname)))
         val cache = EasyAuth.playerCacheMap[uuid]
-        cache?.loginTries?.set(0)
         cache?.lastKicked = System.currentTimeMillis()
+        cache?.loginTries?.set(0)
         bot.sendMessage(
             chatId = entity.userId,
             text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onDeny, nickname),
@@ -50,7 +50,7 @@ object AuthManager {
         if (!easyAuthConfig.enableGlobalPassword && (cache == null || cache.password.isEmpty())) return
         val nickname = player.nameForScoreboard
         val entity = MySQLIntegration.getLinkedEntityByNickname(nickname)?:return kickYouAreNotPlayer(player)
-        if ((player as PlayerAuth).`easyAuth$canSkipAuth`()) return
+        if ((player as PlayerAuth).`easyAuth$canSkipAuth`() || (player as PlayerAuth).`easyAuth$isAuthenticated`()) return
         player.sendMessage(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.onJoinTip, nickname)))
         val message = bot.sendMessage(
             chatId = entity.userId,
