@@ -124,6 +124,7 @@ data class Config (
         val targetTopicId: Int = 0,
         val mentionAllReplaceWith: String = "+",
         val chatSync: ServerBotChatSyncDataClass = ServerBotChatSyncDataClass(),
+        val easyAuth: ServerBotEasyAuth = ServerBotEasyAuth(),
     ) {
         data class ServerBotChatSyncDataClass (
             val isEnabled: Boolean = true,
@@ -231,6 +232,25 @@ data class Config (
                     val showDescription: Boolean = true,
                 )
             }
+        }
+        data class ServerBotEasyAuth (
+            val isEnabled: Boolean = true,
+            val langMinecraft: ServerBotEasyAuthLangMinecraft = ServerBotEasyAuthLangMinecraft(),
+            val langTelegram: ServerBotEasyAuthLangTelegram = ServerBotEasyAuthLangTelegram(),
+        ) {
+            data class ServerBotEasyAuthLangMinecraft (
+                val onApprove: String = "",
+                val onDeny: String = "",
+                val youAreNotPlayer: String = "",
+                val onJoinTip: String = "",
+            )
+            data class ServerBotEasyAuthLangTelegram (
+                val onApprove: String = "",
+                val onDeny: String = "",
+                val onJoinTip: String = "",
+                val buttonApprove: String = "",
+                val buttonDeny: String = "",
+            )
         }
     }
 }

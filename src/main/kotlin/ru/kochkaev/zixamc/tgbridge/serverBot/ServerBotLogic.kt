@@ -5,6 +5,7 @@ import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config as configRequests
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ProtectedMessageData
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
+import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
@@ -35,5 +36,9 @@ object ServerBotLogic {
             )),
             entity = entity,
         )
+
+    fun registerTelegramHandlers() {
+        bot.registerCallbackQueryHandler(ServerBotUpdateManager::onTelegramCallbackQuery)
+    }
 
 }

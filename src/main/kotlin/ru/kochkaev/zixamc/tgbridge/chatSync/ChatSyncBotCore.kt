@@ -16,6 +16,7 @@ import ru.kochkaev.zixamc.tgbridge.ServerBot.server
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
+import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
 
 
 object ChatSyncBotCore {
@@ -31,7 +32,11 @@ object ChatSyncBotCore {
     }
     fun registerChatMessageListener(handler: (TBPlayerEventData) -> Unit) {
         ServerMessageEvents.CHAT_MESSAGE.register { message: SignedMessage, sender, _ ->
-            if (sender is ServerPlayerEntity && (vanishInstance == null || !vanishInstance!!.isVanished(sender))) {
+            if (
+                sender is ServerPlayerEntity
+                && (vanishInstance == null || !vanishInstance!!.isVanished(sender))
+                && EasyAuthIntegration.isAuthenticated(sender)
+            ) {
                 handler.invoke(
                     TBPlayerEventData(
                         sender.displayName?.string ?: return@register,

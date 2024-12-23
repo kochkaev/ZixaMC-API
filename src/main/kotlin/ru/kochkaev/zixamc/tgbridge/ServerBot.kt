@@ -1,11 +1,17 @@
 package ru.kochkaev.zixamc.tgbridge
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.network.ServerPlayerEntity
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge.Companion.logger
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
+import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
+import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
 
 /**
  * @author kochkaev
@@ -15,9 +21,10 @@ object ServerBot {
     val server: MinecraftServer
         get() = FabricLoader.getInstance().gameInstance as MinecraftServer
     lateinit var bot: TelegramBotZixa
-    private lateinit var config: Config.ServerBotDataClass
+    lateinit var config: Config.ServerBotDataClass
     val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
     var isInitialized = false
+    private val lastMessageLock = Mutex()
 
     fun startBot() {
         config = ConfigManager.CONFIG!!.serverBot
@@ -38,6 +45,15 @@ object ServerBot {
 //        bot.registerCommandHandler("cancel", this::onTelegramCancelCommand)
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
+            ServerBotLogic.registerTelegramHandlers()
+            if (EasyAuthIntegration.isEnabled) {
+                ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
+                    EasyAuthIntegration.onJoin(handler.player)
+                }
+                ServerPlayConnectionEvents.DISCONNECT.register { handler, _ ->
+                    EasyAuthIntegration.onLeave(handler.player)
+                }
+            }
             if (config.chatSync.isEnabled) {
                 ChatSyncBotCore.init()
                 ChatSyncBotLogic.sendServerStartedMessage()
@@ -45,6 +61,7 @@ object ServerBot {
         }
         isInitialized = true
     }
+
     fun stopBot() {
         if (config.isEnabled) {
             coroutineScope.launch {
@@ -54,5 +71,13 @@ object ServerBot {
             coroutineScope.cancel()
         }
         isInitialized = false
+    }
+
+    fun withScopeAndLock(fn: suspend () -> Unit) {
+        coroutineScope.launch {
+            lastMessageLock.withLock {
+                fn()
+            }
+        }
     }
 }

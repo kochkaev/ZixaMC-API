@@ -112,6 +112,25 @@ dependencies {
         exclude(module = "kotlinx-serialization-core")
     })
 
+    // EasyAuth
+    modImplementation("maven.modrinth:easyauth:3.0.25")
+//    modImplementation("xyz.nucleoid:server-translations-api:2.4.0+1.21.2-rc1")
+//    // Password hashing
+//    // Argon2
+//    modImplementation("de.mkammerer:argon2-jvm:2.11")
+//    modImplementation("de.mkammerer:argon2-jvm-nolibs:2.11")
+//    // BCrypt
+//    modImplementation("at.favre.lib:bcrypt:0.10.2")
+//    modImplementation("at.favre.lib:bytes:1.6.1")
+//    // Hocon config
+//    modImplementation("org.spongepowered:configurate-core:4.1.2")
+//    modImplementation("org.spongepowered:configurate-hocon:4.1.2")
+//    modImplementation("org.apache.commons:commons-text:1.10.0")
+//    modImplementation("com.typesafe:config:1.4.3")
+//    modImplementation("io.leangen.geantyref:geantyref:1.3.13")
+//    // JNA lib
+//    modImplementation("net.java.dev.jna:jna:5.13.0")
+
     include(implementation("net.kyori:adventure-api:${adventureVersion}")!!)
     include(implementation("net.kyori:adventure-key:${adventureVersion}")!!)
     include(implementation("net.kyori:adventure-text-serializer-gson:${adventureVersion}") {
