@@ -8,8 +8,17 @@ import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
 import ru.kochkaev.zixamc.tgbridge.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 
 object BotLogic {
+
+    val config
+        get() = CONFIG!!
+    val copyIPReplyMarkup
+        get() = TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+            text = config.general.lang.buttonCopyServerIP,
+            copy_text = TgInlineKeyboardMarkup.TgInlineKeyboardButton.TgCopyTextButton(config.general.serverIP),
+        )
 
     suspend fun deleteProtected(
         bot: TelegramBotZixa,
@@ -51,7 +60,7 @@ object BotLogic {
     ) : TgMessage? {
         val newMessage = bot.sendMessage(
             chatId = chatId,
-            text = CONFIG?.requestsBot?.text?.messages?.textInfoMessage?:return null,
+            text = config.general.lang.infoMessage,
             replyParameters = replyParameters,
             replyMarkup = replyMarkup,
             protectContent = true,
@@ -78,7 +87,7 @@ object BotLogic {
         return TextParser.formatLang(text,
             "nickname" to (nickname?:""),
             "mentionAll" to getMentionOfAllPlayers(),
-            "serverIP" to (CONFIG?.requestsBot?.serverIP?:""),
+            "serverIP" to (config.general.serverIP),
         )
     }
 }

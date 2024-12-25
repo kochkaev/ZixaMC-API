@@ -17,19 +17,19 @@ object RequestsLogic {
         entity.editRequest(entity.data!!.requests.first { it.request_status == "pending" }.apply { this.request_status = "canceled" })
         bot.sendMessage(
             chatId = entity.userId,
-            text = BotLogic.escapePlaceholders(config.text.events.forUser.textRequestCanceled4User, entity.nickname),
+            text = BotLogic.escapePlaceholders(config.user.lang.event.onCanceled, entity.nickname),
             replyMarkup = TgInlineKeyboardMarkup(
                 inline_keyboard = listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.buttons.textButtonCreateRequest,
+                    text = config.user.lang.button.createRequest,
                     callback_data = "create_request",
                 )))
             )
         )
         bot.sendMessage(
-            chatId = config.targetChatId,
-            messageThreadId = config.targetTopicId,
-            text = BotLogic.escapePlaceholders(config.text.events.forTarget.textRequestCanceled4Target, entity.nickname),
+            chatId = config.target.chatId,
+            messageThreadId = config.target.topicId,
+            text = BotLogic.escapePlaceholders(config.target.lang.event.onCanceled, entity.nickname),
             replyParameters = TgReplyParameters(
                 message_id = request.message_id_in_target_chat!!.toInt()
             )
@@ -43,11 +43,11 @@ object RequestsLogic {
         }
         bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.events.forUser.textRequestCanceled4User,
+            text = config.user.lang.event.onCanceled,
             replyMarkup = TgInlineKeyboardMarkup(
                 inline_keyboard = listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = BotLogic.escapePlaceholders(config.text.buttons.textButtonCreateRequest),
+                    text = BotLogic.escapePlaceholders(config.user.lang.button.createRequest),
                     callback_data = "create_request",
                 )))
             )
@@ -59,11 +59,11 @@ object RequestsLogic {
             "creating" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
-                    text = BotLogic.escapePlaceholders(config.text.messages.textYouAreNowCreatingRequest),
+                    text = BotLogic.escapePlaceholders(config.user.lang.creating.youAreNowCreatingRequest),
                     replyMarkup = TgInlineKeyboardMarkup(
                         inline_keyboard = listOf(listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.text.buttons.textButtonRedrawRequest,
+                            text = config.user.lang.button.redrawRequest,
                             callback_data = "redraw_request",
                         )))
                     )
@@ -73,11 +73,11 @@ object RequestsLogic {
             "pending" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
-                    text = BotLogic.escapePlaceholders(config.text.messages.textYouHavePendingRequest, entity.nickname),
+                    text = BotLogic.escapePlaceholders(config.user.lang.creating.youHavePendingRequest, entity.nickname),
                     replyMarkup = TgInlineKeyboardMarkup(
                         inline_keyboard = listOf(listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.text.buttons.textButtonCancelRequest,
+                            text = config.user.lang.button.cancelRequest,
                             callback_data = "cancel_request",
                         )))
                     )
@@ -88,25 +88,25 @@ object RequestsLogic {
         if (entity.accountType<2) {
             bot.sendMessage(
                 chatId = entity.userId,
-                text = BotLogic.escapePlaceholders(config.text.messages.textYouAreNowPlayer, entity.nickname),
+                text = BotLogic.escapePlaceholders(config.user.lang.creating.youAreNowPlayer, entity.nickname),
             )
             return false
         }
         val forReplyMessage = if (entity.agreedWithRules) bot.sendMessage(
             chatId = entity.userId,
-            text = config.text.messages.textNeedNickname,
+            text = config.user.lang.creating.needNickname,
             replyMarkup = TgForceReply(
                 true,
-                config.text.inputFields.textInputFieldPlaceholderNickname.ifEmpty { null }
+                config.user.lang.inputField.enterNickname.ifEmpty { null }
             )
         )
         else bot.sendMessage(
             chatId = entity.userId,
-            text = BotLogic.escapePlaceholders(config.text.messages.textNeedAgreeWithRules),
+            text = BotLogic.escapePlaceholders(config.user.lang.creating.needAgreeWithRules),
             replyMarkup = TgInlineKeyboardMarkup(
                 listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.buttons.textButtonAgreeWithRules,
+                    text = config.user.lang.button.agreeWithRules,
                     callback_data = "agree_with_rules",
                 ))),
             )
@@ -150,7 +150,7 @@ object RequestsLogic {
         val args = msg.text!!.split(" ")
         val isArgUserId = if (args.size > 1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
         val isReplyToMessage = msg.replyToMessage != null
-        val isItLegalReply = isReplyToMessage && msg.replyToMessage!!.messageId != config.targetTopicId
+        val isItLegalReply = isReplyToMessage && msg.replyToMessage!!.messageId != config.target.topicId
         val entity =
             if (isArgUserId)
                 MySQLIntegration.getLinkedEntity(args[1].toLong())
@@ -220,13 +220,10 @@ object RequestsLogic {
             replyParameters = if (replyToMessageID!=null) TgReplyParameters(replyToMessageID) else null,
             replyMarkup = TgInlineKeyboardMarkup(listOf(
                 listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.buttons.textButtonJoinToPlayersGroup,
+                    text = config.user.lang.button.joinToPlayersGroup,
                     url = config.playersGroupInviteLink,
                 )),
-                listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.buttons.textButtonCopyServerIP,
-                    copy_text = TgInlineKeyboardMarkup.TgInlineKeyboardButton.TgCopyTextButton(config.serverIP),
-                )),
+                listOf(BotLogic.copyIPReplyMarkup),
             )),
             entity = entity,
         )
@@ -266,7 +263,7 @@ object RequestsLogic {
                 messageThreadId = message.messageThreadId,
                 text =
                     if (!havePermission) BotLogic.escapePlaceholders(
-                        config.text.commands.textCommandPermissionDenied,
+                        config.commonLang.command.permissionDenied,
                         entity?.nickname
                     )
                     else BotLogic.escapePlaceholders(helpText, entity?.nickname),

@@ -8,10 +8,20 @@ import net.kyori.adventure.text.format.TextDecoration
  * @author kochkaev
  */
 data class Config (
+    val general: GeneralConfig = GeneralConfig(),
     val mySQL: MySQLDataClass = MySQLDataClass(),
     val requestsBot: RequestsBotDataClass = RequestsBotDataClass(),
     val serverBot: ServerBotDataClass = ServerBotDataClass(),
 ) {
+    data class GeneralConfig (
+        val serverIP: String = "",
+        val lang: GeneralConfigLang = GeneralConfigLang()
+    ) {
+        data class GeneralConfigLang (
+            val infoMessage: String = "",
+            val buttonCopyServerIP: String = "",
+        )
+    }
     data class MySQLDataClass (
         val mySQLHost: String = "",
         val mySQLDatabase: String = "",
@@ -24,94 +34,128 @@ data class Config (
         val botToken: String = "",
         val botAPIURL: String = "https://api.telegram.org",
         val pollTimeout: Int = 60,
-        val targetChatId: Long = 0,
-        val targetTopicId: Int = 0,
-        val serverIP: String = "",
         val playersGroupInviteLink: String = "https:/t.me/",
         val addWhitelistCommand: String = "easywhitelist add {nickname}",
         val removeWhitelistCommand: String = "easywhitelist add {nickname}",
-        val poll: RequestsBotPollDataClass = RequestsBotPollDataClass(),
-        val text: RequestsBotTextDataClass = RequestsBotTextDataClass(),
+        val user: RequestsBotForUser = RequestsBotForUser(),
+        val target: RequestsBotForTarget = RequestsBotForTarget(),
+        val forModerator: RequestsBotForModerator = RequestsBotForModerator(),
+        val commonLang: RequestsBotCommonLang = RequestsBotCommonLang(),
     ) {
-        data class RequestsBotPollDataClass (
-            val autoCreatePoll: Boolean = false,
-            val pollQuestion: String = "",
-            val pollAnswerTrue: String = "",
-            val pollAnswerNull: String = "",
-            val pollAnswerFalse: String = "",
-        )
-        data class RequestsBotTextDataClass (
-            val buttons: RequestsBotTextButtonsDataClass = RequestsBotTextButtonsDataClass(),
-            val inputFields: RequestsBotTextInputFieldsDataClass = RequestsBotTextInputFieldsDataClass(),
-            val commands: RequestsBotTextCommandsDataClass = RequestsBotTextCommandsDataClass(),
-            val events: RequestsBotTextEventsDataClass = RequestsBotTextEventsDataClass(),
-            val messages: RequestsBotTextCreateRequestDataClass = RequestsBotTextCreateRequestDataClass(),
+        data class RequestsBotForUser (
+            val lang: RequestsBotForUserLang = RequestsBotForUserLang(),
         ) {
-            data class RequestsBotTextButtonsDataClass (
-                val textButtonCreateRequest: String = "",
-                val textButtonConfirmSending: String = "",
-                val textButtonAgreeWithRules: String = "",
-                val textButtonRedrawRequest: String = "",
-                val textButtonCancelRequest: String = "",
-                val textButtonJoinToPlayersGroup: String = "",
-                val textButtonCopyServerIP: String = "",
-            )
-            data class RequestsBotTextInputFieldsDataClass (
-                val textInputFieldPlaceholderNickname: String = "",
-                val textInputFieldPlaceholderRequest: String = "",
-            )
-            data class RequestsBotTextCommandsDataClass (
-                val textSyntaxAcceptHelp: String = "",
-                val textSyntaxRejectHelp: String = "",
-                val textSyntaxPromoteHelp: String = "",
-                val textSyntaxKickHelp: String = "",
-                val textSyntaxRestrictHelp: String = "",
-                val textSyntaxLeavedHelp: String = "",
-                val textSyntaxReturnHelp: String = "",
-                val textCommandPermissionDenied: String = "",
-            )
-            data class RequestsBotTextEventsDataClass (
-                val forTarget: RequestsBotTextEvents4TargetDataClass = RequestsBotTextEvents4TargetDataClass(),
-                val forUser: RequestsBotTextEvents4UserDataClass = RequestsBotTextEvents4UserDataClass(),
+            data class RequestsBotForUserLang (
+                val button: RequestsBotForUserLangButtons = RequestsBotForUserLangButtons(),
+                val inputField: RequestsBotForUserLangInputFields = RequestsBotForUserLangInputFields(),
+                val event: RequestsBotForUserLangEvents = RequestsBotForUserLangEvents(),
+                val creating: RequestsBotForUserLangCreating = RequestsBotForUserLangCreating(),
             ) {
-                data class RequestsBotTextEvents4TargetDataClass (
-                    val textOnSend4Target: String = "",
-                    val textOnAccept4Target: String = "",
-                    val textOnReject4Target: String = "",
-                    val textOnPromote4Target: String = "",
-                    val textOnKick4Target: String = "",
-                    val textOnRestrict4Target: String = "",
-                    val textOnLeave4Target: String = "",
-                    val textOnReturn4Target: String = "",
-                    val textOnRulesUpdated4Target: String = "",
-                    val textRequestCanceled4Target: String = "",
+                data class RequestsBotForUserLangButtons (
+                    val createRequest: String = "",
+                    val confirmSending: String = "",
+                    val agreeWithRules: String = "",
+                    val redrawRequest: String = "",
+                    val cancelRequest: String = "",
+                    val joinToPlayersGroup: String = "",
                 )
-                data class RequestsBotTextEvents4UserDataClass (
-                    val textOnSend4User: String = "",
-                    val textOnAccept4User: String = "",
-                    val textOnReject4User: String = "",
-                    val textOnKick4User: String = "",
-                    val textOnRestrict4User: String = "",
-                    val textOnLeave4User: String = "",
-                    val textOnReturn4User: String = "",
-                    val textOnRulesUpdated4User: String = "",
-                    val textOnStart: String = "",
-                    val textRequestCanceled4User: String = "",
+                data class RequestsBotForUserLangInputFields (
+                    val enterNickname: String = "",
+                    val enterRequestText: String = "",
+                )
+                data class RequestsBotForUserLangEvents (
+                    val onStart: String = "",
+                    val onSend: String = "",
+                    val onApprove: String = "",
+                    val onDeny: String = "",
+                    val onRestrict: String = "",
+                    val onAccept: String = "",
+                    val onReject: String = "",
+                    val onCanceled: String = "",
+                    val onKick: String = "",
+                    val onLeave: String = "",
+                    val onReturn: String = "",
+                    val onRulesUpdated: String = "",
+                )
+                data class RequestsBotForUserLangCreating (
+                    val needAgreeWithRules: String = "",
+                    val mustAgreeWithRules: String = "",
+                    val needNickname: String = "",
+                    val wrongNickname: String = "",
+                    val takenNickname: String = "",
+                    val needRequestText: String = "",
+                    val confirmSendRequest: String = "",
+                    val youAreNowCreatingRequest: String = "",
+                    val youHavePendingRequest: String = "",
+                    val doYouWantToCancelRequest: String = "",
+                    val youAreNowPlayer: String = "",
                 )
             }
-            data class RequestsBotTextCreateRequestDataClass (
-                val textNeedAgreeWithRules: String = "",
-                val textMustAgreeWithRules: String = "",
-                val textNeedNickname: String = "",
-                val textWrongNickname: String = "",
-                val textTakenNickname: String = "",
-                val textConfirmSendRequest: String = "",
-                val textYouAreNowCreatingRequest: String = "",
-                val textYouHavePendingRequest: String = "",
-                val textCancelRequest: String = "",
-                val textYouAreNowPlayer: String = "",
-                val textInfoMessage: String = "",
-                val textOnNewRequest: String = "",
+        }
+        data class RequestsBotForTarget (
+            val chatId: Long = 0,
+            val topicId: Int = 0,
+            val lang: RequestsBotForTargetLang = RequestsBotForTargetLang(),
+        ) {
+            data class RequestsBotForTargetLang (
+                val event: RequestsBotForTargetLangEvents = RequestsBotForTargetLangEvents(),
+                val poll: RequestsBotForTargetLangPoll = RequestsBotForTargetLangPoll(),
+            ) {
+                data class RequestsBotForTargetLangEvents (
+                    val onSend: String = "",
+                    val onCanceled: String = "",
+                    val onAccept: String = "",
+                    val onReject: String = "",
+                    val onRulesUpdated: String = "",
+                    val onPromote: String = "",
+                    val onKick: String = "",
+                    val onRestrict: String = "",
+                    val onLeave: String = "",
+                    val onReturn: String = "",
+                )
+                data class RequestsBotForTargetLangPoll (
+                    val question: String = "",
+                    val answerTrue: String = "",
+                    val answerNull: String = "",
+                    val answerFalse: String = "",
+                )
+            }
+        }
+        data class RequestsBotForModerator (
+            val chatId: Long = 0,
+            val topicId: Int = 0,
+            val lang: RequestsBotForModeratorLang = RequestsBotForModeratorLang(),
+        ) {
+            data class RequestsBotForModeratorLang (
+                val button: RequestsBotForModeratorLangButtons = RequestsBotForModeratorLangButtons(),
+                val event: RequestsBotForModeratorLangEvents = RequestsBotForModeratorLangEvents(),
+            ) {
+                data class RequestsBotForModeratorLangButtons (
+                    val approveSending: String = "",
+                    val denySending: String = "",
+                    val restrictSender: String = "",
+                    val closeRequestVote: String = "",
+                )
+                data class RequestsBotForModeratorLangEvents (
+                    val onNew: String = "",
+                    val onApprove: String = "",
+                    val onVoteClosed: String = "",
+                    val onUserRestricted: String = "",
+                )
+            }
+        }
+        data class RequestsBotCommonLang (
+            val command: RequestsBotTextCommandsDataClass = RequestsBotTextCommandsDataClass(),
+        ) {
+            data class RequestsBotTextCommandsDataClass (
+                val acceptHelp: String = "",
+                val rejectHelp: String = "",
+                val promoteHelp: String = "",
+                val kickHelp: String = "",
+                val restrictHelp: String = "",
+                val leaveHelp: String = "",
+                val returnHelp: String = "",
+                val permissionDenied: String = "",
             )
         }
     }

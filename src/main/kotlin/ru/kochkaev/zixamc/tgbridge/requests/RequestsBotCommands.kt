@@ -27,14 +27,14 @@ object RequestsBotCommands {
         if (!promoteUser(entity)) {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                text = BotLogic.escapePlaceholders(config.text.commands.textSyntaxPromoteHelp),
+                text = BotLogic.escapePlaceholders(config.commonLang.command.promoteHelp),
                 replyParameters = TgReplyParameters(msg.messageId),
             )
             return false
         } else {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                text = BotLogic.escapePlaceholders(config.text.events.forTarget.textOnPromote4Target, entity.nickname?:entity.userId.toString()),
+                text = BotLogic.escapePlaceholders(config.target.lang.event.onPromote, entity.nickname?:entity.userId.toString()),
                 replyParameters = TgReplyParameters(msg.messageId),
             )
             return true
@@ -46,12 +46,12 @@ object RequestsBotCommands {
                 msg, entity, listOf(0), false
             )) return true
         bot.sendMessage(
-            chatId = config.targetChatId,
-            text = BotLogic.escapePlaceholders(config.text.events.forTarget.textOnRulesUpdated4Target),
+            chatId = config.target.chatId,
+            text = BotLogic.escapePlaceholders(config.target.lang.event.onRulesUpdated),
             replyMarkup = TgInlineKeyboardMarkup(
                 listOf(listOf(
                     TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.text.buttons.textButtonAgreeWithRules,
+                    text = config.user.lang.button.agreeWithRules,
                     callback_data = "agree_with_rules",
                 ))),
             )
@@ -61,12 +61,12 @@ object RequestsBotCommands {
             try {
                 bot.sendMessage(
                     chatId = it.userId,
-                    text = BotLogic.escapePlaceholders(config.text.events.forUser.textOnRulesUpdated4User),
+                    text = BotLogic.escapePlaceholders(config.user.lang.event.onRulesUpdated),
                     replyMarkup = TgInlineKeyboardMarkup(
                         listOf(
                             listOf(
                                 TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    text = config.text.buttons.textButtonAgreeWithRules,
+                                    text = config.user.lang.button.agreeWithRules,
                                     callback_data = "agree_with_rules",
                                 )
                             )
@@ -85,9 +85,9 @@ object RequestsBotCommands {
             applyAccountStatuses = listOf("admin", "player"),
             targetAccountStatus = "frozen",
             editWhitelist = true,
-            helpText = config.text.commands.textSyntaxLeavedHelp,
-            text4User = config.text.events.forUser.textOnLeave4User,
-            text4Target = config.text.events.forTarget.textOnLeave4Target,
+            helpText = config.commonLang.command.leaveHelp,
+            text4User = config.user.lang.event.onLeave,
+            text4Target = config.target.lang.event.onLeave,
             removePreviousTgReplyMarkup = true,
             removeProtectedContent = true,
         )
@@ -99,21 +99,21 @@ object RequestsBotCommands {
             applyAccountStatuses = listOf("frozen"),
             targetAccountStatus = "player",
             editWhitelist = true,
-            helpText = config.text.commands.textSyntaxReturnHelp,
-            text4User = config.text.events.forUser.textOnReturn4User,
-            text4Target = config.text.events.forTarget.textOnReturn4Target,
+            helpText = config.commonLang.command.returnHelp,
+            text4User = config.user.lang.event.onReturn,
+            text4Target = config.target.lang.event.onReturn,
             removePreviousTgReplyMarkup = true,
-            replyMarkup4Message4User = TgInlineKeyboardMarkup(
+            replyMarkup4Message = TgInlineKeyboardMarkup(
                 listOf(
                     listOf(
                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.text.buttons.textButtonJoinToPlayersGroup,
+                            text = config.user.lang.button.joinToPlayersGroup,
                             url = config.playersGroupInviteLink
                         )
                     )
                 )
             ),
-            protectContentInMessage4User = true,
+            protectContentInMessage = true,
         )
     suspend fun onTelegramKickCommand(msg: TgMessage): Boolean =
         RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(
@@ -123,9 +123,9 @@ object RequestsBotCommands {
             applyAccountStatuses = listOf("admin", "player", "frozen"),
             targetAccountStatus = "banned",
             editWhitelist = true,
-            helpText = config.text.commands.textSyntaxKickHelp,
-            text4User = config.text.events.forUser.textOnKick4User,
-            text4Target = config.text.events.forTarget.textOnKick4Target,
+            helpText = config.commonLang.command.kickHelp,
+            text4User = config.user.lang.event.onKick,
+            text4Target = config.target.lang.event.onKick,
             removePreviousTgReplyMarkup = true,
             additionalConsumer = { hasError, entity ->
                 if (!hasError) try {
@@ -146,10 +146,10 @@ object RequestsBotCommands {
             targetAccountStatus = "banned",
             targetAccountType = 3,
             editWhitelist = true,
-            helpText = config.text.commands.textSyntaxRestrictHelp,
+            helpText = config.commonLang.command.restrictHelp,
         )
         if (!errorDueExecuting) {
-            val text4Target = config.text.events.forTarget.textOnRestrict4Target
+            val text4Target = config.target.lang.event.onRestrict
             if (text4Target.isNotEmpty()) bot.sendMessage(
                 chatId = message.chat.id,
                 text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
@@ -157,7 +157,7 @@ object RequestsBotCommands {
             )
             var newMessage: TgMessage? = null
             try {
-                val text4User = config.text.events.forUser.textOnRestrict4User
+                val text4User = config.user.lang.event.onRestrict
                 if (text4User.isNotEmpty()) {
                     newMessage = bot.sendMessage(
                         chatId = entity!!.userId,
@@ -196,10 +196,10 @@ object RequestsBotCommands {
         if (entity.isRestricted) return false
         bot.sendMessage(
             chatId = msg.chat.id,
-            text = config.text.events.forUser.textOnStart,
+            text = config.user.lang.event.onStart,
             replyMarkup = TgInlineKeyboardMarkup(listOf(listOf(
                 TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                text = config.text.buttons.textButtonCreateRequest,
+                text = config.user.lang.button.createRequest,
                 callback_data = "create_request",
             ))))
         )

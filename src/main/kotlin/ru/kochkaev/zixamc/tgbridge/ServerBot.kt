@@ -21,13 +21,13 @@ object ServerBot {
     val server: MinecraftServer
         get() = FabricLoader.getInstance().gameInstance as MinecraftServer
     lateinit var bot: TelegramBotZixa
-    lateinit var config: Config.ServerBotDataClass
+    val config
+        get() = ConfigManager.CONFIG!!.serverBot
     val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
     var isInitialized = false
     private val lastMessageLock = Mutex()
 
     fun startBot() {
-        config = ConfigManager.CONFIG!!.serverBot
         if (!config.isEnabled) return
         bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, config.pollTimeout)
         runBlocking {

@@ -2,8 +2,8 @@ package ru.kochkaev.zixamc.tgbridge.serverBot
 
 import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.SQLEntity
-import ru.kochkaev.zixamc.tgbridge.RequestsBot.config as configRequests
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ProtectedMessageData
+import ru.kochkaev.zixamc.tgbridge.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
@@ -29,10 +29,7 @@ object ServerBotLogic {
             chatId = entity.userId,
             replyParameters = if (replyToMessageID!=null) TgReplyParameters(replyToMessageID) else null,
             replyMarkup = TgInlineKeyboardMarkup(listOf(
-                listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = configRequests.text.buttons.textButtonCopyServerIP,
-                    copy_text = TgInlineKeyboardMarkup.TgInlineKeyboardButton.TgCopyTextButton(configRequests.serverIP),
-                )),
+                listOf(BotLogic.copyIPReplyMarkup),
             )),
             entity = entity,
         )

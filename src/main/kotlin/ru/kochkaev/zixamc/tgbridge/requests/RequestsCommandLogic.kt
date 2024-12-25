@@ -28,8 +28,8 @@ object RequestsCommandLogic {
         text4Target: String? = null,
         removePreviousTgReplyMarkup: Boolean = true,
         additionalConsumer: suspend (Boolean, SQLEntity?) -> Unit = { _, _ -> },
-        replyMarkup4Message4User: TgReplyMarkup? = null,
-        protectContentInMessage4User: Boolean = false,
+        replyMarkup4Message: TgReplyMarkup? = null,
+        protectContentInMessage: Boolean = false,
         removeProtectedContent: Boolean = false,
     ) : Boolean {
         val entity = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself)
@@ -55,10 +55,10 @@ object RequestsCommandLogic {
                     newMessage = bot.sendMessage(
                         chatId = entity!!.userId,
                         text = BotLogic.escapePlaceholders(text4User, entity.nickname ?: entity.userId.toString()),
-                        replyMarkup = replyMarkup4Message4User,
-                        protectContent = protectContentInMessage4User,
+                        replyMarkup = replyMarkup4Message,
+                        protectContent = protectContentInMessage,
                     )
-                    if (protectContentInMessage4User) entity.setProtectedInfoMessage(
+                    if (protectContentInMessage) entity.setProtectedInfoMessage(
                         message = newMessage,
                         protectedType = "text",
                         protectLevel = 1,
@@ -101,15 +101,15 @@ object RequestsCommandLogic {
             )) return true
         val request = entity.data!!.requests.firstOrNull {it.request_status == "pending"} ?: return false
         val message4User = BotLogic.escapePlaceholders(
-            text = if (isAccepted) config.text.events.forUser.textOnAccept4User else config.text.events.forUser.textOnReject4User,
+            text = if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject,
             nickname = request.request_nickname,
         )
         val message4Target = BotLogic.escapePlaceholders(
-            text = if (isAccepted) config.text.events.forTarget.textOnAccept4Target else config.text.events.forTarget.textOnReject4Target,
+            text = if (isAccepted) config.target.lang.event.onAccept else config.target.lang.event.onReject,
             nickname = request.request_nickname,
         )
         bot.sendMessage(
-            chatId = config.targetChatId,
+            chatId = config.target.chatId,
             text = message4Target,
             replyParameters = TgReplyParameters(replied.messageId),
         )

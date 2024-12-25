@@ -13,12 +13,12 @@ import ru.kochkaev.zixamc.tgbridge.requests.RequestsBotUpdateManager
  */
 object RequestsBot {
     lateinit var bot: TelegramBotZixa
-    lateinit var config: Config.RequestsBotDataClass
+    val config
+        get() = ConfigManager.CONFIG!!.requestsBot
     private val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
     var isInitialized = false
 
     fun startBot() {
-        config = ConfigManager.CONFIG!!.requestsBot
         if (!config.isEnabled) return
         bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, config.pollTimeout)
         runBlocking {
