@@ -13,6 +13,7 @@ import ru.kochkaev.zixamc.tgbridge.Config
 import ru.kochkaev.zixamc.tgbridge.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
+import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
@@ -88,9 +89,13 @@ object ChatSyncBotCore {
 
     fun registerPlayerLeaveListener(handler: (TBPlayerEventData) -> Unit) {
         ServerPlayConnectionEvents.DISCONNECT.register { handlr, _ ->
-            if (vanishInstance == null || !vanishInstance!!.isVanished(handlr.player))handler.invoke(
+            val player = handlr.player
+            if (
+                EasyAuthIntegration.isAuthenticated(player)
+                && (vanishInstance == null || !vanishInstance!!.isVanished(player))
+            ) handler.invoke(
                 TBPlayerEventData(
-                    handlr.player.displayName?.string ?: return@register,
+                    player.displayName?.string ?: return@register,
                     Component.text(""),
                 )
             )
