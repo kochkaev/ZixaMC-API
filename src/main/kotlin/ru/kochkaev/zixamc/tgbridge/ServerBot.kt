@@ -47,12 +47,13 @@ object ServerBot {
             bot.startPolling(coroutineScope)
             ServerBotLogic.registerTelegramHandlers()
             if (EasyAuthIntegration.isEnabled) {
-                ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
-                    EasyAuthIntegration.onJoin(handler.player)
-                }
+//                ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
+//                    EasyAuthIntegration.onJoin(handler.player)
+//                }
                 ServerPlayConnectionEvents.DISCONNECT.register { handler, _ ->
                     EasyAuthIntegration.onLeave(handler.player)
                 }
+                EasyAuthIntegration.registerEasyAuthHandlers()
             }
             if (config.chatSync.isEnabled) {
                 ChatSyncBotCore.init()

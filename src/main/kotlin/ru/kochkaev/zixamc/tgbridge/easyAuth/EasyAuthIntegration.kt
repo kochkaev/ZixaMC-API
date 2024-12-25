@@ -39,6 +39,13 @@ object EasyAuthIntegration {
         if (isEnabled) AuthManager.onLeave(player.nameForScoreboard)
     }
 
+    fun registerEasyAuthHandlers() {
+        CustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register({ authenticated, player ->
+            if (!authenticated) onJoin(player)
+            else onLeave(player)
+        })
+    }
+
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
 //        val args = cbq.data?.split(Regex("easyauth\$(.*?)/([a-zA-Z0-9_])"))
         if (!isEnabled) return
