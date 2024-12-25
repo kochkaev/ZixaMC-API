@@ -16,6 +16,7 @@ import ru.kochkaev.zixamc.tgbridge.ServerBot.server
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
+import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthCustomEvents
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
 
 
@@ -63,14 +64,25 @@ object ChatSyncBotCore {
     }
 
     fun registerPlayerJoinListener(handler: (TBPlayerEventData) -> Unit) {
-        ServerPlayConnectionEvents.JOIN.register { handlr, _, _ ->
-            if (vanishInstance == null || !vanishInstance!!.isVanished(handlr.player))handler.invoke(
-                TBPlayerEventData(
-                    handlr.player.displayName?.string ?: return@register,
-                    Component.text(""),
+        if (!EasyAuthIntegration.isEnabled)
+            ServerPlayConnectionEvents.JOIN.register { handlr, _, _ ->
+                if (vanishInstance == null || !vanishInstance!!.isVanished(handlr.player))handler.invoke(
+                    TBPlayerEventData(
+                        handlr.player.displayName?.string ?: return@register,
+                        Component.text(""),
+                    )
                 )
-            )
-        }
+            }
+        else
+            EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticaated, player ->
+                if (authenticaated)
+                    if (vanishInstance == null || !vanishInstance!!.isVanished(player))handler.invoke(
+                        TBPlayerEventData(
+                            player.displayName?.string ?: return@register,
+                            Component.text(""),
+                        )
+                    )
+            }
         vanishInstance?.registerOnJoinMessage(handler)
     }
 
@@ -83,11 +95,24 @@ object ChatSyncBotCore {
                 )
             )
         }
+        if (EasyAuthIntegration.isEnabled)
+            EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticated, player ->
+                if (!authenticated)
+                    if (
+                        (EasyAuthIntegration.isAuthenticated(player) && !player.isDisconnected)
+                        && (vanishInstance == null || !vanishInstance!!.isVanished(player))
+                    ) handler.invoke(
+                        TBPlayerEventData(
+                            player.displayName?.string ?: return@register,
+                            Component.text(""),
+                        )
+                    )
+            }
         vanishInstance?.registerOnLeaveMessage(handler)
     }
 
     fun registerPlayerAdvancementListener(handler: (TBPlayerEventData) -> Unit) {
-        CustomEvents.ADVANCEMENT_EARN_EVENT.register { player, advancementType, advancementNameComponent ->
+        ChatSyncCustomEvents.ADVANCEMENT_EARN_EVENT.register { player, advancementType, advancementNameComponent ->
             if (vanishInstance == null || !vanishInstance!!.isVanished(player)) {
                 if (player.displayName == null) {
                     return@register

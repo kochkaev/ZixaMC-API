@@ -6,7 +6,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import ru.kochkaev.zixamc.tgbridge.easyAuth.CustomEvents;
+import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthCustomEvents;
 
 @Mixin({ServerPlayerEntity.class})
 public class PlayerAuthMixin {
@@ -18,6 +18,6 @@ public class PlayerAuthMixin {
     )
     public void invokeOnUpdatePlayerAuthenticated(boolean authenticated, CallbackInfo ci) {
         ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
-        CustomEvents.Companion.getUPDATE_PLAYER_AUTHENTICATED_EVENT().invoker().onUpdatePlayerAuthenticated(authenticated, player);
+        EasyAuthCustomEvents.Companion.getUPDATE_PLAYER_AUTHENTICATED_EVENT().invoker().onUpdatePlayerAuthenticated(authenticated, player);
     }
 }

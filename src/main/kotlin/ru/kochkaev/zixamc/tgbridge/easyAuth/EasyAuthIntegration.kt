@@ -1,6 +1,5 @@
 package ru.kochkaev.zixamc.tgbridge.easyAuth
 
-import kotlinx.coroutines.coroutineScope
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.network.ServerPlayerEntity
 import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
@@ -8,7 +7,6 @@ import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 
 object EasyAuthIntegration {
 
@@ -40,7 +38,7 @@ object EasyAuthIntegration {
     }
 
     fun registerEasyAuthHandlers() {
-        CustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register({ authenticated, player ->
+        EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register({ authenticated, player ->
             if (!authenticated) onJoin(player)
             else onLeave(player)
         })

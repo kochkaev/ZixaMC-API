@@ -1,21 +1,14 @@
 package ru.kochkaev.zixamc.tgbridge.mixin;
 
-import net.minecraft.advancement.Advancement;
-import net.minecraft.advancement.AdvancementDisplay;
 import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.advancement.PlayerAdvancementTracker;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import org.slf4j.Logger;
-import org.spongepowered.asm.mixin.Dynamic;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge;
-import ru.kochkaev.zixamc.tgbridge.chatSync.CustomEvents;
+import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncCustomEvents;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -51,6 +44,6 @@ abstract class PlayerAdvancementTrackerMixin {
 //        final var toHoverableText = Advancement.class.getMethod("name"/*"method_684"*/);
 //        final var name = (Text) toHoverableText.invoke(advancement);
         final var name = _advancement.name().get();
-        CustomEvents.Companion.getADVANCEMENT_EARN_EVENT().invoker().onAdvancementEarn(owner, type, name);
+        ChatSyncCustomEvents.Companion.getADVANCEMENT_EARN_EVENT().invoker().onAdvancementEarn(owner, type, name);
     }
 }

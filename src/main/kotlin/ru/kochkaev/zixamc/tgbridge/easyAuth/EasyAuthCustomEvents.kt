@@ -2,9 +2,8 @@ package ru.kochkaev.zixamc.tgbridge.easyAuth
 
 import net.fabricmc.fabric.api.event.EventFactory
 import net.minecraft.server.network.ServerPlayerEntity
-import net.minecraft.text.Text
 
-class CustomEvents {
+class EasyAuthCustomEvents {
     companion object {
         val UPDATE_PLAYER_AUTHENTICATED_EVENT = EventFactory.createArrayBacked(UpdatePlayerAuthenticated::class.java) { handlers ->
             UpdatePlayerAuthenticated { authenticated, player ->
