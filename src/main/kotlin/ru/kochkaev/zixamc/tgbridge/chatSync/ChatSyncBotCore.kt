@@ -65,18 +65,21 @@ object ChatSyncBotCore {
     }
 
     fun registerPlayerJoinListener(handler: (TBPlayerEventData) -> Unit) {
-        if (!EasyAuthIntegration.isEnabled)
-            ServerPlayConnectionEvents.JOIN.register { handlr, _, _ ->
-                if (vanishInstance == null || !vanishInstance!!.isVanished(handlr.player))handler.invoke(
-                    TBPlayerEventData(
-                        handlr.player.displayName?.string ?: return@register,
-                        Component.text(""),
-                    )
+        ServerPlayConnectionEvents.JOIN.register { handlr, _, _ ->
+            val player = handlr.player
+            if (
+                EasyAuthIntegration.isAuthenticated(player)
+                && (vanishInstance == null || !vanishInstance!!.isVanished(player))
+            ) handler.invoke(
+                TBPlayerEventData(
+                    player.displayName?.string ?: return@register,
+                    Component.text(""),
                 )
-            }
-        else
-            EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticaated, player ->
-                if (authenticaated)
+            )
+        }
+        if (EasyAuthIntegration.isEnabled)
+            EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticated, player ->
+                if (authenticated)
                     if (vanishInstance == null || !vanishInstance!!.isVanished(player))handler.invoke(
                         TBPlayerEventData(
                             player.displayName?.string ?: return@register,
