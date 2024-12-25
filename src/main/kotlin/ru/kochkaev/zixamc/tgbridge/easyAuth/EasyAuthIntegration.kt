@@ -25,10 +25,10 @@ object EasyAuthIntegration {
 
     fun isAuthenticated(nickname: String): Boolean =
         if (isEnabled) AuthManager.isAuthenticated(nickname)
-        else false
+        else true
     fun isAuthenticated(player: ServerPlayerEntity): Boolean =
         if (isEnabled) AuthManager.isAuthenticated(player)
-        else false
+        else true
 
     fun onJoin(player: ServerPlayerEntity) = ServerBot.withScopeAndLock {
         if (isEnabled) AuthManager.onJoin(player)
