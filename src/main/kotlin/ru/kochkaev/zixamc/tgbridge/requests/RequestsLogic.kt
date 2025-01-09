@@ -55,7 +55,7 @@ object RequestsLogic {
         return true
     }
     suspend fun newRequest(entity: SQLEntity): Boolean {
-        when (entity.createAndOrGetData().requests.firstOrNull { listOf("creating", "pending").contains(it.request_status) }?.request_status ?: "") {
+        when (entity.createAndOrGetData().requests.firstOrNull { listOf("creating", "moderating", "pending").contains(it.request_status) }?.request_status ?: "") {
             "creating" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
@@ -70,7 +70,7 @@ object RequestsLogic {
                 )
                 return false
             }
-            "pending" -> {
+            "pending", "moderating" -> {
                 bot.sendMessage(
                     chatId = entity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.creating.youHavePendingRequest, entity.nickname),

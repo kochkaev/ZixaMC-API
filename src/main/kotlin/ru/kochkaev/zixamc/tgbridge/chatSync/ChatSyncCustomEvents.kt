@@ -13,9 +13,19 @@ class ChatSyncCustomEvents {
                 }
             }
         }
+        val PLAYER_DIE_EVENT = EventFactory.createArrayBacked(PlayerDie::class.java) { handlers ->
+            PlayerDie { player, deathMessage ->
+                for (handler in handlers) {
+                    handler.onPlayerDie(player, deathMessage)
+                }
+            }
+        }
     }
 
     fun interface AdvancementEarn {
         fun onAdvancementEarn(player: ServerPlayerEntity, advancementType: String, advancementNameComponent: Text): Unit
+    }
+    fun interface PlayerDie {
+        fun onPlayerDie(player: ServerPlayerEntity, deathMessage: Text)
     }
 }

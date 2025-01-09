@@ -51,9 +51,8 @@ object ChatSyncBotCore {
     }
 
     fun registerPlayerDeathListener(handler: (TBPlayerEventData) -> Unit) {
-        ServerLivingEntityEvents.AFTER_DEATH.register { entity, damageSource ->
-            if (entity is ServerPlayerEntity && (vanishInstance == null || !vanishInstance!!.isVanished(entity))) {
-                val deathMessage = damageSource.getDeathMessage(entity)
+        ChatSyncCustomEvents.PLAYER_DIE_EVENT.register { entity, deathMessage ->
+            if (vanishInstance == null || !vanishInstance!!.isVanished(entity)) {
                 handler(
                     TBPlayerEventData(
                         entity.displayName?.string ?: return@register,
