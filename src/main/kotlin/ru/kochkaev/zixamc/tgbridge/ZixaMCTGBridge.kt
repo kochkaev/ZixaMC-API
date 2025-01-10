@@ -16,14 +16,15 @@ import ru.kochkaev.zixamc.tgbridge.command.ZixaMCCommand
 class ZixaMCTGBridge : ModInitializer {
     companion object {
         val logger = LoggerFactory.getLogger("ZixaMCTGBridge")
+        val server: MinecraftServer?
+            get() = FabricLoader.getInstance().gameInstance as MinecraftServer?
         fun addToWhitelist(nickname: String) =
             runConsoleCommand(TextParser.formatLang(ConfigManager.CONFIG!!.requestsBot.addWhitelistCommand, "nickname" to nickname))
         fun removeFromWhitelist(nickname: String) {
-            val server = FabricLoader.getInstance().gameInstance as MinecraftServer
             runConsoleCommand(TextParser.formatLang(ConfigManager.CONFIG!!.requestsBot.removeWhitelistCommand, "nickname" to nickname))
         }
         fun runConsoleCommand(command: String) {
-            val server = FabricLoader.getInstance().gameInstance as MinecraftServer
+            val server = server ?: return
             val dispatcher = server.commandManager.dispatcher
             val parseResults = dispatcher.parse(StringReader(command), server.commandSource)
             dispatcher.execute(parseResults)
