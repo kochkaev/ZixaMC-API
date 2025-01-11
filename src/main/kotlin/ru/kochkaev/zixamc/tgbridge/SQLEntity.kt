@@ -16,10 +16,10 @@ class SQLEntity(val sql: MySQL, val userId: Long) {
         set(nicknames) {
             sql.updateUserSecondNicknames(userId, nicknames)
         }
-    var accountType: Int
-        get() = sql.getUserAccountType(userId)
+    var accountType: AccountType
+        get() = AccountType.parse(sql.getUserAccountType(userId))
         set(accountType) {
-            sql.updateUserAccountType(userId, accountType)
+            sql.updateUserAccountType(userId, accountType.getId())
         }
     var tempArray: Array<String>?
         get() = sql.getUserTempArray(userId)
@@ -102,7 +102,7 @@ class SQLEntity(val sql: MySQL, val userId: Long) {
         data = data!!.apply { this.minecraftAccounts = accounts }
         return true
     }
-    fun editMinecraftAccount(nickname: String, newStatus: String) {
+    fun editMinecraftAccount(nickname: String, newStatus: MinecraftAccountType) {
         val accounts = (data?:return).minecraftAccounts
         val matched = accounts.first { it.nickname == nickname }
         matched.accountStatus = newStatus

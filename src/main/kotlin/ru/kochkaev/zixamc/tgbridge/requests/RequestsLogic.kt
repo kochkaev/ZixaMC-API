@@ -6,15 +6,14 @@ import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ProtectedMessageData
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestData
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 
 object RequestsLogic {
 
     suspend fun cancelRequest(entity: SQLEntity): Boolean {
-        val request = (entity.data?:return false).requests.firstOrNull { it.request_status == "pending" } ?: return false
-        entity.editRequest(entity.data!!.requests.first { it.request_status == "pending" }.apply { this.request_status = "canceled" })
+        val request = (entity.data?:return false).requests.firstOrNull { RequestType.getAllPending().contains(it.request_status) } ?: return false
+        entity.editRequest(request.apply { this.request_status = RequestType.CANCELED })
         bot.sendMessage(
             chatId = entity.userId,
             text = BotLogic.escapePlaceholders(config.user.lang.event.onCanceled, entity.nickname),
@@ -39,7 +38,7 @@ object RequestsLogic {
     }
     suspend fun cancelSendingRequest(entity: SQLEntity): Boolean {
         entity.data = entity.data.apply {
-            (this ?: return false).requests.filter { it.request_status == "creating" }
+            (this ?: return false).requests.filter { it.request_status == RequestType.CREATING }
         }
         bot.sendMessage(
             chatId = entity.userId,
@@ -55,8 +54,8 @@ object RequestsLogic {
         return true
     }
     suspend fun newRequest(entity: SQLEntity): Boolean {
-        when (entity.createAndOrGetData().requests.firstOrNull { listOf("creating", "moderating", "pending").contains(it.request_status) }?.request_status ?: "") {
-            "creating" -> {
+        when (entity.createAndOrGetData().requests.firstOrNull { RequestType.getAllPending().contains(it.request_status) }?.request_status) {
+            RequestType.CREATING -> {
                 bot.sendMessage(
                     chatId = entity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.creating.youAreNowCreatingRequest),
@@ -70,7 +69,7 @@ object RequestsLogic {
                 )
                 return false
             }
-            "pending", "moderating" -> {
+            RequestType.MODERATING, RequestType.PENDING -> {
                 bot.sendMessage(
                     chatId = entity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.creating.youHavePendingRequest, entity.nickname),
@@ -84,8 +83,9 @@ object RequestsLogic {
                 )
                 return false
             }
+            else -> {}
         }
-        if (entity.accountType<2) {
+        if (entity.accountType.isPlayer()) {
             bot.sendMessage(
                 chatId = entity.userId,
                 text = BotLogic.escapePlaceholders(config.user.lang.creating.youAreNowPlayer, entity.nickname),
@@ -115,33 +115,31 @@ object RequestsLogic {
             (entity.data?.requests?.maxOfOrNull { it.user_request_id } ?: -1)+1,
             null,
             forReplyMessage.messageId.toLong(),
-            "creating",
+            RequestType.CREATING,
             null,
         )
         )
-        if (entity.accountType>2) entity.accountType = 2
+        if (entity.accountType == AccountType.UNKNOWN) entity.accountType = AccountType.REQUESTER
         return true
     }
 
-    fun promoteUser(argEntity: SQLEntity? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null): Boolean {
+    fun promoteUser(argEntity: SQLEntity? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null, argTarget: AccountType? = null): Boolean {
         val entity = argEntity ?:
-        if (userId != null) MySQLIntegration.getLinkedEntity(userId) ?: return false
-        else if (nickname != null) MySQLIntegration.getLinkedEntityByNickname(nickname) ?: return false
-        else return false
-        val targetId = argTargetId ?: when (targetName?.lowercase()?:return false) {
-            "admin" -> 0
-            "player" -> 1
-            "requester" -> 2
-            else -> 3
-        }
-        entity.accountType = targetId
-        return entity.accountType==targetId
+            if (userId != null) MySQLIntegration.getLinkedEntity(userId) ?: return false
+            else if (nickname != null) MySQLIntegration.getLinkedEntityByNickname(nickname) ?: return false
+            else return false
+        val target = argTarget ?:
+            if (argTargetId!=null) AccountType.parse(argTargetId)
+            else if (targetName!=null) AccountType.parse(targetName)
+            else AccountType.UNKNOWN
+        entity.accountType = target
+        return entity.accountType==target
     }
 
     fun checkPermissionToExecute(
         message: TgMessage,
         entity: SQLEntity = MySQLIntegration.getOrRegisterLinkedEntity(message.from!!.id),
-        allowedAccountTypes: List<Int> = listOf(0),
+        allowedAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedIfSpendByItself: Boolean = false,
     ): Boolean =
         !(entity.accountType in allowedAccountTypes && (!allowedIfSpendByItself || message.from!!.id==entity.userId))
@@ -166,15 +164,15 @@ object RequestsLogic {
 
     fun updateServerPlayerStatus(
         entity: SQLEntity,
-        applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),
-        targetAccountStatus: String = "player",
-        targetAccountType: Int = matchAccountTypeFromMinecraftAccountStatus(targetAccountStatus),
+        applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
+        targetAccountStatus: MinecraftAccountType = MinecraftAccountType.PLAYER,
+        targetAccountType: AccountType = targetAccountStatus.toAccountType(),
         editWhitelist: Boolean = false
     ) : Boolean {
-        val isTargetPlayer = isPlayer(targetAccountType)
+        val isTargetPlayer = targetAccountType.isPlayer()
         if (!promoteUser(
                 argEntity = entity,
-                argTargetId = targetAccountType,
+                argTarget = targetAccountType,
             )
         ) return false
         else {
@@ -193,14 +191,6 @@ object RequestsLogic {
             return true
         }
     }
-
-    fun matchAccountTypeFromMinecraftAccountStatus(status: String): Int = when (status) {
-        "admin" -> 0
-        "player" -> 1
-        "banned", "frozen" -> 2
-        else -> 3
-    }
-    fun isPlayer(accountType: Int): Boolean = accountType<=1
 
     suspend fun deleteProtected(
         protected: List<ProtectedMessageData>,
@@ -231,11 +221,11 @@ object RequestsLogic {
     suspend fun executeCheckPermissionsAndExceptions(
         message: TgMessage,
         entity: SQLEntity?,
-        allowedExecutionAccountTypes: List<Int> = listOf(0),
+        allowedExecutionAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedExecutionIfSpendByItself: Boolean = false,
-        applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),
-        targetAccountStatus: String = "player",
-        targetAccountType: Int = matchAccountTypeFromMinecraftAccountStatus(targetAccountStatus),
+        applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
+        targetAccountStatus: MinecraftAccountType = MinecraftAccountType.PLAYER,
+        targetAccountType: AccountType = targetAccountStatus.toAccountType(),
         editWhitelist: Boolean = false,
         helpText: String? = null,
     ) : Boolean {

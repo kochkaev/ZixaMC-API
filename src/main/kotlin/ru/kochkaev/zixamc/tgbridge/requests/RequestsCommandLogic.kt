@@ -6,22 +6,24 @@ import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountData
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountType
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.checkPermissionToExecute
-import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchAccountTypeFromMinecraftAccountStatus
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
 
 object RequestsCommandLogic {
 
     suspend fun executeUpdateServerPlayerStatusCommand(
         message: TgMessage,
-        allowedExecutionAccountTypes: List<Int> = listOf(0),
+        allowedExecutionAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedExecutionIfSpendByItself: Boolean = false,
-        applyAccountStatuses: List<String> = listOf("admin", "player", "old", "banned", "frozen"),
-        targetAccountStatus: String = "player",
+        applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
+        targetAccountStatus: MinecraftAccountType = MinecraftAccountType.PLAYER,
         editWhitelist: Boolean = false,
         helpText: String? = null,
         text4User: String? = null,
@@ -68,7 +70,7 @@ object RequestsCommandLogic {
             } catch (_: Exception) {}
             try {
                 if (removePreviousTgReplyMarkup)
-                    entity!!.data?.requests?.filter { it.request_status == "accepted" }?.forEach {
+                    entity!!.data?.requests?.filter { it.request_status == RequestType.ACCEPTED }?.forEach {
                         bot.editMessageReplyMarkup(
                             chatId = entity.userId,
                             messageId = it.message_id_in_chat_with_user.toInt(),
@@ -77,9 +79,9 @@ object RequestsCommandLogic {
                     }
             } catch (_: Exception) {}
             if (removeProtectedContent)
-                BotLogic.deleteAllProtected(entity!!.data?.protectedMessages?:listOf(), matchAccountTypeFromMinecraftAccountStatus(targetAccountStatus))
+                BotLogic.deleteAllProtected(entity!!.data?.protectedMessages?:listOf(), targetAccountStatus.toAccountType())
             if (newMessage!=null)
-                entity!!.data?.requests?.filter { it.request_status == "accepted" } ?.forEach {
+                entity!!.data?.requests?.filter { it.request_status == RequestType.ACCEPTED } ?.forEach {
 //                    val request = it.copy(message_id_in_chat_with_user = newMessage.messageId.toLong())
 //                    request.message_id_in_chat_with_user = newMessage.messageId.toLong()
                     entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage.messageId.toLong() })
@@ -97,9 +99,9 @@ object RequestsCommandLogic {
         val replied = message.replyToMessage?:return false
         val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return false
         if (!checkPermissionToExecute(
-                message, entity, listOf(0), false
+                message, entity, listOf(AccountType.ADMIN), false
             )) return true
-        val request = entity.data!!.requests.firstOrNull {it.request_status == "pending"} ?: return false
+        val request = entity.data!!.requests.firstOrNull {it.request_status == RequestType.PENDING} ?: return false
         val message4User = BotLogic.escapePlaceholders(
             text = if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject,
             nickname = request.request_nickname,
@@ -124,14 +126,14 @@ object RequestsCommandLogic {
             messageId = request.message_id_in_chat_with_user.toInt(),
             replyMarkup = TgReplyMarkup()
         )
-        request.request_status = if (isAccepted) "accepted" else "rejected"
+        request.request_status = if (isAccepted) RequestType.ACCEPTED else RequestType.REJECTED
         request.message_id_in_chat_with_user = newMessage.messageId.toLong()
         entity.editRequest(request)
         entity.tempArray = arrayOf()
         if (isAccepted) {
             RequestsLogic.sendOnJoinInfoMessage(entity, newMessage.messageId)
-            entity.accountType = 1
-            entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, "player"))
+            entity.accountType = AccountType.PLAYER
+            entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, MinecraftAccountType.PLAYER))
             ZixaMCTGBridge.addToWhitelist(request.request_nickname!!)
         }
         return true

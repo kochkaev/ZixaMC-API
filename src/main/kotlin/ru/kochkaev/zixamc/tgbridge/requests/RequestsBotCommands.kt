@@ -4,6 +4,9 @@ import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountType
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestType
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.newRequest
@@ -22,7 +25,7 @@ object RequestsBotCommands {
     suspend fun onTelegramPromoteCommand(msg: TgMessage): Boolean {
         val entity = RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand(msg)?:return false
         if (!RequestsLogic.checkPermissionToExecute(
-                msg, entity, listOf(0), false
+                msg, entity, listOf(AccountType.ADMIN), false
             )) return true
         if (!promoteUser(entity)) {
             bot.sendMessage(
@@ -43,7 +46,7 @@ object RequestsBotCommands {
     suspend fun onTelegramRulesUpdatedCommand(msg: TgMessage): Boolean {
         val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
         if (!RequestsLogic.checkPermissionToExecute(
-                msg, entity, listOf(0), false
+                msg, entity, listOf(AccountType.ADMIN), false
             )) return true
         bot.sendMessage(
             chatId = config.target.chatId,
@@ -80,10 +83,10 @@ object RequestsBotCommands {
     suspend fun onTelegramLeaveCommand(msg: TgMessage): Boolean =
         RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(
             message = msg,
-            allowedExecutionAccountTypes = listOf(0),
+            allowedExecutionAccountTypes = listOf(AccountType.ADMIN),
             allowedExecutionIfSpendByItself = true,
-            applyAccountStatuses = listOf("admin", "player"),
-            targetAccountStatus = "frozen",
+            applyAccountStatuses = MinecraftAccountType.getAllActiveNow(),
+            targetAccountStatus = MinecraftAccountType.FROZEN,
             editWhitelist = true,
             helpText = config.commonLang.command.leaveHelp,
             text4User = config.user.lang.event.onLeave,
@@ -94,10 +97,10 @@ object RequestsBotCommands {
     suspend fun onTelegramReturnCommand(msg: TgMessage): Boolean =
         RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(
             message = msg,
-            allowedExecutionAccountTypes = listOf(0),
+            allowedExecutionAccountTypes = listOf(AccountType.ADMIN),
             allowedExecutionIfSpendByItself = false,
-            applyAccountStatuses = listOf("frozen"),
-            targetAccountStatus = "player",
+            applyAccountStatuses = listOf(MinecraftAccountType.FROZEN),
+            targetAccountStatus = MinecraftAccountType.PLAYER,
             editWhitelist = true,
             helpText = config.commonLang.command.returnHelp,
             text4User = config.user.lang.event.onReturn,
@@ -118,10 +121,10 @@ object RequestsBotCommands {
     suspend fun onTelegramKickCommand(msg: TgMessage): Boolean =
         RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(
             message = msg,
-            allowedExecutionAccountTypes = listOf(0),
+            allowedExecutionAccountTypes = listOf(AccountType.ADMIN),
             allowedExecutionIfSpendByItself = false,
-            applyAccountStatuses = listOf("admin", "player", "frozen"),
-            targetAccountStatus = "banned",
+            applyAccountStatuses = MinecraftAccountType.getAllMaybeActive(),
+            targetAccountStatus = MinecraftAccountType.BANNED,
             editWhitelist = true,
             helpText = config.commonLang.command.kickHelp,
             text4User = config.user.lang.event.onKick,
@@ -140,11 +143,11 @@ object RequestsBotCommands {
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
             entity = entity,
-            allowedExecutionAccountTypes = listOf(0),
+            allowedExecutionAccountTypes = listOf(AccountType.ADMIN),
             allowedExecutionIfSpendByItself = false,
-            applyAccountStatuses = listOf("admin", "player", "frozen"),
-            targetAccountStatus = "banned",
-            targetAccountType = 3,
+            applyAccountStatuses = MinecraftAccountType.getAllMaybeActive(),
+            targetAccountStatus = MinecraftAccountType.BANNED,
+            targetAccountType = AccountType.UNKNOWN,
             editWhitelist = true,
             helpText = config.commonLang.command.restrictHelp,
         )
@@ -165,8 +168,9 @@ object RequestsBotCommands {
                     )
                 }
             } catch (_: Exception) {}
+            BotLogic.deleteAllProtected(entity!!.data?.protectedMessages?:listOf(), AccountType.UNKNOWN)
             try {
-                entity!!.data?.requests?.filter { it.request_status == "accepted" }?.forEach {
+                entity.data?.requests?.filter { it.request_status == RequestType.ACCEPTED }?.forEach {
                     bot.editMessageReplyMarkup(
                         chatId = entity.userId,
                         messageId = it.message_id_in_chat_with_user.toInt(),
@@ -174,13 +178,12 @@ object RequestsBotCommands {
                     )
                 }
             } catch (_: Exception) {}
-            BotLogic.deleteAllProtected(entity!!.data?.protectedMessages?:listOf(), 3)
-            entity.data = entity.data.let { it!!.requests = ArrayList(it.requests.filter { it1 -> it1.request_status != "creating" }); it }
-            entity.data?.requests?.firstOrNull { it.request_status == "pending" } ?.let {
-                entity.editRequest(it.apply { this.request_status = "rejected" })
+            entity.data = entity.data.let { it!!.requests = ArrayList(it.requests.filter { it1 -> it1.request_status != RequestType.CREATING }); it }
+            entity.data?.requests?.firstOrNull { RequestType.getAllPending().contains(it.request_status) } ?.let {
+                entity.editRequest(it.apply { this.request_status = RequestType.REJECTED })
             }
             if (newMessage!=null)
-                entity.data?.requests?.filter { it.request_status == "accepted" } ?.forEach {
+                entity.data?.requests?.filter { it.request_status == RequestType.ACCEPTED } ?.forEach {
                     entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage.messageId.toLong() })
                 }
             try {
@@ -216,8 +219,8 @@ object RequestsBotCommands {
         if (msg.chat.id < 0) return true
         val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
         val requests = (entity.data?:return false).requests
-        if (requests.any {it.request_status == "pending"}) return cancelRequest(entity)
-        else if (requests.any {it.request_status == "creating"}) return cancelSendingRequest(entity)
+        if (requests.any {RequestType.getAllPending().contains(it.request_status)}) return cancelRequest(entity)
+        else if (requests.any {it.request_status == RequestType.CREATING}) return cancelSendingRequest(entity)
         return false
     }
 }

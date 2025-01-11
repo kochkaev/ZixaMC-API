@@ -41,7 +41,7 @@ object MySQLIntegration {
 //        entity.data = entity.createAndOrGetData().apply { this.agreedWithRules = agreed }
 //    }
 
-    fun isAdmin(userId: Long): Boolean = linkedEntities[userId]?.accountType == 0
+    fun isAdmin(userId: Long): Boolean = linkedEntities[userId]?.accountType == AccountType.ADMIN
 
     fun getLinkedEntity(userId: Long): SQLEntity? = linkedEntities[userId]
     fun getOrRegisterLinkedEntity(userId: Long): SQLEntity {
@@ -68,9 +68,9 @@ object MySQLIntegration {
         linkedEntities[userId]!!.addNickname(nickname)
     }
     fun getAllActiveNicknamesOfUser(userId: Long): List<String> =
-        linkedEntities[userId]?.data?.minecraftAccounts?.filter { it.accountStatus == "player" || it.accountStatus == "admin" }?.map { it.nickname } ?: listOf()
+        linkedEntities[userId]?.data?.minecraftAccounts?.filter { MinecraftAccountType.getAllActiveNow().contains(it.accountStatus) }?.map { it.nickname } ?: listOf()
     fun getAllFrozenNicknamesOfUser(userId: Long): List<String> =
-        linkedEntities[userId]?.data?.minecraftAccounts?.filter { it.accountStatus == "frozen" }?.map { it.nickname } ?: listOf()
+        linkedEntities[userId]?.data?.minecraftAccounts?.filter { it.accountStatus == MinecraftAccountType.FROZEN }?.map { it.nickname } ?: listOf()
 
     fun parseNewDataType(json: String?): AccountData =
         if (json != null) sql.gson.fromJson(json, AccountData::class.java) else AccountData()

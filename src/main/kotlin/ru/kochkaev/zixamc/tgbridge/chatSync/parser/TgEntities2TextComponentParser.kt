@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntityType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 
 object TgEntities2TextComponentParser {
@@ -41,16 +42,16 @@ object TgEntities2TextComponentParser {
                 var tempComponent  = Component.text(tempText).toBuilder()
                 currentEntities.forEach {
                     when (it.type) {
-                        "bold" -> tempComponent.decoration(TextDecoration.BOLD, true)
-                        "italic" -> tempComponent.decoration(TextDecoration.ITALIC, true)
-                        "underline" -> tempComponent.decoration(TextDecoration.UNDERLINED, true)
-                        "strikethrough" -> tempComponent.decoration(TextDecoration.STRIKETHROUGH, true)
-                        "text_link" -> tempComponent = FormattingManager.getAsLinkComponent(
+                        TgEntityType.BOLD -> tempComponent.decoration(TextDecoration.BOLD, true)
+                        TgEntityType.ITALIC -> tempComponent.decoration(TextDecoration.ITALIC, true)
+                        TgEntityType.UNDERLINE -> tempComponent.decoration(TextDecoration.UNDERLINED, true)
+                        TgEntityType.STRIKETHROUGH -> tempComponent.decoration(TextDecoration.STRIKETHROUGH, true)
+                        TgEntityType.TEXT_LINK -> tempComponent = FormattingManager.getAsLinkComponent(
                             tempComponent.build(),
                             it.url!!
                         ).toBuilder()
-                        "url" -> tempComponent = FormattingManager.getAsLinkComponent(tempComponent.build()).toBuilder()
-                        "mention" -> StyleManager.decorateAll(
+                        TgEntityType.URL -> tempComponent = FormattingManager.getAsLinkComponent(tempComponent.build()).toBuilder()
+                        TgEntityType.MENTION -> StyleManager.decorateAll(
                             tempComponent,
                             lang.minecraft.messageFormatting.mentionFormatting
                         ).color(
@@ -58,15 +59,16 @@ object TgEntities2TextComponentParser {
                             .clickEvent(ClickEvent.suggestCommand(tempText))
                             .insertion(tempText)
                             .hoverEvent(Component.text(lang.minecraft.messageMeta.hoverTagToReply).asHoverEvent())
-                        "hashtag", "cashtag" -> StyleManager.decorateAll(
+                        TgEntityType.HASHTAG, TgEntityType.CASHTAG -> StyleManager.decorateAll(
                             tempComponent,
                             lang.minecraft.messageFormatting.hashtagFormatting
                         ).color(
                             TextColor.fromHexString(lang.minecraft.messageFormatting.hashtagColor))
                             .clickEvent(ClickEvent.openUrl("https://t.me/c/${-message.chat.id-1000000000000}/" + (if (message.messageThreadId!=null) "${message.messageThreadId}/" else "") + "${message.messageId}"))
                             .hoverEvent(Component.text(lang.minecraft.messageMeta.hoverOpenInTelegram).asHoverEvent())
-                        "spoiler" -> isSpoiler = true
-                        "code", "pre" -> tempComponent = FormattingManager.getAsCodeComponent(tempComponent.build()).toBuilder()
+                        TgEntityType.SPOILER -> isSpoiler = true
+                        TgEntityType.CODE, TgEntityType.PRE -> tempComponent = FormattingManager.getAsCodeComponent(tempComponent.build()).toBuilder()
+                        else -> {}
                     }
                 }
                 if (isSpoiler) {

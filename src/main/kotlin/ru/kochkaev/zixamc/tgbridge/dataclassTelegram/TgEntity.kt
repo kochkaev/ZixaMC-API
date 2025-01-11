@@ -6,6 +6,6 @@ package ru.kochkaev.zixamc.tgbridge.dataclassTelegram
 data class TgEntity(
     val offset: Int?,
     var length: Int?,
-    val type: String?,
+    val type: TgEntityType?,
     var url: String? = null,
 )

@@ -8,6 +8,7 @@ import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
 import ru.kochkaev.zixamc.tgbridge.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 
 object BotLogic {
@@ -43,6 +44,9 @@ object BotLogic {
         }
     }
 
+    suspend fun deleteAllProtected(protected: List<ProtectedMessageData>, protectLevel: AccountType) {
+        deleteAllProtected(protected, protectLevel.getId())
+    }
     suspend fun deleteAllProtected(
         protected: List<ProtectedMessageData>,
         protectLevel: Int,
@@ -77,7 +81,7 @@ object BotLogic {
     fun getMentionOfAllPlayers() : String {
         val output = StringBuilder()
         val placeholder = CONFIG?.serverBot?.mentionAllReplaceWith?:"+"
-        MySQLIntegration.linkedEntities.filter { it.value.accountType <= 1 } .forEach {
+        MySQLIntegration.linkedEntities.filter { it.value.accountType.isPlayer() } .forEach {
             output.append("<a href=\"tg://user?id=${it.key}\">$placeholder</a>")
         }
         return output.toString()
