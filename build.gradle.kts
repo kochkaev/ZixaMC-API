@@ -18,7 +18,8 @@ plugins {
 //    id("org.jetbrains.kotlin.jvm") version "2.0.21"
 //    id("com.github.johnrengelman.shadow") version "8.1.1"
 //    id("com.gradleup.shadow") version "8.3.4"
-    id("fabric-loom") version "1.7.1"
+    id("fabric-loom") version "1.9.1"
+//    id("fabric-loom") version "1.7.1"
     id("maven-publish")
 }
 
@@ -113,23 +114,24 @@ dependencies {
     })
 
     // EasyAuth
-    modImplementation("maven.modrinth:easyauth:3.0.25")
+    compileOnly("maven.modrinth:easyauth:3.0.25")
 //    modImplementation("xyz.nucleoid:server-translations-api:2.4.0+1.21.2-rc1")
-//    // Password hashing
-//    // Argon2
-//    modImplementation("de.mkammerer:argon2-jvm:2.11")
-//    modImplementation("de.mkammerer:argon2-jvm-nolibs:2.11")
-//    // BCrypt
-//    modImplementation("at.favre.lib:bcrypt:0.10.2")
-//    modImplementation("at.favre.lib:bytes:1.6.1")
-//    // Hocon config
-//    modImplementation("org.spongepowered:configurate-core:4.1.2")
-//    modImplementation("org.spongepowered:configurate-hocon:4.1.2")
-//    modImplementation("org.apache.commons:commons-text:1.10.0")
-//    modImplementation("com.typesafe:config:1.4.3")
-//    modImplementation("io.leangen.geantyref:geantyref:1.3.13")
-//    // JNA lib
-//    modImplementation("net.java.dev.jna:jna:5.13.0")
+    modImplementation("xyz.nucleoid:server-translations-api:2.3.1+1.21-pre2")
+    // Password hashing
+    // Argon2
+    modImplementation("de.mkammerer:argon2-jvm:2.11")
+    modImplementation("de.mkammerer:argon2-jvm-nolibs:2.11")
+    // BCrypt
+    modImplementation("at.favre.lib:bcrypt:0.10.2")
+    modImplementation("at.favre.lib:bytes:1.6.1")
+    // Hocon config
+    modImplementation("org.spongepowered:configurate-core:4.1.2")
+    modImplementation("org.spongepowered:configurate-hocon:4.1.2")
+    modImplementation("org.apache.commons:commons-text:1.10.0")
+    modImplementation("com.typesafe:config:1.4.3")
+    modImplementation("io.leangen.geantyref:geantyref:1.3.13")
+    // JNA lib
+    modImplementation("net.java.dev.jna:jna:5.13.0")
 
     include(implementation("net.kyori:adventure-api:${adventureVersion}")!!)
     include(implementation("net.kyori:adventure-key:${adventureVersion}")!!)
@@ -149,6 +151,10 @@ dependencies {
     modImplementation("me.lucko:fabric-permissions-api:0.3.1")
     modImplementation("eu.pb4:predicate-api:0.5.2+1.21")
     modImplementation("eu.pb4:placeholder-api:2.4.1+1.21")
+
+    // Markdown
+//    include(implementation("org.commonmark:commonmark:0.18.2")!!)
+//    include(implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.18.2")!!)
 }
 //dependencyManagement {
 //    imports {

@@ -154,7 +154,8 @@ object TextParser {
     }
 
     private fun forwardFromToText(message: TgMessage): String? {
-        val forwardFromName = message.forwardFrom?.let { _ ->
+        val entity = if (message.from != null) MySQLIntegration.getLinkedEntity(message.from.id) else null
+        val forwardFromName = entity?.nickname ?: message.forwardFrom?.let { _ ->
             (message.forwardFrom.firstName + " " + (message.forwardFrom.lastName ?: "")).trim()
         } ?: message.forwardFromChat?.let {
             message.forwardFromChat.title

@@ -1,7 +1,8 @@
 package ru.kochkaev.zixamc.tgbridge.chatSync.parser
 
-import com.ibm.icu.impl.TimeZoneGenericNames.Pattern
 import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.markdown.RegularNode
 import java.util.*
 
 object Markdown2HTMLParser {
@@ -13,6 +14,13 @@ object Markdown2HTMLParser {
     private val textLinkURLRegex = Regex("(?<!\\\\)]\\((.*?)(?<!\\\\)\\)")
 
     fun parse(
+        markdown: String
+    ): String {
+        val node = RegularNode(markdown)
+        val parsed = node.parse().build()
+        return parsed
+    }
+    fun parseOld(
         markdown: String,
         tagMap: Map<String, String> = mapOf(
             "**" to "b",
@@ -33,14 +41,16 @@ object Markdown2HTMLParser {
         var codeOrPreBlockOpenedAt = 0
 
         val stack = Stack<String>()
-        val result = StringBuilder()
+        val stackText = Stack<StringBuilder>()
+//        val result = StringBuilder()
+        stackText.add(StringBuilder())
         var i = 0
 
         while (i < markdown.length) {
             when {
                 // Обработка экранирования
                 markdown[i] == '\\' && i + 1 < markdown.length -> {
-                    result.append(markdown[i + 1])
+                    stackText.last().append(markdown[i + 1])
                     i += 2
                 }
                 // Обработка ключей
@@ -48,27 +58,46 @@ object Markdown2HTMLParser {
                     var matched = false
                     for ((key, tag) in tagMap.entries.sortedByDescending { it.key.length }) {
                         if (markdown.startsWith(key, i)) {
-                            if (stack.isNotEmpty() && codeOrPreList.contains(stack.last()) && stack.last() != key) result.append(key)
-                            else if (stack.isNotEmpty() && stack.last() == key) {
+                            if (stack.isNotEmpty() && codeOrPreList.contains(stack.last()) && stack.last() != key) stackText.last().append(key)
+                            else if (stack.isNotEmpty() && stack.contains(key)) {
+                                var stackKey = stack.pop()
+                                while (stackKey != key) {
+                                    val stackTag = tagMap[key] ?: ""
+                                    val text = stackText.pop()
+                                    text.replace(text.indexOf("<$stackTag>"), tag.length+2, key)
+                                    stackText.last().append(text)
+                                    stackKey = stack.pop()
+                                }
                                 // Закрытие тега
-                                result.append("</${tag}>")
+                                val text = stackText.pop()
+                                text.append("</${tag}>")
+                                stackText.last().append(text)
                                 stack.removeAt(stack.lastIndex)
                                 if (codeOrPreList.contains(key)) {
-                                    stack.forEach { result.append("<${tagMap[it]}>") }
-                                    codeOrPreBlocksMap[codeOrPreBlockOpenedAt] = result.length
+                                    stack.forEach {
+                                        val new = StringBuilder("<${tagMap[it]}>")
+                                        stackText.add(new)
+                                    }
+                                    codeOrPreBlocksMap[codeOrPreBlockOpenedAt] = getSumLen(stackText)
                                 }
                             } else if (stack.isEmpty() || (stack.last() != key && !stack.contains(key))) {
                                 // Открытие тега
                                 if (codeOrPreList.contains(key)) {
-                                    stack.asReversed()
-                                        .forEach { result.append("</${tagMap[it]}>") }
-                                    codeOrPreBlockOpenedAt = result.length
+                                    var block = StringBuilder()
+                                    stack.asReversed().forEach {
+                                        val text = stackText.pop()
+                                        text.append("</${tagMap[it]}>")
+                                        block = text.append(block)
+                                    }
+                                    stackText.add(block)
+                                    codeOrPreBlockOpenedAt = getSumLen(stackText)
                                 }
-                                result.append("<${tag}>")
+                                val text = StringBuilder("<${tag}>")
+                                stackText.add(text)
                                 stack.add(key)
                             } else {
                                 // Игнорируем некорректное вложение
-                                result.append(key)
+                                stackText.last().append(tag)
                             }
                             i += key.length
                             matched = true
@@ -77,7 +106,7 @@ object Markdown2HTMLParser {
                     }
 
                     if (!matched) {
-                        result.append(markdown[i])
+                        stackText.last().append(markdown[i])
                         i++
                     }
                 }
@@ -88,14 +117,17 @@ object Markdown2HTMLParser {
         while (stack.isNotEmpty()) {
             val key = stack.removeAt(stack.lastIndex)
             val tag = tagMap[key] ?: ""
-//            result.replace(result.lastIndexOf("<$tag>"), tag.length+2, key)
-            result.append("</${tag}>")
+            val text = stackText.pop()
+//            text.replace(Regex("(<$tag>).*?"), key)
+            text.replace(text.indexOf("<$tag>"), tag.length+2, key)
+            stackText.last().append(text)
+//            result.append("</${tag}>")
             if (codeOrPreList.contains(key)) stack.clear()
         }
 
-        var parsed = result.toString()
+        var parsed = stackText.pop().toString()
         if (parsed.matches(textLinkAllTextRegex)) parsed =
-            textLinkRegex.replace(result.toString()) { matched ->
+            textLinkRegex.replace(parsed) { matched ->
                 var isInCodeOrPreBlock = false
                 codeOrPreBlocksMap.forEach { (start, end) -> if (matched.range.first>start && matched.range.last<end) isInCodeOrPreBlock = true }
                 if (isInCodeOrPreBlock) return@replace matched.value
@@ -108,6 +140,7 @@ object Markdown2HTMLParser {
                 }</a>"
             }
         parsed = escapeMentions(parsed)
+        ZixaMCTGBridge.logger.info(parsed)
         return parsed
     }
 
@@ -119,5 +152,11 @@ object Markdown2HTMLParser {
                 "<a href=\"tg://user?id=${MySQLIntegration.getLinkedEntityByNickname(nickname)?.userId}\">$mention</a>"
             else mention
         }
+
+    private fun getSumLen(stack: Stack<StringBuilder>): Int {
+        var i = 0;
+        stack.forEach { i += it.length }
+        return i
+    }
 
 }

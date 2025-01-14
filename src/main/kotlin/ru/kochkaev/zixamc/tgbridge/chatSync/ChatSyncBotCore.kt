@@ -42,7 +42,7 @@ object ChatSyncBotCore {
                 handler.invoke(
                     TBPlayerEventData(
                         sender.displayName?.string ?: return@register,
-                        MinecraftAdventureConverter.minecraftToAdventure(message.content),
+                        Component.text(message.signedBody.content),
                     )
                 )
             }
