@@ -20,10 +20,21 @@ import xyz.nikitacartes.easyauth.utils.PlayerAuth
 
 object AuthManager {
 
+    private val players: ArrayList<String> = arrayListOf()
+
     fun isAuthenticated(nickname: String) : Boolean =
         isAuthenticated(server.playerManager.getPlayer(nickname))
-    fun isAuthenticated(player: ServerPlayerEntity?) : Boolean =
-        (player as PlayerAuth?)?.`easyAuth$isAuthenticated`()?:false
+    fun isAuthenticated(player: ServerPlayerEntity?) : Boolean {
+        val authenticated = (player as PlayerAuth?)?.`easyAuth$isAuthenticated`() ?: false
+//        val canSkipAuth = (player as PlayerAuth?)?.`easyAuth$canSkipAuth`() ?: false
+        val havePrevious = players.contains(player?.nameForScoreboard)
+//        val isMojang = (player as PlayerAuth?)?.`easyAuth$isUsingMojangAccount`() ?: false
+        return authenticated && havePrevious
+    }
+
+    fun addToPrevious(player: ServerPlayerEntity?) {
+        if (player!=null && !players.contains(player.nameForScoreboard)) players.add(player.nameForScoreboard)
+    }
 
     suspend fun approve(entity: SQLEntity, nickname: String) {
         val player = server.playerManager.getPlayer(nickname)

@@ -78,13 +78,15 @@ object ChatSyncBotCore {
         }
         if (EasyAuthIntegration.isEnabled)
             EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticated, player ->
-                if (authenticated)
-                    if (vanishInstance == null || !vanishInstance!!.isVanished(player))handler.invoke(
+                if (authenticated) {
+                    EasyAuthIntegration.addToPrevious(player)
+                    if (vanishInstance == null || !vanishInstance!!.isVanished(player)) handler.invoke(
                         TBPlayerEventData(
                             player.displayName?.string ?: return@register,
                             Component.text(""),
                         )
                     )
+                }
             }
         vanishInstance?.registerOnJoinMessage(handler)
     }
