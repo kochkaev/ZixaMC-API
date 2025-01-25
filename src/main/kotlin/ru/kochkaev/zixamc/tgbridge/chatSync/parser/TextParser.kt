@@ -160,7 +160,7 @@ object TextParser {
         } ?: message.forwardFromChat?.let {
             message.forwardFromChat.title
         }
-        return if (message.forwardFromChat!=null) forwardFromName?.let {
+        return if (message.forwardFrom!=null) forwardFromName?.let {
             formatLang(lang.minecraft.messageMeta.forward, "from" to it)
         } else null
     }
