@@ -156,13 +156,13 @@ object TextParser {
     private fun forwardFromToText(message: TgMessage): String? {
         val entity = if (message.from != null) MySQLIntegration.getLinkedEntity(message.from.id) else null
         val forwardFromName = entity?.nickname ?: message.forwardFrom?.let { _ ->
-            (message.forwardFrom.firstName + " " + (message.forwardFrom.lastName ?: "")).trim()
+            message.senderUserName
         } ?: message.forwardFromChat?.let {
             message.forwardFromChat.title
         }
-        return forwardFromName?.let {
+        return if (message.forwardFromChat!=null) forwardFromName?.let {
             formatLang(lang.minecraft.messageMeta.forward, "from" to it)
-        }
+        } else null
     }
 
     fun toMinecraft(message: TgMessage, botId: Long): Component {
