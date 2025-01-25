@@ -12,6 +12,7 @@ data class Config (
     val mySQL: MySQLDataClass = MySQLDataClass(),
     val requestsBot: RequestsBotDataClass = RequestsBotDataClass(),
     val serverBot: ServerBotDataClass = ServerBotDataClass(),
+    val tmp: TempConfig = TempConfig(),
 ) {
     data class GeneralConfig (
         val serverIP: String = "",
@@ -177,6 +178,7 @@ data class Config (
             val messages: ServerBotChatSyncMessageDataClass = ServerBotChatSyncMessageDataClass(),
             val events: ServerBotChatSyncGameEventsDataClass = ServerBotChatSyncGameEventsDataClass(),
             val lang: ServerBotChatSyncLangDataClass = ServerBotChatSyncLangDataClass(),
+            val betaMarkdown: Boolean = false,
         ) {
             data class ServerBotChatSyncLangDataClass (
                 val telegram: LangTelegram = LangTelegram(),
@@ -299,4 +301,7 @@ data class Config (
             )
         }
     }
+    data class TempConfig (
+        var isSilentRestart: Boolean = false,
+    )
 }

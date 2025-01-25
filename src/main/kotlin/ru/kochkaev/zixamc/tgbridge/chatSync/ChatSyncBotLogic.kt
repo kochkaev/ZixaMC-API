@@ -6,12 +6,14 @@ import net.kyori.adventure.text.Component
 import kotlinx.coroutines.*
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
+import ru.kochkaev.zixamc.tgbridge.ConfigManager
 import java.time.Clock
 import java.time.temporal.ChronoUnit
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.coroutineScope
+import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.Markdown2HTMLParser
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
@@ -24,10 +26,16 @@ object ChatSyncBotLogic {
     private val lastMessageLock = Mutex()
 
     suspend fun sendServerStartedMessage() {
-        core.sendMessage(lang.telegram.serverStarted)
+        if (!ZixaMCTGBridge.tmp.isSilentRestart)
+            core.sendMessage(lang.telegram.serverStarted)
+        else {
+            ZixaMCTGBridge.tmp.isSilentRestart = false
+            ConfigManager.update()
+        }
     }
     suspend fun sendServerStoppedMessage() {
-        core.sendMessage(lang.telegram.serverStopped)
+        if (!ZixaMCTGBridge.tmp.isSilentRestart)
+            core.sendMessage(lang.telegram.serverStopped)
     }
 
     fun registerTelegramHandlers() {

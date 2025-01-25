@@ -83,7 +83,7 @@ object ConfigManager {
         }
     }
 
-    private fun load() {
+    fun load() {
         try {
             CONFIG = GsonBuilder()
                 .setPrettyPrinting()

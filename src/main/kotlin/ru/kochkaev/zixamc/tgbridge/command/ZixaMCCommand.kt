@@ -6,12 +6,14 @@ import com.mojang.brigadier.arguments.StringArgumentType
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
+import ru.kochkaev.zixamc.tgbridge.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
+import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
 
 
 object ZixaMCCommand {
-    fun registerCommand(dispatcher: CommandDispatcher<ServerCommandSource?>) {
+    fun     registerCommand(dispatcher: CommandDispatcher<ServerCommandSource?>) {
         dispatcher.register(
             CommandManager.literal("zixamc")
                 .requires { it.hasPermissionLevel(2) }
@@ -30,6 +32,22 @@ object ZixaMCCommand {
                             }
                         )
                     )
+                )
+                .then(CommandManager.literal("reload")
+                    .executes { context ->
+                        ConfigManager.load()
+                        context.source.sendFeedback({ Text.of("§7ZixaMCTGBridge configs successfully reloaded!") }, true)
+                        0
+                    }
+                )
+                .then(CommandManager.literal("silentRestart")
+                    .executes { context ->
+                        ZixaMCTGBridge.tmp.isSilentRestart = true
+                        ConfigManager.update()
+                        context.source.sendFeedback({ Text.of("Server restart will not be seen in telegram.") }, true)
+                        context.source.server.shutdown()
+                        0
+                    }
                 )
         )
     }

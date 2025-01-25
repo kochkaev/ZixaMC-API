@@ -18,6 +18,8 @@ class ZixaMCTGBridge : ModInitializer {
         val logger = LoggerFactory.getLogger("ZixaMCTGBridge")
         val server: MinecraftServer?
             get() = FabricLoader.getInstance().gameInstance as MinecraftServer?
+        val tmp: Config.TempConfig
+            get() = ConfigManager.CONFIG!!.tmp
         fun addToWhitelist(nickname: String) =
             runConsoleCommand(TextParser.formatLang(ConfigManager.CONFIG!!.requestsBot.addWhitelistCommand, "nickname" to nickname))
         fun removeFromWhitelist(nickname: String) {
