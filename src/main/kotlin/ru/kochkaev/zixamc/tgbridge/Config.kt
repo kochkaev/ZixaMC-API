@@ -278,6 +278,7 @@ data class Config (
         }
         data class ServerBotEasyAuth (
             val isEnabled: Boolean = true,
+            val suppressMessagesWithoutAuth: Boolean = false,
             val langMinecraft: ServerBotEasyAuthLangMinecraft = ServerBotEasyAuthLangMinecraft(),
             val langTelegram: ServerBotEasyAuthLangTelegram = ServerBotEasyAuthLangTelegram(),
         ) {

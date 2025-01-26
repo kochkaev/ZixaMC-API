@@ -11,6 +11,7 @@ import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.Config
 import ru.kochkaev.zixamc.tgbridge.ConfigManager
+import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
@@ -78,7 +79,7 @@ object ChatSyncBotCore {
         }
         if (EasyAuthIntegration.isEnabled)
             EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticated, player ->
-                if (authenticated) {
+                if (authenticated && ServerBot.config.easyAuth.suppressMessagesWithoutAuth) {
                     EasyAuthIntegration.addToPrevious(player)
                     if (vanishInstance == null || !vanishInstance!!.isVanished(player)) handler.invoke(
                         TBPlayerEventData(
@@ -106,7 +107,7 @@ object ChatSyncBotCore {
         }
         if (EasyAuthIntegration.isEnabled)
             EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticated, player ->
-                if (!authenticated)
+                if (!authenticated && ServerBot.config.easyAuth.suppressMessagesWithoutAuth)
                     if (
                         (EasyAuthIntegration.isAuthenticated(player) && !player.isDisconnected)
                         && (vanishInstance == null || !vanishInstance!!.isVanished(player))

@@ -24,10 +24,10 @@ object EasyAuthIntegration {
     }
 
     fun isAuthenticated(nickname: String): Boolean =
-        if (isEnabled) AuthManager.isAuthenticated(nickname)
+        if (isEnabled && config.easyAuth.suppressMessagesWithoutAuth) AuthManager.isAuthenticated(nickname)
         else true
     fun isAuthenticated(player: ServerPlayerEntity): Boolean =
-        if (isEnabled) AuthManager.isAuthenticated(player)
+        if (isEnabled && config.easyAuth.suppressMessagesWithoutAuth) AuthManager.isAuthenticated(player)
         else true
     fun addToPrevious(player: ServerPlayerEntity?) {
         if (isEnabled) AuthManager.addToPrevious(player)
