@@ -32,6 +32,11 @@ enum class RequestType {
     CANCELED {
         override fun getName(): String = "canceled"
         override fun shouldBeSingleActive(): Boolean = false
+    },
+    @SerializedName("denied")
+    DENIED {
+        override fun getName(): String = "denied"
+        override fun shouldBeSingleActive(): Boolean = false
     };
 
     abstract fun getName():String

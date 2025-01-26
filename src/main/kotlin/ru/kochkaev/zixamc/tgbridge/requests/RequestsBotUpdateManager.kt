@@ -159,11 +159,52 @@ object RequestsBotUpdateManager {
             "create_request" -> newRequest(entity)
             "send_request" -> {
                 val request = entity.data!!.requests.first {it.request_status == RequestType.CREATING}
+                bot.forwardMessage(
+                    chatId = config.forModerator.chatId,
+                    messageThreadId = config.forModerator.topicId,
+                    fromChatId = entity.userId,
+                    messageId = request.message_id_in_chat_with_user.toInt()
+                )
+                val messageInChatWithUser = bot.sendMessage(
+                    chatId = entity.userId,
+                    text = BotLogic.escapePlaceholders(config.user.lang.event.onSend, request.request_nickname),
+                    replyParameters = TgReplyParameters(cbq.message.messageId),
+                    replyMarkup = TgInlineKeyboardMarkup(listOf(listOf(
+                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                            text = config.user.lang.button.cancelRequest,
+                            callback_data = "cancel_request"
+                        )
+                    )))
+                )
+                val moderatorsControl = bot.sendMessage(
+                    chatId = config.forModerator.chatId,
+                    messageThreadId = config.forModerator.topicId,
+                    text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onNew, request.request_nickname),
+                    replyMarkup = TgInlineKeyboardMarkup(listOf(
+                        listOf(
+                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.approveSending, callback_data = "approve_request"),
+                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.denySending, callback_data = "deny_request"),
+                        ),
+                        listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.restrictSender, callback_data = "restrict_user")),
+                    ))
+                )
+                request.request_message_id_in_chat_with_user = request.message_id_in_chat_with_user
+                request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
+                request.message_id_in_moderators_chat = moderatorsControl.messageId.toLong()
+                request.request_status = RequestType.PENDING
+                entity.editRequest(request)
+                MySQLIntegration.setNickname(entity.userId, request.request_nickname!!)
+            }
+            "approve_request" -> {
+                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                }
+                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
                 val forwardedMessage = bot.forwardMessage(
                     chatId = config.target.chatId,
                     messageThreadId = config.target.topicId,
-                    fromChatId = cbq.from.id,
-                    messageId = request.message_id_in_chat_with_user.toInt()
+                    fromChatId = userEntity.userId,
+                    messageId = request.request_message_id_in_chat_with_user!!.toInt()
                 )
                 val newMessage = bot.sendMessage(
                     chatId = config.target.chatId,
@@ -183,12 +224,17 @@ object RequestsBotUpdateManager {
                         message_id = forwardedMessage.messageId,
                     ),
                 )
-                entity.addToTempArray(poll.messageId.toString())
-            bot.pinMessage(config.target.chatId, forwardedMessage.messageId.toLong(), true)
+                userEntity.addToTempArray(poll.messageId.toString())
+                bot.pinMessage(config.target.chatId, forwardedMessage.messageId.toLong(), true)
+                bot.editMessageReplyMarkup(
+                    chatId = userEntity.userId,
+                    messageId = request.message_id_in_chat_with_user.toInt(),
+                    replyMarkup = TgReplyMarkup()
+                )
                 val messageInChatWithUser = bot.sendMessage(
-                    chatId = cbq.from.id,
-                    text = BotLogic.escapePlaceholders(config.user.lang.event.onSend, request.request_nickname),
-                    replyParameters = TgReplyParameters(cbq.message.messageId),
+                    chatId = userEntity.userId,
+                    text = BotLogic.escapePlaceholders(config.user.lang.event.onApprove, request.request_nickname),
+                    replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
                     replyMarkup = TgInlineKeyboardMarkup(listOf(listOf(
                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                             text = config.user.lang.button.cancelRequest,
@@ -196,13 +242,102 @@ object RequestsBotUpdateManager {
                         )
                     )))
                 )
+                val moderatorsControl = bot.editMessageText(
+                    chatId = cbq.message.chat.id,
+                    messageId = cbq.message.messageId,
+                    text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onApprove, request.request_nickname),
+                )
+                bot.editMessageReplyMarkup(
+                    chatId = moderatorsControl.chat.id,
+                    messageId = moderatorsControl.messageId,
+                    replyMarkup = TgInlineKeyboardMarkup(listOf(
+                        listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.closeRequestVote, callback_data = "close_poll")),
+                        listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.restrictSender, callback_data = "restrict_user")),
+                    ))
+                )
                 request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
                 request.message_id_in_target_chat = forwardedMessage.messageId.toLong()
-                entity.addToTempArray(forwardedMessage.messageId.toString())
-                entity.addToTempArray(newMessage.messageId.toString())
+                request.poll_message_id = poll.messageId.toLong()
+                userEntity.addToTempArray(forwardedMessage.messageId.toString())
+                userEntity.addToTempArray(newMessage.messageId.toString())
                 request.request_status = RequestType.PENDING
-                entity.editRequest(request)
-                MySQLIntegration.setNickname(entity.userId, request.request_nickname!!)
+                userEntity.editRequest(request)
+            }
+            "deny_request" -> {
+                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                }
+                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
+                bot.editMessageReplyMarkup(
+                    chatId = userEntity.userId,
+                    messageId = request.message_id_in_chat_with_user.toInt(),
+                    replyMarkup = TgReplyMarkup()
+                )
+                val messageInChatWithUser = bot.sendMessage(
+                    chatId = userEntity.userId,
+                    text = BotLogic.escapePlaceholders(config.user.lang.event.onDeny, request.request_nickname),
+                    replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
+                    replyMarkup = TgInlineKeyboardMarkup(
+                        inline_keyboard = listOf(listOf(
+                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                                text = config.user.lang.button.redrawRequest,
+                                callback_data = "redraw_request",
+                            )))
+                    )
+                )
+                val moderatorsControl = bot.editMessageText(
+                    chatId = cbq.message.chat.id,
+                    messageId = cbq.message.messageId,
+                    text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onDeny, request.request_nickname),
+                )
+                bot.editMessageReplyMarkup(
+                    chatId = moderatorsControl.chat.id,
+                    messageId = moderatorsControl.messageId,
+                    replyMarkup = TgReplyMarkup(),
+                )
+                request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
+                request.request_status = RequestType.DENIED
+                userEntity.editRequest(request)
+            }
+            "restrict_user" -> {
+                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                }
+                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
+                val moderatorsControl = bot.editMessageText(
+                    chatId = cbq.message.chat.id,
+                    messageId = cbq.message.messageId,
+                    text = BotLogic.escapePlaceholders(config.user.lang.event.onRestrict, request.request_nickname)
+                )
+                bot.editMessageReplyMarkup(
+                    chatId = moderatorsControl.chat.id,
+                    messageId = moderatorsControl.messageId,
+                    replyMarkup = TgReplyMarkup()
+                )
+                try {
+                    val text4User = config.user.lang.event.onRestrict
+                    if (text4User.isNotEmpty()) {
+                        bot.sendMessage(
+                            chatId = userEntity.userId,
+                            text = BotLogic.escapePlaceholders(text4User, entity.nickname ?: entity.userId.toString()),
+                        )
+                    }
+                } catch (_: Exception) {}
+                BotLogic.deleteAllProtected(userEntity.data?.protectedMessages?:listOf(), AccountType.UNKNOWN)
+                request.request_status = RequestType.DENIED
+                userEntity.editRequest(request)
+                userEntity.isRestricted = true
+            }
+            "close_poll" -> {
+                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                }
+                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
+                val isAccepted = bot.stopPoll(
+                    chatId = config.target.chatId,
+                    messageId = request.poll_message_id?.toInt()?:return
+                ).options?.maxBy { it.voter_count } ?.text?.equals(config.target.lang.poll.answerTrue) ?: false
+                RequestsLogic.executeRequestFinalAction(userEntity, isAccepted)
             }
         }
         if (cbq.message.chat.id > 0) bot.editMessageReplyMarkup(

@@ -213,6 +213,19 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
             replyParameters
         ))
     }
+    suspend fun stopPoll(
+        chatId: Long,
+        messageId: Int,
+        businessConnectionId: String? = null,
+        replyMarkup: TgInlineKeyboardMarkup? = null,
+    ): TgPoll = call {
+        client.stopPoll(TgStopPollRequest(
+            businessConnectionId,
+            chatId,
+            messageId,
+            replyMarkup,
+        ))
+    }
 
     suspend fun forwardMessage(
         chatId: Long,

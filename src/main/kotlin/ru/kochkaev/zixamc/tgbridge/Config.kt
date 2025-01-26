@@ -140,6 +140,7 @@ data class Config (
                 data class RequestsBotForModeratorLangEvents (
                     val onNew: String = "",
                     val onApprove: String = "",
+                    val onDeny: String = "",
                     val onVoteClosed: String = "",
                     val onUserRestricted: String = "",
                 )

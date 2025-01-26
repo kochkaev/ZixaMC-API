@@ -21,6 +21,9 @@ interface TgApi {
     @POST("sendPoll")
     suspend fun sendPoll(@Body data: TgSendPollRequest): TgResponse<TgMessage>
 
+    @POST("stopPoll")
+    suspend fun stopPoll(@Body data: TgStopPollRequest): TgResponse<TgPoll>
+
     @POST("forwardMessage")
     suspend fun forwardMessage(@Body data: TgForwardMessageRequest): TgResponse<TgMessage>
 

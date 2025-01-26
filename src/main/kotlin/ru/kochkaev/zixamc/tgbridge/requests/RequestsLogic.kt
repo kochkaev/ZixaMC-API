@@ -115,6 +115,9 @@ object RequestsLogic {
             (entity.data?.requests?.maxOfOrNull { it.user_request_id } ?: -1)+1,
             null,
             forReplyMessage.messageId.toLong(),
+            null,
+            null,
+            null,
             RequestType.CREATING,
             null,
         )
@@ -261,5 +264,47 @@ object RequestsLogic {
             )
         }
         return errorDueExecuting
+    }
+    suspend fun executeRequestFinalAction(
+        entity: SQLEntity,
+        isAccepted: Boolean,
+    ) : Boolean {
+        if (entity.accountType != AccountType.ADMIN) return true
+        val request = entity.data!!.requests.firstOrNull {it.request_status == RequestType.PENDING} ?: return false
+        val message4User = BotLogic.escapePlaceholders(
+            text = if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject,
+            nickname = request.request_nickname,
+        )
+        val message4Target = BotLogic.escapePlaceholders(
+            text = if (isAccepted) config.target.lang.event.onAccept else config.target.lang.event.onReject,
+            nickname = request.request_nickname,
+        )
+        bot.sendMessage(
+            chatId = config.target.chatId,
+            text = message4Target,
+            replyParameters = TgReplyParameters(request.message_id_in_moderators_chat!!.toInt()),
+        )
+        val newMessage = bot.sendMessage(
+            chatId = entity.userId,
+            text = message4User,
+            replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
+            protectContent = false,
+        )
+        bot.editMessageReplyMarkup(
+            chatId = entity.userId,
+            messageId = request.message_id_in_chat_with_user.toInt(),
+            replyMarkup = TgReplyMarkup()
+        )
+        request.request_status = if (isAccepted) RequestType.ACCEPTED else RequestType.REJECTED
+        request.message_id_in_chat_with_user = newMessage.messageId.toLong()
+        entity.editRequest(request)
+        entity.tempArray = arrayOf()
+        if (isAccepted) {
+            sendOnJoinInfoMessage(entity, newMessage.messageId)
+            entity.accountType = AccountType.PLAYER
+            entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, MinecraftAccountType.PLAYER))
+            ZixaMCTGBridge.addToWhitelist(request.request_nickname!!)
+        }
+        return true
     }
 }
