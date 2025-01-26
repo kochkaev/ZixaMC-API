@@ -162,9 +162,9 @@ class MySQL {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE user_id = ? AND (nickname = ? OR json_as_array_contains(nicknames, ?));")
-            preparedStatement.setString(1, nickname)
-            preparedStatement.setLong(2, userId?:return false)
+                MySQLConnection!!.prepareStatement("SELECT * FROM " + config.mySQLTable + " WHERE user_id != ? AND (nickname = ? OR json_as_array_contains(nicknames, ?));")
+            preparedStatement.setLong(1, userId?:return false)
+            preparedStatement.setString(2, nickname)
             preparedStatement.setString(3, nickname)
             return preparedStatement.executeQuery().next()
         } catch (e: SQLException) {

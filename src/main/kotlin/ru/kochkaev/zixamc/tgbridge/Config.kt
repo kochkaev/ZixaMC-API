@@ -103,7 +103,7 @@ data class Config (
                 val poll: RequestsBotForTargetLangPoll = RequestsBotForTargetLangPoll(),
             ) {
                 data class RequestsBotForTargetLangEvents (
-                    val onSend: String = "<b>Внимание, новая заявка! <tg-emoji emoji-id=\"5220214598585568818\">🚨</tg-emoji></b>\n\nЧто бы задать вопрос заявителю, ответьте на заявку или на сообщение, отвечающее на заявку.\n\nДля админов:\n/accept -> Принять заявку;\n/reject -> Отклонить заявку;\n\n{mentionAll}",
+                    val onSend: String = "<b>Внимание, новая заявка! <tg-emoji emoji-id=\"5220214598585568818\">🚨</tg-emoji></b>\n\nЧто бы задать вопрос заявителю, ответьте на заявку или на сообщение, отвечающее на заявку.\n\n<b>{mentionAll}</b>",
                     val onCanceled: String = "<b>Заявка была отменена заявителем. <tg-emoji emoji-id=\"5210952531676504517\">❌</tg-emoji></b>",
                     val onAccept: String = "<b>{nickname} теперь игрок сервера! <tg-emoji emoji-id=\"5217608395250485583\">🕺</tg-emoji></b>",
                     val onReject: String = "<b>Заявка {nickname} была отклонена! <tg-emoji emoji-id=\"5210952531676504517\">❌</tg-emoji></b>",
@@ -169,7 +169,7 @@ data class Config (
         val pollTimeout: Int = 60,
         val targetChatId: Long = 0,
         val targetTopicId: Int = 0,
-        val mentionAllReplaceWith: String = "+",
+        val mentionAllReplaceWith: String = "▌",
         val chatSync: ServerBotChatSyncDataClass = ServerBotChatSyncDataClass(),
         val easyAuth: ServerBotEasyAuth = ServerBotEasyAuth(),
     ) {
