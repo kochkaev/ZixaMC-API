@@ -91,7 +91,7 @@ object BotLogic {
         return TextParser.formatLang(text,
             "nickname" to (nickname?:""),
             "mentionAll" to getMentionOfAllPlayers(),
-            "serverIP" to (config.general.serverIP),
+            "serverIP" to config.general.serverIP,
         )
     }
 }

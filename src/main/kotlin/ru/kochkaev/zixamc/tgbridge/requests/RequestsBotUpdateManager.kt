@@ -186,12 +186,13 @@ object RequestsBotUpdateManager {
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.denySending, callback_data = "deny_request"),
                         ),
                         listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.restrictSender, callback_data = "restrict_user")),
-                    ))
+                    )),
+                    protectContent = true,
                 )
                 request.request_message_id_in_chat_with_user = request.message_id_in_chat_with_user
                 request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
                 request.message_id_in_moderators_chat = moderatorsControl.messageId.toLong()
-                request.request_status = RequestType.PENDING
+                request.request_status = RequestType.MODERATING
                 entity.editRequest(request)
                 MySQLIntegration.setNickname(entity.userId, request.request_nickname!!)
             }
@@ -285,15 +286,10 @@ object RequestsBotUpdateManager {
                             )))
                     )
                 )
-                val moderatorsControl = bot.editMessageText(
+                bot.editMessageText(
                     chatId = cbq.message.chat.id,
                     messageId = cbq.message.messageId,
                     text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onDeny, request.request_nickname),
-                )
-                bot.editMessageReplyMarkup(
-                    chatId = moderatorsControl.chat.id,
-                    messageId = moderatorsControl.messageId,
-                    replyMarkup = TgReplyMarkup(),
                 )
                 request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
                 request.request_status = RequestType.DENIED
@@ -304,15 +300,10 @@ object RequestsBotUpdateManager {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
-                val moderatorsControl = bot.editMessageText(
+                bot.editMessageText(
                     chatId = cbq.message.chat.id,
                     messageId = cbq.message.messageId,
                     text = BotLogic.escapePlaceholders(config.user.lang.event.onRestrict, request.request_nickname)
-                )
-                bot.editMessageReplyMarkup(
-                    chatId = moderatorsControl.chat.id,
-                    messageId = moderatorsControl.messageId,
-                    replyMarkup = TgReplyMarkup()
                 )
                 try {
                     val text4User = config.user.lang.event.onRestrict
@@ -329,15 +320,23 @@ object RequestsBotUpdateManager {
                 userEntity.isRestricted = true
             }
             "close_poll" -> {
+                if (entity.accountType != AccountType.ADMIN) return
                 val userEntity = MySQLIntegration.linkedEntities.values.first {
-                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.PENDING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
-                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
+                val request = userEntity.data!!.requests.first { it.request_status == RequestType.PENDING }
                 val isAccepted = bot.stopPoll(
                     chatId = config.target.chatId,
                     messageId = request.poll_message_id?.toInt()?:return
-                ).options?.maxBy { it.voter_count } ?.text?.equals(config.target.lang.poll.answerTrue) ?: false
+                ).options
+                    ?.filter { it.text != config.target.lang.poll.answerNull }
+                    ?.maxBy { it.voter_count } ?.text?.equals(config.target.lang.poll.answerTrue) ?: false
                 RequestsLogic.executeRequestFinalAction(userEntity, isAccepted)
+                bot.editMessageText(
+                    chatId = config.forModerator.chatId,
+                    messageId = request.message_id_in_moderators_chat!!.toInt(),
+                    text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onVoteClosed, request.request_nickname),
+                )
             }
         }
         if (cbq.message.chat.id > 0) bot.editMessageReplyMarkup(

@@ -25,7 +25,7 @@ object RequestsLogic {
                 )))
             )
         )
-        bot.sendMessage(
+        if (request.message_id_in_target_chat != null) bot.sendMessage(
             chatId = config.target.chatId,
             messageThreadId = config.target.topicId,
             text = BotLogic.escapePlaceholders(config.target.lang.event.onCanceled, entity.nickname),
@@ -33,6 +33,22 @@ object RequestsLogic {
                 message_id = request.message_id_in_target_chat!!.toInt()
             )
         )
+        if (request.poll_message_id != null) bot.stopPoll(
+            chatId = config.target.chatId,
+            messageId = request.poll_message_id!!.toInt()
+        )
+        if (request.message_id_in_moderators_chat != null) {
+            bot.editMessageReplyMarkup(
+                chatId = config.forModerator.chatId,
+                messageId = request.message_id_in_moderators_chat!!.toInt(),
+                replyMarkup = TgReplyMarkup()
+            )
+            bot.editMessageText(
+                chatId = config.forModerator.chatId,
+                messageId = request.message_id_in_moderators_chat!!.toInt(),
+                text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onCancel, request.request_nickname)
+            )
+        }
         entity.tempArray = arrayOf()
         return true
     }
@@ -269,7 +285,6 @@ object RequestsLogic {
         entity: SQLEntity,
         isAccepted: Boolean,
     ) : Boolean {
-        if (entity.accountType != AccountType.ADMIN) return true
         val request = entity.data!!.requests.firstOrNull {it.request_status == RequestType.PENDING} ?: return false
         val message4User = BotLogic.escapePlaceholders(
             text = if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject,
@@ -282,7 +297,7 @@ object RequestsLogic {
         bot.sendMessage(
             chatId = config.target.chatId,
             text = message4Target,
-            replyParameters = TgReplyParameters(request.message_id_in_moderators_chat!!.toInt()),
+            replyParameters = TgReplyParameters(request.poll_message_id!!.toInt()),
         )
         val newMessage = bot.sendMessage(
             chatId = entity.userId,
@@ -303,7 +318,7 @@ object RequestsLogic {
             sendOnJoinInfoMessage(entity, newMessage.messageId)
             entity.accountType = AccountType.PLAYER
             entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, MinecraftAccountType.PLAYER))
-            ZixaMCTGBridge.addToWhitelist(request.request_nickname!!)
+            try { ZixaMCTGBridge.addToWhitelist(request.request_nickname!!) } catch (_:Exception) {}
         }
         return true
     }
