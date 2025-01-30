@@ -53,6 +53,7 @@ enum class RequestType {
             else -> null
         }
         fun getAllPending():List<RequestType> = listOf(MODERATING, PENDING)
+        fun getAllPendingAndCreating():List<RequestType> = listOf(CREATING, MODERATING, PENDING)
         fun getAllDone():List<RequestType> = listOf(ACCEPTED, REJECTED, CANCELED)
     }
 }

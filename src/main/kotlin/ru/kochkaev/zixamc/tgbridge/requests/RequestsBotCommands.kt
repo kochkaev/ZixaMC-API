@@ -45,40 +45,11 @@ object RequestsBotCommands {
     }
     suspend fun onTelegramRulesUpdatedCommand(msg: TgMessage): Boolean {
         val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
-        if (!RequestsLogic.checkPermissionToExecute(
-                msg, entity, listOf(AccountType.ADMIN), false
-            )) return true
-        bot.sendMessage(
-            chatId = config.target.chatId,
-            text = BotLogic.escapePlaceholders(config.target.lang.event.onRulesUpdated),
-            replyMarkup = TgInlineKeyboardMarkup(
-                listOf(listOf(
-                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                    text = config.user.lang.button.agreeWithRules,
-                    callback_data = "agree_with_rules",
-                ))),
-            )
-        )
-        MySQLIntegration.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
-            it.agreedWithRules = false
-            try {
-                bot.sendMessage(
-                    chatId = it.userId,
-                    text = BotLogic.escapePlaceholders(config.user.lang.event.onRulesUpdated),
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    text = config.user.lang.button.agreeWithRules,
-                                    callback_data = "agree_with_rules",
-                                )
-                            )
-                        ),
-                    )
-                )
-            } catch (_: Exception) {}
-        }
-        return true
+        return RequestsLogic.updateRules(entity, msg.messageId, false)
+    }
+    suspend fun onTelegramRulesUpdatedWithRevokeCommand(msg: TgMessage): Boolean {
+        val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
+        return RequestsLogic.updateRules(entity, msg.messageId, true)
     }
     suspend fun onTelegramLeaveCommand(msg: TgMessage): Boolean =
         RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(

@@ -5,6 +5,7 @@ import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
+import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestType
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelSendingRequest
@@ -150,6 +151,25 @@ object RequestsBotUpdateManager {
                     entity.editRequest(editedRequest)
                 }
             }
+            "revoke_agree_with_rules" -> {
+                entity.agreedWithRules = false
+                RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(
+                    message = null,
+                    allowedExecutionAccountTypes = AccountType.entries,
+                    allowedExecutionIfSpendByItself = true,
+                    applyAccountStatuses = MinecraftAccountType.getAllActiveNow(),
+                    targetAccountStatus = MinecraftAccountType.FROZEN,
+                    editWhitelist = true,
+                    helpText = null,
+                    text4User = config.user.lang.event.onLeave,
+                    text4Target = config.target.lang.event.onLeave,
+                    removePreviousTgReplyMarkup = true,
+                    removeProtectedContent = true,
+                    entity = entity,
+                    entityExecutor = entity,
+                    messageForReplyId = cbq.message.messageId,
+                )
+            }
             "redraw_request" -> {
                 entity.data = entity.data.let { it!!.requests = ArrayList(it.requests.filter { it1 -> it1.request_status != RequestType.CREATING }); it }
                 newRequest(entity)
@@ -159,7 +179,7 @@ object RequestsBotUpdateManager {
             "create_request" -> newRequest(entity)
             "send_request" -> {
                 val request = entity.data!!.requests.first {it.request_status == RequestType.CREATING}
-                bot.forwardMessage(
+                val forwarded = bot.forwardMessage(
                     chatId = config.forModerator.chatId,
                     messageThreadId = config.forModerator.topicId,
                     fromChatId = entity.userId,
@@ -187,6 +207,7 @@ object RequestsBotUpdateManager {
                         ),
                         listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(config.forModerator.lang.button.restrictSender, callback_data = "restrict_user")),
                     )),
+                    replyParameters = TgReplyParameters(forwarded.messageId),
                     protectContent = true,
                 )
                 request.request_message_id_in_chat_with_user = request.message_id_in_chat_with_user
@@ -204,8 +225,8 @@ object RequestsBotUpdateManager {
                 val forwardedMessage = bot.forwardMessage(
                     chatId = config.target.chatId,
                     messageThreadId = config.target.topicId,
-                    fromChatId = userEntity.userId,
-                    messageId = request.request_message_id_in_chat_with_user!!.toInt()
+                    fromChatId = cbq.message.chat.id,
+                    messageId = cbq.message.replyToMessage?.messageId?:return
                 )
                 val newMessage = bot.sendMessage(
                     chatId = config.target.chatId,

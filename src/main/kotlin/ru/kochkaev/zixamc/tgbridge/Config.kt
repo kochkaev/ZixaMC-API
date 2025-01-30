@@ -56,6 +56,7 @@ data class Config (
                     val createRequest: String = "Создать заявку ⚡",
                     val confirmSending: String = "Отправить заявку 🚀",
                     val agreeWithRules: String = "С правилами ознакомлен и согласен ✅",
+                    val revokeAgreeWithRules: String = "Отозвать согласие с правилами ⛔",
                     val redrawRequest: String = "Начать заново 📝",
                     val cancelRequest: String = "Отменить заявку ❌",
                     val joinToPlayersGroup: String = "Присоедениться к группе игроков ✈️",

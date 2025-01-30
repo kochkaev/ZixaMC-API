@@ -70,7 +70,7 @@ object RequestsLogic {
         return true
     }
     suspend fun newRequest(entity: SQLEntity): Boolean {
-        when (entity.createAndOrGetData().requests.firstOrNull { RequestType.getAllPending().contains(it.request_status) }?.request_status) {
+        when (entity.createAndOrGetData().requests.firstOrNull { RequestType.getAllPendingAndCreating().contains(it.request_status) }?.request_status) {
             RequestType.CREATING -> {
                 bot.sendMessage(
                     chatId = entity.userId,
@@ -136,8 +136,7 @@ object RequestsLogic {
             null,
             RequestType.CREATING,
             null,
-        )
-        )
+        ))
         if (entity.accountType == AccountType.UNKNOWN) entity.accountType = AccountType.REQUESTER
         return true
     }
@@ -156,14 +155,15 @@ object RequestsLogic {
     }
 
     fun checkPermissionToExecute(
-        message: TgMessage,
-        entity: SQLEntity = MySQLIntegration.getOrRegisterLinkedEntity(message.from!!.id),
+        message: TgMessage?,
+        entity: SQLEntity = MySQLIntegration.getOrRegisterLinkedEntity(message?.from!!.id),
         allowedAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedIfSpendByItself: Boolean = false,
     ): Boolean =
-        !(entity.accountType in allowedAccountTypes && (!allowedIfSpendByItself || message.from!!.id==entity.userId))
+        (entity.accountType in allowedAccountTypes || (allowedIfSpendByItself && message?.from?.id==entity.userId))
 
-    fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage, allowedIfSpendByItself: Boolean = false): SQLEntity? {
+    fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage?, allowedIfSpendByItself: Boolean = false): SQLEntity? {
+        if (msg == null) return null
         val args = msg.text!!.split(" ")
         val isArgUserId = if (args.size > 1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
         val isReplyToMessage = msg.replyToMessage != null
@@ -199,11 +199,9 @@ object RequestsLogic {
                 ?.filter { applyAccountStatuses.contains(it.accountStatus) }
                 ?.map { it.nickname }
                 ?.forEach {
-                    if (editWhitelist) ZixaMCTGBridge.let { main ->
-                        try {
-                            if (isTargetPlayer) main.addToWhitelist(it)
-                            else main.removeFromWhitelist(it)
-                        } catch (_: Exception) {}
+                    if (editWhitelist) {
+                        if (isTargetPlayer) WhitelistManager.add(it)
+                        else WhitelistManager.remove(it)
                     }
                     entity.editMinecraftAccount(it, targetAccountStatus)
                 }
@@ -238,8 +236,9 @@ object RequestsLogic {
         )
 
     suspend fun executeCheckPermissionsAndExceptions(
-        message: TgMessage,
+        message: TgMessage?,
         entity: SQLEntity?,
+        entityExecutor: SQLEntity? = if (message!=null) MySQLIntegration.getLinkedEntity(message.from!!.id) else null,
         allowedExecutionAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedExecutionIfSpendByItself: Boolean = false,
         applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
@@ -250,10 +249,10 @@ object RequestsLogic {
     ) : Boolean {
         var errorDueExecuting = false
         var havePermission = true
-        if (entity == null) errorDueExecuting = true
+        if (entityExecutor == null || entity == null) errorDueExecuting = true
         else havePermission = checkPermissionToExecute(
             message = message,
-            entity = entity,
+            entity = entityExecutor,
             allowedAccountTypes = allowedExecutionAccountTypes,
             allowedIfSpendByItself = allowedExecutionIfSpendByItself,
         )
@@ -266,10 +265,9 @@ object RequestsLogic {
                 editWhitelist = editWhitelist,
             )
         ) errorDueExecuting = true
-        if (errorDueExecuting && helpText != null) {
+        if (errorDueExecuting && message!=null && helpText != null) {
             bot.sendMessage(
                 chatId = message.chat.id,
-                messageThreadId = message.messageThreadId,
                 text =
                     if (!havePermission) BotLogic.escapePlaceholders(
                         config.commonLang.command.permissionDenied,
@@ -318,7 +316,63 @@ object RequestsLogic {
             sendOnJoinInfoMessage(entity, newMessage.messageId)
             entity.accountType = AccountType.PLAYER
             entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, MinecraftAccountType.PLAYER))
-            try { ZixaMCTGBridge.addToWhitelist(request.request_nickname!!) } catch (_:Exception) {}
+            try { WhitelistManager.add(request.request_nickname!!) } catch (_:Exception) {}
+        }
+        return true
+    }
+    suspend fun updateRules(
+        entity: SQLEntity,
+        toReplyMessageId: Int? = null,
+        revokeAccepts: Boolean = false,
+    ): Boolean {
+        if (!checkPermissionToExecute(
+                null, entity, listOf(AccountType.ADMIN), false
+            )) return true
+        bot.sendMessage(
+            chatId = config.target.chatId,
+            text = BotLogic.escapePlaceholders(config.target.lang.event.onRulesUpdated),
+            replyMarkup = TgInlineKeyboardMarkup(
+                listOf(
+                    listOf(
+                        if (revokeAccepts)
+                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                                text = config.user.lang.button.agreeWithRules,
+                                callback_data = "agree_with_rules",
+                            )
+                        else
+                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                                text = config.user.lang.button.revokeAgreeWithRules,
+                                callback_data = "revoke_agree_with_rules",
+                            )
+                    )
+                ),
+            ),
+            replyParameters = if (toReplyMessageId!=null) TgReplyParameters(toReplyMessageId) else null,
+        )
+        MySQLIntegration.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
+            if (revokeAccepts) it.agreedWithRules = false
+            try {
+                bot.sendMessage(
+                    chatId = it.userId,
+                    text = BotLogic.escapePlaceholders(config.user.lang.event.onRulesUpdated),
+                    replyMarkup = TgInlineKeyboardMarkup(
+                        listOf(
+                            listOf(
+                                if (revokeAccepts)
+                                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                                        text = config.user.lang.button.agreeWithRules,
+                                        callback_data = "agree_with_rules",
+                                    )
+                                else
+                                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                                        text = config.user.lang.button.revokeAgreeWithRules,
+                                        callback_data = "revoke_agree_with_rules",
+                                    )
+                            )
+                        ),
+                    )
+                )
+            } catch (_: Exception) {}
         }
         return true
     }

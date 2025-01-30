@@ -20,11 +20,6 @@ class ZixaMCTGBridge : ModInitializer {
             get() = FabricLoader.getInstance().gameInstance as MinecraftServer?
         val tmp: Config.TempConfig
             get() = ConfigManager.CONFIG!!.tmp
-        fun addToWhitelist(nickname: String) =
-            runConsoleCommand(TextParser.formatLang(ConfigManager.CONFIG!!.requestsBot.addWhitelistCommand, "nickname" to nickname))
-        fun removeFromWhitelist(nickname: String) {
-            runConsoleCommand(TextParser.formatLang(ConfigManager.CONFIG!!.requestsBot.removeWhitelistCommand, "nickname" to nickname))
-        }
         fun runConsoleCommand(command: String) {
             val server = server ?: return
             val dispatcher = server.commandManager.dispatcher

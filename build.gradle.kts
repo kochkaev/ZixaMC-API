@@ -115,6 +115,7 @@ dependencies {
 
     // EasyAuth
     compileOnly("maven.modrinth:easyauth:3.0.25")
+//    compileOnly("maven.modrinth:easywhitelist:1.0.1")
 //    modImplementation("xyz.nucleoid:server-translations-api:2.4.0+1.21.2-rc1")
     modImplementation("xyz.nucleoid:server-translations-api:2.3.1+1.21-pre2")
     // Password hashing

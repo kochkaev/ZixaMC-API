@@ -10,6 +10,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountData
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestType
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
@@ -19,7 +20,7 @@ import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchEntityFromUpdateS
 object RequestsCommandLogic {
 
     suspend fun executeUpdateServerPlayerStatusCommand(
-        message: TgMessage,
+        message: TgMessage?,
         allowedExecutionAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedExecutionIfSpendByItself: Boolean = false,
         applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
@@ -33,11 +34,14 @@ object RequestsCommandLogic {
         replyMarkup4Message: TgReplyMarkup? = null,
         protectContentInMessage: Boolean = false,
         removeProtectedContent: Boolean = false,
+        entity: SQLEntity? = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself),
+        entityExecutor: SQLEntity? = if (message!=null) MySQLIntegration.getLinkedEntity(message.from!!.id) else null,
+        messageForReplyId: Int? = message?.messageId,
     ) : Boolean {
-        val entity = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself)
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
             entity = entity,
+            entityExecutor = entityExecutor,
             allowedExecutionAccountTypes = allowedExecutionAccountTypes,
             allowedExecutionIfSpendByItself = allowedExecutionIfSpendByItself,
             applyAccountStatuses = applyAccountStatuses,
@@ -47,9 +51,9 @@ object RequestsCommandLogic {
         )
         if (!errorDueExecuting) {
             if (text4Target!=null) bot.sendMessage(
-                chatId = message.chat.id,
+                chatId = config.target.chatId,
                 text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
-                replyParameters = TgReplyParameters(message.messageId),
+                replyParameters = if (messageForReplyId!=null) TgReplyParameters(messageForReplyId) else null,
             )
             var newMessage: TgMessage? = null
             try {
@@ -134,7 +138,7 @@ object RequestsCommandLogic {
             RequestsLogic.sendOnJoinInfoMessage(entity, newMessage.messageId)
             entity.accountType = AccountType.PLAYER
             entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, MinecraftAccountType.PLAYER))
-            ZixaMCTGBridge.addToWhitelist(request.request_nickname!!)
+            WhitelistManager.add(request.request_nickname!!)
         }
         return true
     }
