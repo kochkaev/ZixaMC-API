@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.kyori.adventure.text.Component
+import net.minecraft.network.message.MessageType
 import net.minecraft.network.message.SignedMessage
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.network.ServerPlayerEntity
@@ -34,11 +35,50 @@ object ChatSyncBotCore {
         ChatSyncBotLogic.registerMinecraftHandlers()
     }
     fun registerChatMessageListener(handler: (TBPlayerEventData) -> Unit) {
-        ServerMessageEvents.CHAT_MESSAGE.register { message: SignedMessage, sender, _ ->
+        ServerMessageEvents.CHAT_MESSAGE.register { message: SignedMessage, sender, params ->
             if (
+                params.type.matchesKey(MessageType.CHAT) &&
                 sender is ServerPlayerEntity
                 && (vanishInstance == null || !vanishInstance!!.isVanished(sender))
                 && EasyAuthIntegration.isAuthenticated(sender)
+            ) {
+                handler.invoke(
+                    TBPlayerEventData(
+                        sender.displayName?.string ?: return@register,
+                        Component.text(message.signedBody.content),
+                    )
+                )
+            }
+        }
+//        else styledChatInstance.registerMessageEvent(handler)
+    }
+    fun registerSayMessageListener(handler: (TBPlayerEventData) -> Unit) {
+        ServerMessageEvents.COMMAND_MESSAGE.register { message: SignedMessage, sender, params ->
+            if (
+                params.type.matchesKey(MessageType.SAY_COMMAND) &&
+                ((sender.player != null
+                && (vanishInstance == null || !vanishInstance!!.isVanished(sender.player!!))
+                && EasyAuthIntegration.isAuthenticated(sender.player!!))
+                || sender.player == null)
+            ) {
+                handler.invoke(
+                    TBPlayerEventData(
+                        sender.displayName?.string ?: return@register,
+                        Component.text(message.signedBody.content),
+                    )
+                )
+            }
+        }
+//        else styledChatInstance.registerMessageEvent(handler)
+    }
+    fun registerMeMessageListener(handler: (TBPlayerEventData) -> Unit) {
+        ServerMessageEvents.COMMAND_MESSAGE.register { message: SignedMessage, sender, params ->
+            if (
+                params.type.matchesKey(MessageType.EMOTE_COMMAND) &&
+                ((sender.player != null
+                && (vanishInstance == null || !vanishInstance!!.isVanished(sender.player!!))
+                && EasyAuthIntegration.isAuthenticated(sender.player!!))
+                || sender.player == null)
             ) {
                 handler.invoke(
                     TBPlayerEventData(

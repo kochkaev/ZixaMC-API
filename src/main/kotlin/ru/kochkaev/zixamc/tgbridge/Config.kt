@@ -200,9 +200,11 @@ data class Config (
                     val playerLeft: String = "<b><tg-emoji emoji-id=\"5375364347918827433\">👋</tg-emoji> {username} ливнул</b>",
                     val playerDied: String = "<b><tg-emoji emoji-id=\"5373239082136650704\">🔪</tg-emoji> {deathMessage}</b>",
                     val chatMessage: String = "<b>{username}</b> » {text}",
+                    val sayMessage: String = "<b><tg-emoji emoji-id=\"5454113432284446338\">✉️</tg-emoji> Объявление!</b>\n<b>{username}</b> » {text}",
+                    val meMessage: String = "<b><tg-emoji emoji-id=\"5226928895189598791\">⭐️</tg-emoji> {username} {text}</b>",
                     val advancements: LangAdvancements = LangAdvancements(),
-                    val playerList: String = "☝️",
-                    val playerListZeroOnline: String = "☝️",
+                    val playerList: String = "<b><tg-emoji emoji-id=\"5463412289883353404\">🤟</tg-emoji> Онлайн {count} игроков:</b>\n<i>{usernames}</i>",
+                    val playerListZeroOnline: String = "<b><tg-emoji emoji-id=\"5463137996091962323\">😭</tg-emoji> Нигого нет онлайн.</b>",
                 )
 
                 data class MessageMeta(

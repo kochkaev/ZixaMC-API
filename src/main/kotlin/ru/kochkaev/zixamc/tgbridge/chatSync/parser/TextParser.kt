@@ -122,7 +122,7 @@ object TextParser {
             }
             info = ReplyInfo(
                 isReplyToMinecraft = reply.from?.id == botId,
-                senderName = reply.senderName,
+                senderName = escapeSenderName(reply)?:reply.senderName,
                 media = mediaToText(reply),
                 text = reply.effectiveText
             )
@@ -154,9 +154,9 @@ object TextParser {
     }
 
     private fun forwardFromToText(message: TgMessage): String? {
-        val entity = if (message.from != null) MySQLIntegration.getLinkedEntity(message.from.id) else null
-        val forwardFromName = entity?.nickname ?: message.forwardFrom?.let { _ ->
-            message.senderUserName
+//        val entity = if (message.from != null) MySQLIntegration.getLinkedEntity(message.from.id) else null
+        val forwardFromName = message.forwardFrom?.let {
+            escapeSenderName(message.forwardFrom.id) ?: message.senderUserName
         } ?: message.forwardFromChat?.let {
             message.forwardFromChat.title
         }
@@ -222,7 +222,7 @@ object TextParser {
             message.entities
         ) else Component.text(it))) }
 
-        val senderNickname = MySQLIntegration.getLinkedEntity(message.from?.id?:0)?.nickname
+        val senderNickname = escapeSenderName(message)
         return Component.text(lang.minecraft.messageMeta.messageFormat)
             .replaceText {it.matchLiteral("{sender}")
                 .replacement(
@@ -235,6 +235,11 @@ object TextParser {
                 .fold(Component.text()) { acc, component -> acc.append(component) }
                 .build()) }
     }
+
+    fun escapeSenderName(userId: Long) =
+        MySQLIntegration.getLinkedEntity(userId)?.nickname
+    fun escapeSenderName(message: TgMessage) =
+        escapeSenderName(message.from?.id?:0)
 
     fun resolveMessageLink(message: TgMessage): String = "https://t.me/c/${-message.chat.id-1000000000000}/" + (if (message.messageThreadId!=null) "${message.messageThreadId}/" else "") + "${message.messageId}"
 
