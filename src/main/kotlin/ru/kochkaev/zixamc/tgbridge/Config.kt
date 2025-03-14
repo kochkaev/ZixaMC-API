@@ -288,10 +288,12 @@ data class Config (
             val audioPlayer: ServerBotAudioPlayer = ServerBotAudioPlayer(),
         ) {
             data class ServerBotAudioPlayer(
+                val modIsNodInstalled: String = "Похоже, AudioPlayer не установлен на сервере...",
                 val buttonMenu: String = "Загрузить аудио в AudioPlayer 🎧",
                 val messageUpload: String = "Отправьте аудио в этот чат.\nРазмер аудио не должен превышать 20МБ.",
                 val messageErrorUpload: String = "Ошибка! Размер аудио не должен превышать 20МБ.",
-                val messageDone: String = "<b>Аудио успешно загружено на сервер!</b>\nТеперь вы можете использовать его в AudioPlayer.\n\n<b>Имя файла »</b>\n<code>{filename}</code>",
+                val messageIncorrectExtension: String = "Ошибка! Аудио должно иметь расширение \".mp3\" или \".wav\". Вы можете воспользоваться онлайн-конвертером для изменения формата.",
+                val messageDone: String = "<b>Аудио успешно загружено на сервер!</b>\nТеперь вы можете использовать его в AudioPlayer.\n\n<b>UUID аудио »</b>\n<code>{filename}</code>\n\n<i>Записать на пластинку</i> ->\n<code>/audioplayer musicdisc {filename}</code>\n<i>Записать на козий рог</i> ->\n<code>/audioplayer goathorn {filename}</code>",
                 val messagePreparing: String = "<b>Пожалуйста, подождите...</b>"
             )
         }

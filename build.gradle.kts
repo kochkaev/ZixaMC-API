@@ -153,6 +153,8 @@ dependencies {
     modImplementation("eu.pb4:predicate-api:0.5.2+1.21")
     modImplementation("eu.pb4:placeholder-api:2.4.1+1.21")
 
+    modImplementation("maven.modrinth:audioplayer:fabric-1.21.1-1.13.2")
+
     // Markdown
 //    include(implementation("org.commonmark:commonmark:0.18.2")!!)
 //    include(implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.18.2")!!)

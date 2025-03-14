@@ -13,6 +13,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
+import java.io.File
 
 object Menu {
 
@@ -20,6 +21,8 @@ object Menu {
     private enum class Processes {
         AUDIO_PLAYER;
     }
+
+    private val isAudioPlayerLoaded = FabricLoader.getInstance().isModLoaded("audioplayer")
 
     suspend fun sendMenu(chatId: Long) {
         val entity = if (chatId>0) MySQLIntegration.getLinkedEntity(chatId) else null
@@ -55,6 +58,7 @@ object Menu {
             )
     }
     suspend fun onCallback(cbq: TgCallbackQuery, /*data: TgCallback<MenuCallbackData>*/) {
+        if (cbq.data == null || !cbq.data.startsWith("menu")) return
         val entity = MySQLIntegration.getLinkedEntity(cbq.from.id)?:return
         if (!entity.accountType.isPlayer()) {
             ServerBot.bot.editMessageText(
@@ -70,19 +74,20 @@ object Menu {
             "menu\$audioPlayer" -> {
                 ServerBot.bot.sendMessage(
                     chatId = cbq.message.chat.id,
-                    text = ServerBot.config.integration.audioPlayer.messageUpload,
+                    text = if (isAudioPlayerLoaded) ServerBot.config.integration.audioPlayer.messageUpload else ServerBot.config.integration.audioPlayer.modIsNodInstalled,
                     replyMarkup = TgInlineKeyboardMarkup(
                         listOf(
                             listOf(
                                 TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                                     ServerBot.config.integration.buttonBackToMenu,
-                                    callback_data = TgCallback("menu", MenuCallbackData("back")).serialize()
+//                                    callback_data = TgCallback("menu", MenuCallbackData("back")).serialize()
+                                    callback_data = "menu\$back"
                                 )
                             )
                         )
                     )
                 )
-                process[cbq.message.chat.id] = Processes.AUDIO_PLAYER
+                if (isAudioPlayerLoaded) process[cbq.message.chat.id] = Processes.AUDIO_PLAYER
             }
         }
     }
@@ -92,27 +97,49 @@ object Menu {
             if (entity != null && entity.accountType.isPlayer())
                 when (process[entity.userId]) {
                     Processes.AUDIO_PLAYER -> {
+                        var done = false
                         val message = ServerBot.bot.sendMessage(
                             chatId = msg.chat.id,
                             text = ServerBot.config.integration.audioPlayer.messagePreparing,
                         )
-                        val filename = if (msg.audio != null) saveAudioPlayerFile(
-                            msg.audio.file_id,
-                            msg.audio.file_name ?: "${msg.audio.performer}_-_${msg.audio.title}.mp3"
-                        ) else null
-                        if (filename.isNullOrEmpty()) {
+                        var filename: String? = null
+                        if (msg.audio != null || msg.document != null) {
+                            val tgFilename =
+                                if (msg.audio != null)
+                                    msg.audio.file_name ?: "${msg.audio.performer}_-_${msg.audio.title}.mp3"
+                                else msg.document!!.file_name?:""
+                            val extension = tgFilename.substring(tgFilename.lastIndexOf('.')+1).lowercase()
+                            if (extension == "mp3" || extension == "wav")
+                                filename = saveAudioPlayerFile(msg.audio?.file_id?:msg.document!!.file_id, tgFilename)
+                            else {
+                                ServerBot.bot.editMessageText(
+                                    chatId = message.chat.id,
+                                    messageId = message.messageId,
+                                    text = ServerBot.config.integration.audioPlayer.messageIncorrectExtension,
+                                )
+                                done = true
+                            }
+                        } else {
+                            ServerBot.bot.editMessageText(
+                                chatId = message.chat.id,
+                                messageId = message.messageId,
+                                text = ServerBot.config.integration.audioPlayer.messageIncorrectExtension,
+                            )
+                            done = true
+                        }
+                        if (filename.isNullOrEmpty() && !done) {
                             ServerBot.bot.editMessageText(
                                 chatId = message.chat.id,
                                 messageId = message.messageId,
                                 text = ServerBot.config.integration.audioPlayer.messageErrorUpload,
                             )
-                        } else {
+                        } else if (!done) {
                             ServerBot.bot.editMessageText(
                                 chatId = message.chat.id,
                                 messageId = message.messageId,
                                 text = ServerBot.config.integration.audioPlayer.messageDone.replace(
                                     "{filename}",
-                                    filename
+                                    filename!!
                                 ),
                             )
                             process.remove(entity.userId)
@@ -125,7 +152,8 @@ object Menu {
                                     listOf(
                                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                                             ServerBot.config.integration.buttonBackToMenu,
-                                            callback_data = TgCallback("menu", MenuCallbackData("back")).serialize()
+//                                            callback_data = TgCallback("menu", MenuCallbackData("back")).serialize()
+                                            callback_data = "menu\$back"
                                         )
                                     )
                                 )
@@ -139,10 +167,13 @@ object Menu {
     }
 
     private suspend fun saveAudioPlayerFile(fileId: String, filename: String): String {
-        val patch = FabricLoader.getInstance().gameDir.toAbsolutePath()
-        val patch1 = patch.resolve("$patch/audioplayer_uploads/")
-        patch1.toFile().mkdirs()
-        return if (ServerBot.bot.saveFile(fileId, "$patch1/$filename").isNotEmpty()) filename else ""
+        val path = FabricLoader.getInstance().gameDir.toAbsolutePath()
+        val path1 = path.resolve("$path/audioplayer_uploads/")
+        path1.toFile().mkdirs()
+        val resolvedFilename = AudioPlayerIntegration.resolveName(filename)
+        val downloaded = ServerBot.bot.saveFile(fileId, "$path1/$resolvedFilename")
+        val uuid = AudioPlayerIntegration.resolveId(path1.resolve(downloaded))
+        return if (downloaded.isNotEmpty()) uuid.toString() else ""
     }
 
     data class MenuCallbackData(

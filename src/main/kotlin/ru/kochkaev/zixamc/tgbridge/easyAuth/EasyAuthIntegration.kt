@@ -53,6 +53,7 @@ object EasyAuthIntegration {
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery, /*data: TgCallback<EasyAuthCallbackData>*/) {
 //        val args = cbq.data?.split(Regex("easyauth\$(.*?)/([a-zA-Z0-9_])"))
         val data = cbq.data?:return
+        if (!cbq.data.startsWith("easyAuth")) return
         val args = data.substring(data.indexOf('\$')+1, data.length)
         val nickname = args.substring(args.indexOf('/')+1, args.length)
         val operation = args.substring(0, args.indexOf('/'))

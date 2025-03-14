@@ -7,7 +7,7 @@ interface TgMessageMedia {
     val animation: TgAny?
     val photo: List<TgAny>?
     val audio: TgAudio?
-    val document: TgAny?
+    val document: TgDocument?
     val sticker: TgAny?
     val video: TgAny?
     val videoNote: TgAny?
