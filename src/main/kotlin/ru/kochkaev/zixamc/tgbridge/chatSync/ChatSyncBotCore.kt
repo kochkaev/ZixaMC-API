@@ -168,7 +168,11 @@ object ChatSyncBotCore {
     }
 
     fun getOnlinePlayerNames(): Array<String> {
-        return server.playerNames
+        var players = server.playerManager.playerList
+        if (vanishInstance!=null) players = players.filter {
+            !vanishInstance!!.isVanished(it)
+        }
+        return players.map { it.nameForScoreboard }.toTypedArray()
     }
 
     suspend fun sendMessage(text: String, entities: List<TgEntity>? = null): TgMessage {
