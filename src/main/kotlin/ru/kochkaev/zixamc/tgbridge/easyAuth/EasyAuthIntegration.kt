@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.easyAuth
 
+import com.google.gson.annotations.SerializedName
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.network.ServerPlayerEntity
 import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
@@ -7,6 +8,8 @@ import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
 
 object EasyAuthIntegration {
 
@@ -47,18 +50,25 @@ object EasyAuthIntegration {
         })
     }
 
-    suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
+    suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery, /*data: TgCallback<EasyAuthCallbackData>*/) {
 //        val args = cbq.data?.split(Regex("easyauth\$(.*?)/([a-zA-Z0-9_])"))
-        if (!isEnabled) return
         val data = cbq.data?:return
         val args = data.substring(data.indexOf('\$')+1, data.length)
         val nickname = args.substring(args.indexOf('/')+1, args.length)
-        val entity = MySQLIntegration.getLinkedEntity(cbq.from.id)?:return
         val operation = args.substring(0, args.indexOf('/'))
-        when (operation) {
-            "approve" -> AuthManager.approve(entity, nickname)
-            "deny" -> AuthManager.deny(entity, nickname)
+        if (!isEnabled) return
+        val entity = MySQLIntegration.getLinkedEntity(cbq.from.id)?:return
+        when (/*data.data!!.operation*/ operation) {
+            "approve" -> AuthManager.approve(entity, /*data.data.nickname*/nickname)
+            "deny" -> AuthManager.deny(entity, /*data.data.nickname*/nickname)
         }
         entity.tempArray = entity.tempArray?.filter { it!=cbq.message.messageId.toString() }?.toTypedArray()
     }
+
+    data class EasyAuthCallbackData(
+        @SerializedName("n")
+        val nickname: String,
+        @SerializedName("o")
+        val operation: String
+    ) : CallbackData
 }

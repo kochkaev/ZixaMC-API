@@ -18,10 +18,20 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
 
 object RequestsBotCommands {
-    suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean =
-        RequestsCommandLogic.executeRequestFinalAction(msg, true)
-    suspend fun onTelegramRejectCommand(msg: TgMessage): Boolean  =
-        RequestsCommandLogic.executeRequestFinalAction(msg, false)
+    suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
+//        RequestsCommandLogic.executeRequestFinalAction(msg, true)
+        return RequestsLogic.executeRequestFinalAction(
+            entity = MySQLIntegration.getLinkedEntity(msg.from?.id ?: return false) ?: return false,
+            isAccepted = true,
+        )
+    }
+    suspend fun onTelegramRejectCommand(msg: TgMessage): Boolean {
+//        RequestsCommandLogic.executeRequestFinalAction(msg, false)
+        return RequestsLogic.executeRequestFinalAction(
+            entity = MySQLIntegration.getLinkedEntity(msg.from?.id ?: return false) ?: return false,
+            isAccepted = false,
+        )
+    }
     suspend fun onTelegramPromoteCommand(msg: TgMessage): Boolean {
         val entity = RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand(msg)?:return false
         if (!RequestsLogic.checkPermissionToExecute(
@@ -63,6 +73,11 @@ object RequestsBotCommands {
             text4User = config.user.lang.event.onLeave,
             text4Target = config.target.lang.event.onLeave,
             removePreviousTgReplyMarkup = true,
+            additionalConsumer = { hasError, entity ->
+                if (!hasError) try {
+                    bot.banChatMember(msg.chat.id, entity!!.userId)
+                } catch (_: Exception) {}
+            },
             removeProtectedContent = true,
         )
     suspend fun onTelegramReturnCommand(msg: TgMessage): Boolean =
@@ -87,6 +102,11 @@ object RequestsBotCommands {
                     )
                 )
             ),
+            additionalConsumer = { hasError, entity ->
+                if (!hasError) try {
+                    bot.unbanChatMember(msg.chat.id, entity!!.userId, true)
+                } catch (_: Exception) {}
+            },
             protectContentInMessage = true,
         )
     suspend fun onTelegramKickCommand(msg: TgMessage): Boolean =

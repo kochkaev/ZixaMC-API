@@ -4,12 +4,11 @@ import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
+import ru.kochkaev.zixamc.tgbridge.serverBot.integration.Menu
 
 object ServerBotUpdateManager {
 
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
-        val data = cbq.data?:return
-        if (data.startsWith("easyauth")) EasyAuthIntegration.onTelegramCallbackQuery(cbq)
         if (cbq.message.chat.id > 0) try {
             bot.editMessageReplyMarkup(
                 chatId = cbq.message.chat.id,

@@ -2,17 +2,22 @@ package ru.kochkaev.zixamc.tgbridge
 
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
+import okhttp3.ResponseBody
 import org.slf4j.Logger
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
+import java.io.FileOutputStream
+import java.io.InputStream
 import java.time.Duration
 
 /**
  * @author vanutp
  */
-class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: Logger, private val POLL_TIMEOUT_SECONDS: Int = 60) {
+class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logger: Logger, private val POLL_TIMEOUT_SECONDS: Int = 60) {
 
     private val okhttpClient = OkHttpClient.Builder()
         .readTimeout(Duration.ofSeconds((POLL_TIMEOUT_SECONDS + 10).toLong()))
@@ -27,6 +32,8 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
     private val commandHandlers: MutableList<suspend (TgMessage) -> Boolean> = mutableListOf()
     private val messageHandlers: MutableList<suspend (TgMessage) -> Unit> = mutableListOf()
     private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()
+    private val callbackQueryTypes: HashMap<String, Class<out CallbackData>> = hashMapOf()
+    private val typedCallbackQueryHandlers: HashMap<String, suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> Unit> = hashMapOf()
     private val chatJoinRequestHandlers: MutableList<suspend (TgChatJoinRequest) -> Unit> = mutableListOf()
     lateinit var me: TgUser
         private set
@@ -37,6 +44,11 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
     }
     fun registerCallbackQueryHandler(handler: suspend (TgCallbackQuery) -> Unit) {
         callbackQueryHandlers.add(handler)
+    }
+    fun <T: CallbackData> registerCallbackQueryHandler(type: String, dataClass: Class<T>, handler: suspend (TgCallbackQuery, TgCallback<T>) -> Unit) {
+        callbackQueryTypes[type] = dataClass
+        @Suppress("UNCHECKED_CAST")
+        typedCallbackQueryHandlers[type] = handler as suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> Unit
     }
     fun registerChatJoinRequestHandlers(handler: suspend (TgChatJoinRequest) -> Unit) {
         chatJoinRequestHandlers.add(handler)
@@ -91,7 +103,11 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
                                 }
                             }
                             update.callbackQuery != null -> {
-                                callbackQueryHandlers.forEach {
+//                              update.callbackQuery.data?.matches(Regex("\\{*+}")) == true)
+                                val callback = TgCallback.deserialize(update.callbackQuery, callbackQueryTypes)
+                                if (callback != null)
+                                    typedCallbackQueryHandlers[callback.type]!!.invoke(update.callbackQuery, callback)
+                                else callbackQueryHandlers.forEach {
                                     it.invoke(update.callbackQuery)
                                 }
                             }
@@ -277,6 +293,9 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
     suspend fun banChatMember(chatId: Long, userId: Long) = call {
         client.banChatMember(TgBanChatMemberRequest(chatId, userId))
     }
+    suspend fun unbanChatMember(chatId: Long, userId: Long, onlyIfBanned: Boolean) = call {
+        client.unbanChatMember(TgUnbanChatMemberRequest(chatId, userId, onlyIfBanned))
+    }
 
     suspend fun pinMessage(chatId: Long, messageId: Long, disableNotification: Boolean = false) = call {
         client.pinMessage(TgPinChatMessageRequest(chatId, messageId, disableNotification))
@@ -284,5 +303,41 @@ class TelegramBotZixa(botApiUrl: String, botToken: String, private val logger: L
 
     suspend fun approveChatJoinRequest(chatId: Long, userId: Long) = call {
         client.approveChatJoinRequest(TgApproveChatJoinRequest(chatId, userId))
+    }
+
+    suspend fun getFile(fileId: String) = call {
+        client.getFile(TgGetFileRequest(fileId))
+    }
+    suspend fun downloadFile(fileUrl: String, localPatch: String) =
+        saveFile(client.downloadFile(fileUrl).body(), localPatch)
+    private fun saveFile(body: ResponseBody?, localPatch: String): String {
+        if (body==null)
+            return ""
+        var input: InputStream? = null
+        try {
+            input = body.byteStream()
+            //val file = File(getCacheDir(), "cacheFileAppeal.srl")
+            val fos = FileOutputStream(localPatch)
+            fos.use { output ->
+                val buffer = ByteArray(4 * 1024) // or other buffer size
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    output.write(buffer, 0, read)
+                }
+                output.flush()
+            }
+            return localPatch
+        }catch (e:Exception){
+            ZixaMCTGBridge.logger.error("saveFile", e.toString())
+        }
+        finally {
+            input?.close()
+        }
+        return ""
+    }
+    suspend fun saveFile(fileId: String, localPatch: String): String {
+        val tgFile = getFile(fileId)
+        val url = "https://api.telegram.org/file/bot$botToken/${tgFile.file_path?:return ""}"
+        return downloadFile(url, localPatch)
     }
 }

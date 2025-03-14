@@ -9,6 +9,8 @@ import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
+import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
+import ru.kochkaev.zixamc.tgbridge.serverBot.integration.Menu
 
 object ServerBotLogic {
 
@@ -21,7 +23,7 @@ object ServerBotLogic {
         protectLevel = protectLevel,
     )
 
-    suspend fun sendOnJoinInfoMessage(
+    suspend fun sendInfoMessage(
         entity: SQLEntity,
         replyToMessageID: Int? = null,
     ) : TgMessage? = BotLogic.sendInfoMessage(
@@ -36,6 +38,11 @@ object ServerBotLogic {
 
     fun registerTelegramHandlers() {
         bot.registerCallbackQueryHandler(ServerBotUpdateManager::onTelegramCallbackQuery)
+        bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id) }
+        bot.registerMessageHandler(Menu::onMessage)
+
+        bot.registerCallbackQueryHandler(/*"easyauth", EasyAuthIntegration.EasyAuthCallbackData::class.java,*/ EasyAuthIntegration::onTelegramCallbackQuery)
+        bot.registerCallbackQueryHandler(/*"menu", Menu.MenuCallbackData::class.java,*/ Menu::onCallback)
     }
 
 }

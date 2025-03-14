@@ -1,9 +1,8 @@
 package ru.kochkaev.zixamc.tgbridge.dataclassTelegram
 
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
+import okhttp3.ResponseBody
+import retrofit2.Response
+import retrofit2.http.*
 
 /**
  * @author vanutp
@@ -39,8 +38,18 @@ interface TgApi {
     @POST("banChatMember")
     suspend fun banChatMember(@Body data: TgBanChatMemberRequest): TgResponse<Boolean>
 
+    @POST("unbanChatMember")
+    suspend fun unbanChatMember(@Body data: TgUnbanChatMemberRequest): TgResponse<Boolean>
+
     @POST("approveChatJoinRequest")
     suspend fun approveChatJoinRequest(@Body data: TgApproveChatJoinRequest): TgResponse<Boolean>
+
+    @POST("getFile")
+    suspend fun getFile(@Body data: TgGetFileRequest): TgResponse<TgFile>
+
+    @Streaming
+    @GET
+    suspend fun downloadFile(@Url fileUrl:String): Response<ResponseBody>
 
     @GET("getUpdates")
     suspend fun getUpdates(

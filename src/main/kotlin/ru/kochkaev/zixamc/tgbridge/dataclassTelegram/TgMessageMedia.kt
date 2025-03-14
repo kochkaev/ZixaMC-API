@@ -6,7 +6,7 @@ package ru.kochkaev.zixamc.tgbridge.dataclassTelegram
 interface TgMessageMedia {
     val animation: TgAny?
     val photo: List<TgAny>?
-    val audio: TgAny?
+    val audio: TgAudio?
     val document: TgAny?
     val sticker: TgAny?
     val video: TgAny?

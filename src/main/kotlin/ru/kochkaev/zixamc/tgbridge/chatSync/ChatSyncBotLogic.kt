@@ -31,6 +31,7 @@ object ChatSyncBotLogic {
         else {
             ZixaMCTGBridge.tmp.isSilentRestart = false
             ConfigManager.update()
+            ConfigManager.load()
         }
     }
     suspend fun sendServerStoppedMessage() {

@@ -1,7 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.easyAuth
 
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.event.ClickEvent
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
@@ -10,10 +9,11 @@ import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.StyleManager
 import xyz.nikitacartes.easyauth.EasyAuth.config as easyAuthConfig
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
+import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration.EasyAuthCallbackData
 import xyz.nikitacartes.easyauth.EasyAuth
 import xyz.nikitacartes.easyauth.utils.PlayerAuth
 
@@ -80,17 +80,20 @@ object AuthManager {
                     listOf(listOf(
                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                             text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonApprove, nickname),
+//                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "approve")).serialize()
                             callback_data = "easyauth\$approve/$nickname"
                         ),
                         TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                             text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonDeny, nickname),
+//                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "deny")).serialize()
                             callback_data = "easyauth\$deny/$nickname"
                         ),
                     ))
                 )
             )
             entity.addToTempArray(message.messageId.toString())
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            ZixaMCTGBridge.logger.error(e.message)
             val botUsername = config.easyAuth.langMinecraft.botUsername
             player.sendMessage(
                 MinecraftAdventureConverter.adventureToMinecraft(

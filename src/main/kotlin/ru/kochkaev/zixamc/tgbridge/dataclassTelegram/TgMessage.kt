@@ -32,7 +32,7 @@ data class TgMessage(
     val caption: String? = null,
     override val animation: TgAny? = null,
     override val photo: List<TgAny>? = null,
-    override val audio: TgAny? = null,
+    override val audio: TgAudio? = null,
     override val document: TgAny? = null,
     override val sticker: TgAny? = null,
     override val video: TgAny? = null,

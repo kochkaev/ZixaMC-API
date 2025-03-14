@@ -173,6 +173,7 @@ data class Config (
         val mentionAllReplaceWith: String = "▌",
         val chatSync: ServerBotChatSyncDataClass = ServerBotChatSyncDataClass(),
         val easyAuth: ServerBotEasyAuth = ServerBotEasyAuth(),
+        val integration: ServerBotIntegration = ServerBotIntegration(),
     ) {
         data class ServerBotChatSyncDataClass (
             val isEnabled: Boolean = true,
@@ -276,6 +277,21 @@ data class Config (
                     val showDescription: Boolean = true,
                 )
             }
+        }
+        data class ServerBotIntegration(
+            val messageNotPlayer: String = "<b>👋 Приветствую!</b>\nЯ бот приватного Minecraft сервера Zixa City.\n\n<i>Вы не являетесь игроком сервера</i> »\n<b>Подать заявку</b> -> @ZixaMC_request_bot",
+            val messageMenu: String = "<b>👋 Приветствую!</b>\nЯ бот приватного Minecraft сервера Zixa City, чем могу помочь?",
+            val buttonBackToMenu: String = "« Вернуться в меню",
+            val infoButton: String = "Информация о сервере 📌",
+            val audioPlayer: ServerBotAudioPlayer = ServerBotAudioPlayer(),
+        ) {
+            data class ServerBotAudioPlayer(
+                val buttonMenu: String = "Загрузить аудио в AudioPlayer 🎧",
+                val messageUpload: String = "Отправьте аудио в этот чат.\nРазмер аудио не должен превышать 20МБ.",
+                val messageErrorUpload: String = "Ошибка! Размер аудио не должен превышать 20МБ.",
+                val messageDone: String = "<b>Аудио успешно загружено на сервер!</b>\nТеперь вы можете использовать его в AudioPlayer.\n\n<b>Имя файла »</b>\n<code>{filename}</code>",
+                val messagePreparing: String = "<b>Пожалуйста, подождите...</b>"
+            )
         }
         data class ServerBotEasyAuth (
             val isEnabled: Boolean = true,
