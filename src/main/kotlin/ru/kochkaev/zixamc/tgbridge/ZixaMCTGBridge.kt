@@ -11,6 +11,7 @@ import ru.kochkaev.zixamc.tgbridge.command.ReplyCommand
 import ru.kochkaev.zixamc.tgbridge.command.ZixaMCCommand
 import ru.kochkaev.zixamc.tgbridge.config.Config
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
+import ru.kochkaev.zixamc.tgbridge.sql.*
 
 /**
  * @author kochkaev
@@ -31,7 +32,11 @@ class ZixaMCTGBridge : ModInitializer {
     }
     override fun onInitialize() {
         ConfigManager.init(false)
-        MySQLIntegration.startServer()
+
+        MySQL.connect()
+        SQLEntity.connectTable()
+        SQLGroup.connectTable()
+
         RequestsBot.startBot()
         ServerBot.startBot()
         ServerLifecycleEvents.SERVER_STOPPED.register(this::onServerStopped)
@@ -43,6 +48,6 @@ class ZixaMCTGBridge : ModInitializer {
     fun onServerStopped(server: MinecraftServer) {
         ServerBot.stopBot()
         RequestsBot.stopBot()
-        MySQLIntegration.stopServer()
+        MySQL.close()
     }
 }

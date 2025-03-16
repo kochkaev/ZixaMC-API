@@ -1,9 +1,8 @@
 package ru.kochkaev.zixamc.tgbridge.chatSync.parser
 
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.ServerBot
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.markdown.RegularNode
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import java.util.*
 
 object Markdown2HTMLParser {
@@ -126,8 +125,8 @@ object Markdown2HTMLParser {
         text.replace(Regex("(@[A-Za-z0-9_]*+)")) {
             val mention = it.value
             val nickname = mention.replace("@", "")
-            if (MySQLIntegration.isNicknameTaken(nickname))
-                "<a href=\"tg://user?id=${MySQLIntegration.getLinkedEntityByNickname(nickname)?.userId}\">$mention</a>"
+            if (SQLEntity.exists(nickname))
+                "<a href=\"tg://user?id=${SQLEntity.get(nickname)?.userId}\">$mention</a>"
             else mention
         }
 

@@ -1,13 +1,11 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
-import ru.kochkaev.zixamc.tgbridge.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.*
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
 
 object RequestsLogic {
 
@@ -127,7 +125,7 @@ object RequestsLogic {
                 ))),
             )
         )
-        MySQLIntegration.addRequest(entity.userId, RequestData(
+        entity.addRequest(RequestData(
             (entity.data?.requests?.maxOfOrNull { it.user_request_id } ?: -1)+1,
             null,
             forReplyMessage.messageId.toLong(),
@@ -143,8 +141,8 @@ object RequestsLogic {
 
     fun promoteUser(argEntity: SQLEntity? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null, argTarget: AccountType? = null): Boolean {
         val entity = argEntity ?:
-            if (userId != null) MySQLIntegration.getLinkedEntity(userId) ?: return false
-            else if (nickname != null) MySQLIntegration.getLinkedEntityByNickname(nickname) ?: return false
+            if (userId != null) SQLEntity.get(userId) ?: return false
+            else if (nickname != null) SQLEntity.get(nickname) ?: return false
             else return false
         val target = argTarget ?:
             if (argTargetId!=null) AccountType.parse(argTargetId)
@@ -156,7 +154,7 @@ object RequestsLogic {
 
     fun checkPermissionToExecute(
         message: TgMessage?,
-        entity: SQLEntity = MySQLIntegration.getOrRegisterLinkedEntity(message?.from!!.id),
+        entity: SQLEntity = SQLEntity.getOrCreate(message?.from!!.id),
         allowedAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedIfSpendByItself: Boolean = false,
     ): Boolean =
@@ -170,13 +168,13 @@ object RequestsLogic {
         val isItLegalReply = isReplyToMessage && msg.replyToMessage!!.messageId != config.target.topicId
         val entity =
             if (isArgUserId)
-                MySQLIntegration.getLinkedEntity(args[1].toLong())
+                SQLEntity.get(args[1].toLong())
             else if (isItLegalReply)
-                MySQLIntegration.getLinkedEntity(msg.replyToMessage!!.from?.id ?: return null)
+                SQLEntity.get(msg.replyToMessage!!.from?.id ?: return null)
             else if (!isReplyToMessage && args.size>1 && args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16)
-                MySQLIntegration.getLinkedEntityByNickname(args[1])
+                SQLEntity.get(args[1])
             else if (allowedIfSpendByItself)
-                MySQLIntegration.getLinkedEntity(msg.from!!.id)
+                SQLEntity.get(msg.from!!.id)
             else null
         return entity
     }
@@ -238,7 +236,7 @@ object RequestsLogic {
     suspend fun executeCheckPermissionsAndExceptions(
         message: TgMessage?,
         entity: SQLEntity?,
-        entityExecutor: SQLEntity? = if (message!=null) MySQLIntegration.getLinkedEntity(message.from!!.id) else null,
+        entityExecutor: SQLEntity? = if (message!=null) SQLEntity.get(message.from!!.id) else null,
         allowedExecutionAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedExecutionIfSpendByItself: Boolean = false,
         applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
@@ -349,7 +347,7 @@ object RequestsLogic {
             ),
             replyParameters = if (toReplyMessageId!=null) TgReplyParameters(toReplyMessageId) else null,
         )
-        MySQLIntegration.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
+        SQLEntity.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
             if (revokeAccepts) it.agreedWithRules = false
             try {
                 bot.sendMessage(

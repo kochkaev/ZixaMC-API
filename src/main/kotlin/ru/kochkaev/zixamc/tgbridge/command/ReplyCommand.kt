@@ -19,6 +19,7 @@ import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser.replyToText
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 
 object ReplyCommand {
@@ -28,7 +29,7 @@ object ReplyCommand {
                 .executes { context ->
                     runBlocking {
                         val groupName = StringArgumentType.getString(context, "group")
-                        val group = decodeGroupId(groupName)
+                        val group = SQLGroup.get(groupName)
                         if (group == null) {
                             context.source.sendFeedback(
                                 { ServerBot.config.chatSync.reply.minecraftCommand.chatNotFound.getMinecraft(
@@ -39,7 +40,7 @@ object ReplyCommand {
                         }
                         val messageId = LongArgumentType.getLong(context, "message_id")
                         val message = StringArgumentType.getString(context, "message")
-                        val tgMessage = ChatSyncBotLogic.sendReply(message, context.source.name, group, messageId)
+                        val tgMessage = ChatSyncBotLogic.sendReply(message, context.source.name, group.chatId, messageId)
                         if (tgMessage != null) {
                             var mcMessage = message
                             replyToText(tgMessage, ServerBot.bot.me.id)?.also {
@@ -55,7 +56,7 @@ object ReplyCommand {
                                         "text" to MinecraftAdventureConverter.minecraftToAdventure(
                                             MarkdownLiteParserV1.ALL.parseNode(mcMessage).toText()
                                         ),
-                                        "prefix" to decodeGroupPrefix(groupName, tgMessage.messageId.toLong())!!,
+                                        "prefix" to group.getResolvedFromMcPrefix(tgMessage.messageId),
                                     )
                                 )
                             )
@@ -77,12 +78,12 @@ object ReplyCommand {
         )
     }
 
-    fun decodeGroupId(group: String): Long? =
-        if (group.lowercase() == "zixa")
-            config.chatId
-        else null
-    fun decodeGroupPrefix(group: String, messageId: Long): Component? =
-        if (group.lowercase() == "zixa")
-            config.reply.minecraftCommand.defaultPrefix.get(listOf("message_id" to messageId.toString()))
-        else null
+//    fun decodeGroupId(group: String): Long? =
+//        if (group.lowercase() == "zixa")
+//            config.chatId
+//        else null
+//    fun decodeGroupPrefix(group: String, messageId: Long): Component? =
+//        if (group.lowercase() == "zixa")
+//            config.reply.defaultPrefix.get(listOf("message_id" to messageId.toString()))
+//        else null
 }

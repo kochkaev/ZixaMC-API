@@ -1,12 +1,11 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
 import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountType
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.MinecraftAccountType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.RequestType
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.newRequest
@@ -16,19 +15,20 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 
 object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
 //        RequestsCommandLogic.executeRequestFinalAction(msg, true)
         return RequestsLogic.executeRequestFinalAction(
-            entity = MySQLIntegration.getLinkedEntity(msg.from?.id ?: return false) ?: return false,
+            entity = SQLEntity.get(msg.from?.id ?: return false) ?: return false,
             isAccepted = true,
         )
     }
     suspend fun onTelegramRejectCommand(msg: TgMessage): Boolean {
 //        RequestsCommandLogic.executeRequestFinalAction(msg, false)
         return RequestsLogic.executeRequestFinalAction(
-            entity = MySQLIntegration.getLinkedEntity(msg.from?.id ?: return false) ?: return false,
+            entity = SQLEntity.get(msg.from?.id ?: return false) ?: return false,
             isAccepted = false,
         )
     }
@@ -54,11 +54,11 @@ object RequestsBotCommands {
         }
     }
     suspend fun onTelegramRulesUpdatedCommand(msg: TgMessage): Boolean {
-        val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
+        val entity = SQLEntity.get(msg.from?.id?:return false)?:return false
         return RequestsLogic.updateRules(entity, msg.messageId, false)
     }
     suspend fun onTelegramRulesUpdatedWithRevokeCommand(msg: TgMessage): Boolean {
-        val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
+        val entity = SQLEntity.get(msg.from?.id?:return false)?:return false
         return RequestsLogic.updateRules(entity, msg.messageId, true)
     }
     suspend fun onTelegramLeaveCommand(msg: TgMessage): Boolean =
@@ -129,7 +129,7 @@ object RequestsBotCommands {
             removeProtectedContent = true,
         )
     suspend fun onTelegramRestrictCommand(message: TgMessage): Boolean {
-        val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(message.replyToMessage?.messageId?.toLong()?:0)
+        val entity = SQLEntity.getByTempArray(message.replyToMessage?.messageId.toString())
             ?: matchEntityFromUpdateServerPlayerStatusCommand(message, false)
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
@@ -186,7 +186,7 @@ object RequestsBotCommands {
     }
     suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = MySQLIntegration.getOrAddUser(msg.from?.id?:return false)
+        val entity = SQLEntity.getOrCreate(msg.from?.id?:return false)
         if (entity.isRestricted) return false
         bot.sendMessage(
             chatId = msg.chat.id,
@@ -202,15 +202,15 @@ object RequestsBotCommands {
     suspend fun onTelegramNewCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
         if (msg.from == null) return false
-        val entity = MySQLIntegration.getLinkedEntity(msg.from.id)?:return false
+        val entity = SQLEntity.get(msg.from.id)?:return false
         if (entity.isRestricted) return false
         return newRequest(entity)
     }
     suspend fun onTelegramCancelCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = MySQLIntegration.getLinkedEntity(msg.from?.id?:return false)?:return false
+        val entity = SQLEntity.get(msg.from?.id?:return false)?:return false
         val requests = (entity.data?:return false).requests
-        if (requests.any {RequestType.getAllPending().contains(it.request_status)}) return cancelRequest(entity)
+        if (requests.any { RequestType.getAllPending().contains(it.request_status)}) return cancelRequest(entity)
         else if (requests.any {it.request_status == RequestType.CREATING}) return cancelSendingRequest(entity)
         return false
     }

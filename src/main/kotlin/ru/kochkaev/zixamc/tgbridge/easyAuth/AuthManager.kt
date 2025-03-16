@@ -1,19 +1,14 @@
 package ru.kochkaev.zixamc.tgbridge.easyAuth
 
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.event.ClickEvent
 import net.minecraft.server.network.ServerPlayerEntity
-import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.*
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
 import xyz.nikitacartes.easyauth.EasyAuth.config as easyAuthConfig
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
-import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration.EasyAuthCallbackData
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import xyz.nikitacartes.easyauth.EasyAuth
 import xyz.nikitacartes.easyauth.utils.PlayerAuth
 
@@ -69,7 +64,7 @@ object AuthManager {
         val cache = EasyAuth.playerCacheMap[uuid]
         if (!easyAuthConfig.enableGlobalPassword && (cache == null || cache.password.isEmpty())) return
         val nickname = player.nameForScoreboard
-        val entity = MySQLIntegration.getLinkedEntityByNickname(nickname)?:return kickYouAreNotPlayer(player)
+        val entity = SQLEntity.get(nickname)?:return kickYouAreNotPlayer(player)
         if ((player as PlayerAuth).`easyAuth$canSkipAuth`() || (player as PlayerAuth).`easyAuth$isAuthenticated`()) return
         player.sendMessage(config.easyAuth.langMinecraft.onJoinTip.getMinecraft())
         try {
@@ -103,7 +98,7 @@ object AuthManager {
         }
     }
     suspend fun onLeave(nickname: String) {
-        val entity = MySQLIntegration.getLinkedEntityByNickname(nickname)?:return
+        val entity = SQLEntity.get(nickname)?:return
         entity.tempArray?.forEach {
             try {
                 bot.editMessageReplyMarkup(

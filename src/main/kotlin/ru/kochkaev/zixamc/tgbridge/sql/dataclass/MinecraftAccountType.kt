@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.dataclassSQL
+package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
 import com.google.gson.annotations.SerializedName
 
@@ -30,7 +30,7 @@ enum class MinecraftAccountType {
     };
 
     abstract fun getName():String
-    abstract fun toAccountType():AccountType
+    abstract fun toAccountType(): AccountType
 
     companion object {
         fun parse(name: String): MinecraftAccountType? = when (name) {

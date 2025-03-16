@@ -24,11 +24,12 @@ data class Config (
         )
     }
     data class MySQLDataClass (
-        val mySQLHost: String = "",
-        val mySQLDatabase: String = "",
-        val mySQLUser: String = "",
-        val mySQLPassword: String = "",
-        val mySQLTable: String = "",
+        val host: String = "",
+        val database: String = "",
+        val user: String = "",
+        val password: String = "",
+        val usersTable: String = "",
+        val groupsTable: String = "",
     )
     data class RequestsBotDataClass (
         val isEnabled: Boolean = true,
@@ -258,11 +259,13 @@ data class Config (
             }
             data class ChatSyncReply(
                 val minecraftCommand: ChatSyncReplyCommand = ChatSyncReplyCommand(),
+                val prefixAppend: TextData = TextData("<hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r {group} {message_id} '><prefix></click></hover>"),
+                val defaultPrefix: TextData = TextData("<color:aqua>Telegram</color:aqua>"),
+                val defaultMcPrefix: TextData = TextData("<color:dark_green>Minecraft</color:dark_green>"),
             ) {
                 data class ChatSyncReplyCommand(
                     val chatNotFound: TextData = TextData("<color:gray><italic>Чат \"{group}\" не найден!</italic></color:gray>"),
                     val errorDueSending: TextData = TextData("<color:gray><italic>Возникла ошибка во время отправки вашего сообщения<color:gray><italic>"),
-                    val defaultPrefix: TextData = TextData("<color:dark_green><hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r zixa {message_id} '>Minecraft</click></hover></color:dark_green>"),
                     val minecraftSchema: TextData = TextData("[<prefix><reset>] <hover:show_text:'Написать личное сообщение'><click:suggest_command:'/tell {nickname} '>{nickname}</click></hover> » <text>"),
                 )
             }

@@ -3,18 +3,16 @@ package ru.kochkaev.zixamc.tgbridge.easyAuth
 import com.google.gson.annotations.SerializedName
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.network.ServerPlayerEntity
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
-import ru.kochkaev.zixamc.tgbridge.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
 
 object EasyAuthIntegration {
 
-    private val onApproveHandlers = ArrayList<(SQLEntity,String)->Unit>()
-    private val onDenyHandlers = ArrayList<(SQLEntity,String)->Unit>()
+    private val onApproveHandlers = ArrayList<(SQLEntity, String)->Unit>()
+    private val onDenyHandlers = ArrayList<(SQLEntity, String)->Unit>()
 
     val isEnabled: Boolean
         get() = FabricLoader.getInstance().isModLoaded("easyauth") && config.easyAuth.isEnabled
@@ -58,7 +56,7 @@ object EasyAuthIntegration {
         val nickname = args.substring(args.indexOf('/')+1, args.length)
         val operation = args.substring(0, args.indexOf('/'))
         if (!isEnabled) return
-        val entity = MySQLIntegration.getLinkedEntity(cbq.from.id)?:return
+        val entity = SQLEntity.get(cbq.from.id)?:return
         when (/*data.data!!.operation*/ operation) {
             "approve" -> AuthManager.approve(entity, /*data.data.nickname*/nickname)
             "deny" -> AuthManager.deny(entity, /*data.data.nickname*/nickname)

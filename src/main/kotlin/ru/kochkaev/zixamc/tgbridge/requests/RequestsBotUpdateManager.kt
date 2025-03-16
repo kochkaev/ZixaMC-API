@@ -1,21 +1,21 @@
 package ru.kochkaev.zixamc.tgbridge.requests
 
 import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountType
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.MinecraftAccountType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.RequestType
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
         if (msg.chat.id>=0) {
-            val entity = MySQLIntegration.getLinkedEntity(msg.from!!.id)?:return
+            val entity = SQLEntity.get(msg.from!!.id)?:return
             if (entity.isRestricted) return
             if (entity.accountType == AccountType.REQUESTER) {
                 val requesterData = entity.data?:return
@@ -42,7 +42,7 @@ object RequestsBotUpdateManager {
                                         config.user.lang.inputField.enterNickname.ifEmpty { null }
                                     )
                                 )
-                            } else if (MySQLIntegration.isNicknameNotAvailableToTake(entity.userId, msg.text)) {
+                            } else if (!entity.canTakeNickname(msg.text)) {
                                 newMessage = bot.sendMessage(
                                     chatId = msg.chat.id,
                                     text = BotLogic.escapePlaceholders(config.user.lang.creating.takenNickname, msg.text),
@@ -120,8 +120,8 @@ object RequestsBotUpdateManager {
         }
         else {
             val replied = msg.replyToMessage?:return
-            val entity = MySQLIntegration.getLinkedEntityByTempArrayMessagesId(replied.messageId.toLong())?:return
-            if (!entity.tempArray!!.contains(replied.messageId.toString()) || !entity.data!!.requests.any {RequestType.getAllPending().contains(it.request_status)}) return
+            val entity = SQLEntity.getByTempArray(replied.messageId.toString())?:return
+            if (!entity.tempArray!!.contains(replied.messageId.toString()) || !entity.data!!.requests.any { RequestType.getAllPending().contains(it.request_status)}) return
             bot.forwardMessage(
                 chatId = entity.userId,
                 fromChatId = msg.chat.id,
@@ -131,7 +131,7 @@ object RequestsBotUpdateManager {
         }
     }
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
-        val entity = MySQLIntegration.getLinkedEntity(cbq.from.id)?:return
+        val entity = SQLEntity.get(cbq.from.id)?:return
         if (entity.isRestricted) return
         when (cbq.data) {
             "agree_with_rules" -> {
@@ -215,10 +215,10 @@ object RequestsBotUpdateManager {
                 request.message_id_in_moderators_chat = moderatorsControl.messageId.toLong()
                 request.request_status = RequestType.MODERATING
                 entity.editRequest(request)
-                MySQLIntegration.setNickname(entity.userId, request.request_nickname!!)
+                entity.addNickname(request.request_nickname!!)
             }
             "approve_request" -> {
-                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                val userEntity = SQLEntity.linkedEntities.values.first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
@@ -286,7 +286,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             "deny_request" -> {
-                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                val userEntity = SQLEntity.linkedEntities.values.first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
@@ -317,7 +317,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             "restrict_user" -> {
-                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                val userEntity = SQLEntity.linkedEntities.values.first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
@@ -342,7 +342,7 @@ object RequestsBotUpdateManager {
             }
             "close_poll" -> {
                 if (entity.accountType != AccountType.ADMIN) return
-                val userEntity = MySQLIntegration.linkedEntities.values.first {
+                val userEntity = SQLEntity.linkedEntities.values.first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.PENDING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.PENDING }
@@ -368,7 +368,7 @@ object RequestsBotUpdateManager {
     }
 
     suspend fun onTelegramChatJoinRequest(request: TgChatJoinRequest) {
-        val entity = MySQLIntegration.getLinkedEntity(request.from.id)?:return
+        val entity = SQLEntity.get(request.from.id)?:return
         if (entity.isRestricted) return
         if (entity.accountType.isPlayer()) {
             bot.approveChatJoinRequest(request.chat.id, request.from.id)

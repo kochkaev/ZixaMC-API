@@ -1,6 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge
 
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.ProtectedMessageData
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.ProtectedMessageData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
@@ -8,8 +8,9 @@ import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.AccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 
 object BotLogic {
 
@@ -81,7 +82,7 @@ object BotLogic {
     fun getMentionOfAllPlayers() : String {
         val output = StringBuilder()
         val placeholder = CONFIG?.serverBot?.mentionAllReplaceWith?:"+"
-        MySQLIntegration.linkedEntities.filter { it.value.accountType.isPlayer() } .forEach {
+        SQLEntity.linkedEntities.filter { it.value.accountType.isPlayer() } .forEach {
             output.append("<a href=\"tg://user?id=${it.key}\">$placeholder</a>")
         }
         return output.toString()

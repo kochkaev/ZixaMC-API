@@ -3,17 +3,13 @@ package ru.kochkaev.zixamc.tgbridge.serverBot.integration
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.runBlocking
 import net.fabricmc.loader.api.FabricLoader
-import ru.kochkaev.zixamc.tgbridge.BotLogic
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
-import ru.kochkaev.zixamc.tgbridge.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
-import java.io.File
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 
 object Menu {
 
@@ -25,7 +21,7 @@ object Menu {
     private val isAudioPlayerLoaded = FabricLoader.getInstance().isModLoaded("audioplayer")
 
     suspend fun sendMenu(chatId: Long) {
-        val entity = if (chatId>0) MySQLIntegration.getLinkedEntity(chatId) else null
+        val entity = if (chatId>0) SQLEntity.get(chatId) else null
         if (entity != null && entity.accountType.isPlayer()) {
             ServerBot.bot.sendMessage(
                 chatId = chatId,
@@ -59,7 +55,7 @@ object Menu {
     }
     suspend fun onCallback(cbq: TgCallbackQuery, /*data: TgCallback<MenuCallbackData>*/) {
         if (cbq.data == null || !cbq.data.startsWith("menu")) return
-        val entity = MySQLIntegration.getLinkedEntity(cbq.from.id)?:return
+        val entity = SQLEntity.get(cbq.from.id)?:return
         if (!entity.accountType.isPlayer()) {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,
@@ -93,7 +89,7 @@ object Menu {
     }
     suspend fun onMessage(msg: TgMessage) {
         runBlocking {
-            val entity = if (msg.chat.id > 0) MySQLIntegration.getLinkedEntity(msg.chat.id) else null
+            val entity = if (msg.chat.id > 0) SQLEntity.get(msg.chat.id) else null
             if (entity != null && entity.accountType.isPlayer())
                 when (process[entity.userId]) {
                     Processes.AUDIO_PLAYER -> {

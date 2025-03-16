@@ -76,6 +76,7 @@ object ConfigManager {
                 val jsonString = GsonBuilder()
                     .setPrettyPrinting()
                     .disableHtmlEscaping()
+                    .serializeNulls()
                     .registerTypeAdapter(TextData::class.java, TextDataAdapter())
                     .create()
                     .toJson(Config())
@@ -91,6 +92,7 @@ object ConfigManager {
             CONFIG = GsonBuilder()
                 .setPrettyPrinting()
                 .disableHtmlEscaping()
+                .serializeNulls()
                 .registerTypeAdapter(TextData::class.java, TextDataAdapter())
                 .create()
                 .fromJson(
@@ -108,6 +110,7 @@ object ConfigManager {
                 val jsonString = GsonBuilder()
                     .setPrettyPrinting()
                     .disableHtmlEscaping()
+                    .serializeNulls()
                     .registerTypeAdapter(TextData::class.java, TextDataAdapter())
                     .create()
                     .toJson(CONFIG)

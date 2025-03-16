@@ -3,16 +3,13 @@ package ru.kochkaev.zixamc.tgbridge.chatSync.parser
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
-import net.kyori.adventure.text.event.ClickEvent
 import net.minecraft.util.Language
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessageMedia
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
-import net.kyori.adventure.text.minimessage.MiniMessage
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 
 object TextParser {
 
@@ -217,7 +214,7 @@ object TextParser {
     }
 
     fun escapeSenderName(userId: Long) =
-        MySQLIntegration.getLinkedEntity(userId)?.nickname
+        SQLEntity.get(userId)?.nickname
     fun escapeSenderName(message: TgMessage) =
         escapeSenderName(message.from?.id?:0)
 

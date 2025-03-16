@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.dataclassSQL
+package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
 data class ProtectedMessageData (
     val message_id: Long,

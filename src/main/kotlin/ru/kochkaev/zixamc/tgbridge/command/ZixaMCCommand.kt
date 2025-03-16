@@ -7,9 +7,9 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
-import ru.kochkaev.zixamc.tgbridge.MySQLIntegration
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.AccountType
 
 
 object ZixaMCCommand {
@@ -25,8 +25,8 @@ object ZixaMCCommand {
                             .executes { context ->
                                 val userId = context.getArgument("user_id", Long::class.java)
                                 val accountType = context.getArgument("account_type", String::class.java)
-                                MySQLIntegration.getLinkedEntity(userId)!!
-                                    .accountType = AccountType.parse(accountType.lowercase())
+                                SQLEntity.get(userId)
+                                    ?.accountType = AccountType.parse(accountType.lowercase())
                                 context.source.sendFeedback( { Text.literal("Successfully promoted user $userId to $accountType") }, true)
                                 0
                             }

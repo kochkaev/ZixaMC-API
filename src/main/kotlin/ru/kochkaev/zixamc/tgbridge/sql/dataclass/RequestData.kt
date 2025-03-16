@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.dataclassSQL
+package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
 data class RequestData(
     var user_request_id: Int,

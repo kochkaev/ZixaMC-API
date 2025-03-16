@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.dataclassSQL
+package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
 import com.google.gson.annotations.SerializedName
 import java.util.*

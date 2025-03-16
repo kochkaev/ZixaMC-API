@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.dataclassSQL
+package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
 enum class AccountType {
     ADMIN {
@@ -26,8 +26,8 @@ enum class AccountType {
         override fun isPlayer(): Boolean = false
     };
 
-    abstract fun levelHigh():AccountType?
-    abstract fun levelBellow():AccountType?
+    abstract fun levelHigh(): AccountType?
+    abstract fun levelBellow(): AccountType?
     abstract fun getId():Int
     abstract fun isPlayer():Boolean
 
