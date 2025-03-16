@@ -42,7 +42,7 @@ object AuthManager {
         (player as PlayerAuth).`easyAuth$setAuthenticated`(true)
         (player as PlayerAuth).`easyAuth$restoreLastLocation`()
         EasyAuth.playerCacheMap[uuid]?.loginTries?.set(0)
-        player.sendMessage(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.onApprove, nickname)))
+        player.sendMessage(config.easyAuth.langMinecraft.onApprove.getMinecraft())
         try {
             bot.sendMessage(
                 chatId = entity.userId,
@@ -53,7 +53,7 @@ object AuthManager {
     suspend fun deny(entity: SQLEntity, nickname: String) {
         val player = server.playerManager.getPlayer(nickname)
         val uuid = (player as PlayerAuth).`easyAuth$getFakeUuid`()
-        player.networkHandler.disconnect(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.onDeny, nickname)))
+        player.networkHandler.disconnect(config.easyAuth.langMinecraft.onDeny.getMinecraft())
         val cache = EasyAuth.playerCacheMap[uuid]
         cache?.lastKicked = System.currentTimeMillis()
         cache?.loginTries?.set(0)
@@ -71,7 +71,7 @@ object AuthManager {
         val nickname = player.nameForScoreboard
         val entity = MySQLIntegration.getLinkedEntityByNickname(nickname)?:return kickYouAreNotPlayer(player)
         if ((player as PlayerAuth).`easyAuth$canSkipAuth`() || (player as PlayerAuth).`easyAuth$isAuthenticated`()) return
-        player.sendMessage(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.onJoinTip, nickname)))
+        player.sendMessage(config.easyAuth.langMinecraft.onJoinTip.getMinecraft())
         try {
             val message = bot.sendMessage(
                 chatId = entity.userId,
@@ -96,12 +96,8 @@ object AuthManager {
             ZixaMCTGBridge.logger.error(e.message)
             val botUsername = config.easyAuth.langMinecraft.botUsername
             player.sendMessage(
-                MinecraftAdventureConverter.adventureToMinecraft(
-                    Component.text(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.noHaveChatWithBot, botUsername))
-                        .toBuilder()
-                            .hoverEvent(Component.text(BotLogic.escapePlaceholders(config.chatSync.lang.minecraft.messageMeta.hoverOpenInTelegram, nickname)))
-                            .clickEvent(ClickEvent.clickEvent(ClickEvent.Action.OPEN_URL, "https://t.me/${botUsername.replace("@", "")}"))
-                        .build()
+                config.easyAuth.langMinecraft.noHaveChatWithBot.getMinecraft(
+                    listOf("url" to "https://t.me/${botUsername.replace("@", "")}")
                 )
             )
         }
@@ -120,7 +116,7 @@ object AuthManager {
         entity.tempArray = arrayOf()
     }
     private fun kickYouAreNotPlayer(player: ServerPlayerEntity?) {
-        player?.networkHandler?.disconnect(Text.of(BotLogic.escapePlaceholders(config.easyAuth.langMinecraft.youAreNotPlayer, player.nameForScoreboard)))
+        player?.networkHandler?.disconnect(config.easyAuth.langMinecraft.youAreNotPlayer.getMinecraft())
         val uuid = (player as PlayerAuth).`easyAuth$getFakeUuid`()
         val cache = EasyAuth.playerCacheMap[uuid]
         cache?.loginTries?.set(0)

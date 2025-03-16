@@ -2,9 +2,7 @@ package ru.kochkaev.zixamc.tgbridge
 
 import kotlinx.coroutines.*
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge.Companion.logger
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.MinecraftAccountData
-import ru.kochkaev.zixamc.tgbridge.dataclassSQL.RequestData
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
+import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsBotCommands
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsBotUpdateManager
 

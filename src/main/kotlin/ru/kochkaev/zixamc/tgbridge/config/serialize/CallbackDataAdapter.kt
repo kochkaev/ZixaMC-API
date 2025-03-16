@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.serialize
+package ru.kochkaev.zixamc.tgbridge.config.serialize
 
 import com.google.gson.*
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData

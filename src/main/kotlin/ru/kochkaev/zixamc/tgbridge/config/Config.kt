@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge
+package ru.kochkaev.zixamc.tgbridge.config
 
 import java.util.*
 import net.kyori.adventure.text.format.TextDecoration
@@ -183,6 +183,7 @@ data class Config (
             val events: ServerBotChatSyncGameEventsDataClass = ServerBotChatSyncGameEventsDataClass(),
             val lang: ServerBotChatSyncLangDataClass = ServerBotChatSyncLangDataClass(),
             val betaMarkdown: Boolean = false,
+            val reply: ChatSyncReply = ChatSyncReply(),
         ) {
             data class ServerBotChatSyncLangDataClass (
                 val telegram: LangTelegram = LangTelegram(),
@@ -207,52 +208,28 @@ data class Config (
                     val playerListZeroOnline: String = "<b><tg-emoji emoji-id=\"5463137996091962323\">😭</tg-emoji> Нигого нет онлайн.</b>",
                 )
 
-                data class MessageMeta(
-                    val messageFormat: String = "[§bTelegram§r] {sender} » {text}",
-                    val hoverOpenInTelegram: String = "Открыть в Telegram",
-                    val hoverOpenInBrowser: String = "Открыть в браузере",
-                    val hoverCopyToClipboard: String = "Копировать в буфер обмена",
-                    val hoverTagToReply: String = "Упомянуть его/её",
-                    val reply: String = "    ┌──── {sender} » {text}",
-                    val replyToMinecraft: String = "    ┌──── {text}",
-                    val forward: String = "{from} »",
-                    val gif: String = "[GIF]",
-                    val document: String = "[Документ]",
-                    val photo: String = "[Фото]",
-                    val audio: String = "[Аудио]",
-                    val sticker: String = "[Стикер]",
-                    val video: String = "[Видео]",
-                    val videoMessage: String = "[Кружок]",
-                    val voiceMessage: String = "[Голосовуха]",
-                    val poll: String = "[Опрос: {title}]",
-                    val pin: String = "закреплено сообщение »",
-                )
-
-                data class MessageFormatting(
-                    val linkColor: String = "#FFFF55",
-                    val linkFormatting: List<TextDecoration>? = Collections.singletonList(TextDecoration.UNDERLINED),
-                    val mentionColor: String = "#FFFF55",
-                    val mentionFormatting: List<TextDecoration>? = Collections.emptyList(),
-                    val hashtagColor: String = "#FFFF55",
-                    val hashtagFormatting: List<TextDecoration>? = Collections.emptyList(),
-                    val codeColor: String = "#AAAAAA",
-                    val codeFormatting: List<TextDecoration>? = Collections.emptyList(),
-                    val spoilerColor: String = "#AAAAAA",
-                    val spoilerFormatting: List<TextDecoration>? = Collections.singletonList(TextDecoration.OBFUSCATED),
-                    val spoilerReplaceWithChar: String? = "▌",
-                    val replyColor: String = "#AAAAAA",
-                    val replyFormatting: List<TextDecoration>? = Collections.emptyList(),
-                    val forwardColor: String = "#AAAAAA",
-                    val forwardFormatting: List<TextDecoration>? = Collections.emptyList(),
-                    val mediaColor: String = "#FFFF55",
-                    val mediaFormatting: List<TextDecoration>? = Collections.emptyList(),
-                    val pinnedMessageColor: String = "#AAAAAA",
-                    val pinnedMessageFormatting: List<TextDecoration>? = Collections.emptyList(),
-                )
-
                 data class LangMinecraft(
-                    val messageMeta: MessageMeta = MessageMeta(),
-                    val messageFormatting: MessageFormatting = MessageFormatting(),
+                    val messageFormat: TextData = TextData("[<prefix><reset>] <hover:show_text:'Упомянуть его/её (Shift + клик)'><insert:'@{sender}'>{sender}</insert></hover> » <text>"),
+                    val defaultPrefix: TextData = TextData("<color:aqua><hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r zixa {message_id} '>Telegram</click></hover></color:aqua>"),
+                    val reply: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── {sender} » {text}</click></hover></color:gray>"),
+                    val replyToMinecraft: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── {text}</click></hover></color:gray>"),
+                    val forward: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>{from} »</click></hover></color:gray>"),
+                    val gif: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[GIF]</click></hover></color:yellow>"),
+                    val document: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Документ]</click></hover></color:yellow>"),
+                    val photo: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Фото]</click></hover></color:yellow>"),
+                    val audio: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Аудио]</click></hover></color:yellow>"),
+                    val sticker: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Стикер]</click></hover></color:yellow>"),
+                    val video: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Видео]</click></hover></color:yellow>"),
+                    val videoMessage: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Кружок]</click></hover></color:yellow>"),
+                    val voiceMessage: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Голосовуха]</click></hover></color:yellow>"),
+                    val poll: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Опрос: {title}]</click></hover></color:yellow>"),
+                    val pin: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>закреплено сообщение » <text></click></hover></color:gray>"),
+                    val link: TextData = TextData("<color:yellow><underlined><hover:show_text:'Открыть в браузере'><click:open_url:'{url}'><title></click></hover></underlined></color:yellow>"),
+                    val mention: TextData = TextData("<color:yellow><insert:'{mention}'><hover:show_text:'Упомянуть его/её (Shift + клик)'><title></hover></insert></color:yellow>"),
+                    val hashtag: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'><title></click></hover></color:yellow>"),
+                    val code: TextData = TextData("<color:gray><hover:show_text:'Копировать в буфер обмена'><click:copy_to_clipboard:'{text}'><title></click></hover></color:gray>"),
+                    val spoiler: TextData = TextData("<color:gray><obfuscated><hover:show_text:<text>>{placeholder}</hover></obfuscated></color:gray>"),
+                    val spoilerReplaceWithChar: String? = "▌",
                 )
             }
             data class ServerBotChatSyncMessageDataClass (
@@ -279,6 +256,16 @@ data class Config (
                     val showDescription: Boolean = true,
                 )
             }
+            data class ChatSyncReply(
+                val minecraftCommand: ChatSyncReplyCommand = ChatSyncReplyCommand(),
+            ) {
+                data class ChatSyncReplyCommand(
+                    val chatNotFound: TextData = TextData("<color:gray><italic>Чат \"{group}\" не найден!</italic></color:gray>"),
+                    val errorDueSending: TextData = TextData("<color:gray><italic>Возникла ошибка во время отправки вашего сообщения<color:gray><italic>"),
+                    val defaultPrefix: TextData = TextData("<color:dark_green><hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r zixa {message_id} '>Minecraft</click></hover></color:dark_green>"),
+                    val minecraftSchema: TextData = TextData("[<prefix><reset>] <hover:show_text:'Написать личное сообщение'><click:suggest_command:'/tell {nickname} '>{nickname}</click></hover> » <text>"),
+                )
+            }
         }
         data class ServerBotIntegration(
             val messageNotPlayer: String = "<b>👋 Приветствую!</b>\nЯ бот приватного Minecraft сервера Zixa City.\n\n<i>Вы не являетесь игроком сервера</i> »\n<b>Подать заявку</b> -> @ZixaMC_request_bot",
@@ -293,7 +280,7 @@ data class Config (
                 val messageUpload: String = "Отправьте аудио в этот чат.\nРазмер аудио не должен превышать 20МБ.",
                 val messageErrorUpload: String = "Ошибка! Размер аудио не должен превышать 20МБ.",
                 val messageIncorrectExtension: String = "Ошибка! Аудио должно иметь расширение \".mp3\" или \".wav\". Вы можете воспользоваться онлайн-конвертером для изменения формата.",
-                val messageDone: String = "<b>Аудио успешно загружено на сервер!</b>\nТеперь вы можете использовать его в AudioPlayer.\n\n<b>UUID аудио »</b>\n<code>{filename}</code>\n\n<i>Записать на пластинку</i> ->\n<code>/audioplayer musicdisc {filename}</code>\n<i>Записать на козий рог</i> ->\n<code>/audioplayer goathorn {filename}</code>",
+                val messageDone: String = "<b>Аудио успешно загружено на сервер!</b>\nТеперь вы можете использовать его в AudioPlayer.\n\n<b>UUID аудио »</b>\n<code>{filename}</code>\n\n<i>Что бы записать аудио на предмет, возьмите его в руку и выполните команду</i> ->\n<code>/audioplayer apply {filename}</code>",
                 val messagePreparing: String = "<b>Пожалуйста, подождите...</b>"
             )
         }
@@ -304,11 +291,11 @@ data class Config (
             val langTelegram: ServerBotEasyAuthLangTelegram = ServerBotEasyAuthLangTelegram(),
         ) {
             data class ServerBotEasyAuthLangMinecraft (
-                val onApprove: String = "§aВы были авторизованы через Telegram, хорошей игры!",
-                val onDeny: String = "Вход был запрещён в Telegram.",
-                val youAreNotPlayer: String = "Вы не являетесь игроком сервера!\nЕсли это ошибка, обратитесь за помощю к администратору.",
-                val onJoinTip: String = "Войдите в 1 клик, используя Telegram!",
-                val noHaveChatWithBot: String = "§eПохоже, у вас нет диалога с Telegram ботом... \nДля быстрой авторизации на сервере, §nнажмите на это сообщение§r§e, перейдите в чат с ботом и нажмите \"Начать\", после чего, перезайдите на сервер.",
+                val onApprove: TextData = TextData("<color:green>Вы были авторизованы через Telegram, хорошей игры!</color:green>"),
+                val onDeny: TextData = TextData("Вход был запрещён в Telegram."),
+                val youAreNotPlayer: TextData = TextData("Вы не являетесь игроком сервера!\nЕсли это ошибка, обратитесь за помощю к администратору."),
+                val onJoinTip: TextData = TextData("Войдите в 1 клик, используя Telegram!"),
+                val noHaveChatWithBot: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>Похоже, у вас нет диалога с Telegram ботом... \nДля быстрой авторизации на сервере, <underlined>нажмите на это сообщение</underlined>, перейдите в чат с ботом и нажмите \"Начать\", после чего, перезайдите на сервер.</click></hover></color:yellow>"),
                 val botUsername: String = "@zixamc_beta_bot",
             )
             data class ServerBotEasyAuthLangTelegram (

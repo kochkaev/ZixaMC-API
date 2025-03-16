@@ -6,7 +6,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
-import ru.kochkaev.zixamc.tgbridge.ConfigManager.CONFIG
+import ru.kochkaev.zixamc.tgbridge.config.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.dataclassSQL.AccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup

@@ -7,8 +7,10 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
 import org.slf4j.LoggerFactory
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
+import ru.kochkaev.zixamc.tgbridge.command.ReplyCommand
 import ru.kochkaev.zixamc.tgbridge.command.ZixaMCCommand
+import ru.kochkaev.zixamc.tgbridge.config.Config
+import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 
 /**
  * @author kochkaev
@@ -35,6 +37,7 @@ class ZixaMCTGBridge : ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPED.register(this::onServerStopped)
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             ZixaMCCommand.registerCommand(dispatcher)
+            ReplyCommand.registerCommand(dispatcher)
         }
     }
     fun onServerStopped(server: MinecraftServer) {

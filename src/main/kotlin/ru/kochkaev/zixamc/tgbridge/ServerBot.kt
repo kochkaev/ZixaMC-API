@@ -6,10 +6,10 @@ import kotlinx.coroutines.sync.withLock
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
-import net.minecraft.server.network.ServerPlayerEntity
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge.Companion.logger
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
+import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
 

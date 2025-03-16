@@ -1,9 +1,11 @@
-package ru.kochkaev.zixamc.tgbridge
+package ru.kochkaev.zixamc.tgbridge.config
 
 import com.google.gson.GsonBuilder
 import net.fabricmc.loader.api.FabricLoader
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
+import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
@@ -74,6 +76,7 @@ object ConfigManager {
                 val jsonString = GsonBuilder()
                     .setPrettyPrinting()
                     .disableHtmlEscaping()
+                    .registerTypeAdapter(TextData::class.java, TextDataAdapter())
                     .create()
                     .toJson(Config())
                 IOUtils.write(jsonString, outputStream, StandardCharsets.UTF_8)
@@ -88,6 +91,7 @@ object ConfigManager {
             CONFIG = GsonBuilder()
                 .setPrettyPrinting()
                 .disableHtmlEscaping()
+                .registerTypeAdapter(TextData::class.java, TextDataAdapter())
                 .create()
                 .fromJson(
                     IOUtils.toString(CONFIG_FILE.toURI(), StandardCharsets.UTF_8),
@@ -104,6 +108,7 @@ object ConfigManager {
                 val jsonString = GsonBuilder()
                     .setPrettyPrinting()
                     .disableHtmlEscaping()
+                    .registerTypeAdapter(TextData::class.java, TextDataAdapter())
                     .create()
                     .toJson(CONFIG)
                 IOUtils.write(jsonString, outputStream, StandardCharsets.UTF_8)

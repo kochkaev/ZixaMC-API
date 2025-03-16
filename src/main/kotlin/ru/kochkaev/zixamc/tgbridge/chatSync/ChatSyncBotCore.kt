@@ -1,6 +1,5 @@
 package ru.kochkaev.zixamc.tgbridge.chatSync
 
-import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.loader.api.FabricLoader
@@ -10,12 +9,11 @@ import net.minecraft.network.message.SignedMessage
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
-import ru.kochkaev.zixamc.tgbridge.Config
-import ru.kochkaev.zixamc.tgbridge.ConfigManager
+import ru.kochkaev.zixamc.tgbridge.config.Config
+import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage

@@ -142,6 +142,7 @@ dependencies {
     include(implementation("net.kyori:adventure-text-serializer-json:${adventureVersion}") {
         exclude(module = "gson")
     })
+    include(implementation("net.kyori:adventure-text-minimessage:${adventureVersion}")!!)
     include(implementation("net.kyori:examination-api:1.3.0")!!)
     include(implementation("net.kyori:examination-string:1.3.0")!!)
     include(implementation("net.kyori:option:1.0.0")!!)

@@ -6,7 +6,7 @@ import net.kyori.adventure.text.Component
 import kotlinx.coroutines.*
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
-import ru.kochkaev.zixamc.tgbridge.ConfigManager
+import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import java.time.Clock
 import java.time.temporal.ChronoUnit
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
@@ -57,7 +57,11 @@ object ChatSyncBotLogic {
                 ),
             )
         } else {
-            core.sendMessage(lang.telegram.playerListZeroOnline)
+            bot.sendMessage(
+                chatId = msg.chat.id,
+                replyParameters = TgReplyParameters(msg.messageId),
+                text = lang.telegram.playerListZeroOnline,
+            )
         }
     }
 
@@ -102,18 +106,56 @@ object ChatSyncBotLogic {
         return true
     }
 
-    private fun onChatMessage(e: TBPlayerEventData) =
+    private fun onChatMessage(e: TBPlayerEventData) {
         sendChatMessage(e, lang.telegram.chatMessage, true, true)
-    private fun onSayMessage(e: TBPlayerEventData) =
+    }
+    private fun onSayMessage(e: TBPlayerEventData) {
         sendChatMessage(e, lang.telegram.sayMessage, false, false)
-    private fun onMeMessage(e: TBPlayerEventData) =
+    }
+    private fun onMeMessage(e: TBPlayerEventData) {
         sendChatMessage(e, lang.telegram.meMessage, false, false)
-    private fun sendChatMessage(e: TBPlayerEventData, base: String, canMergeMessages: Boolean = true, shouldKeepAsLast: Boolean = true) = withScopeAndLock {
-        val rawMinecraftText = (e.text as TextComponent).content()
+    }
+    suspend fun sendReply(text: String, username: String, chatId: Long, replyTo: Long?) =
+        sendChatMessage(
+            rawMinecraftText = text,
+            username = username,
+            base = lang.telegram.chatMessage,
+            canMergeMessages = false,
+            shouldKeepAsLast = false,
+            chatId = chatId,
+            replyTo = replyTo,
+        )
+    private fun sendChatMessage(
+        e: TBPlayerEventData,
+        base: String,
+        canMergeMessages: Boolean = true,
+        shouldKeepAsLast: Boolean = true,
+        chatId: Long = config.chatId,
+        replyTo: Long? = null
+    ) = withScopeAndLock {
+        sendChatMessage(
+            rawMinecraftText = (e.text as TextComponent).content(),
+            username = e.username,
+            base = base,
+            canMergeMessages = canMergeMessages,
+            shouldKeepAsLast = shouldKeepAsLast,
+            chatId = chatId,
+            replyTo = replyTo,
+        )
+    }
+    private suspend fun sendChatMessage(
+        rawMinecraftText: String,
+        username: String,
+        base: String,
+        canMergeMessages: Boolean = true,
+        shouldKeepAsLast: Boolean = true,
+        chatId: Long = config.chatId,
+        replyTo: Long? = null
+    ): TgMessage? {
         val bluemapLink = TextParser.asBluemapLinkOrNone(rawMinecraftText)
         val prefix = config.messages.requirePrefixInMinecraft ?: ""
         if (bluemapLink == null && !rawMinecraftText.startsWith(prefix)) {
-            return@withScopeAndLock
+            return null
         }
 
         val textWithoutPrefix = if (config.messages.keepPrefix) {
@@ -127,7 +169,7 @@ object ChatSyncBotLogic {
 
         val currText = TextParser.formatLang(
             base,
-            "username" to e.username,
+            "username" to username,
             "text" to (bluemapLink ?: escapedText),
         )
 //        val formattedComponent =
@@ -141,7 +183,7 @@ object ChatSyncBotLogic {
 //        if (config.messages.doNotSendDuplicatedMessages && formattedComponent == lm?.componentOfLastAppend)
 //            return@withScopeAndLock
         if (
-            canMergeMessages
+            canMergeMessages && replyTo == null
             && lm != null
             && lm.type == LastMessageType.TEXT
             && (lm.text + "\n" + currText).length <= 4000
@@ -159,13 +201,19 @@ object ChatSyncBotLogic {
             lm.text += "\n" + /*formatted.first*/ currText
             lm.date = currDate
 //            lm.componentOfLastAppend = formattedComponent
-            core.editMessageText(lm.id, lm.text!!, lm.entities)
+            return core.editMessageText(lm.id, lm.text!!, lm.entities)
         } else {
 //            val formatted: Pair<String, List<TgEntity>?> =
 //                if (config.messages.parseMarkdownInMinecraftToTelegramMessages)
 //                    FormattingParser.formatMinecraftComponent2TgEntity(formattedComponent)
 //                else Pair(currText, null)
-            val newMsg = core.sendMessage(/*formatted.first, formatted.second*/ currText)
+//            val newMsg = core.sendMessage(/*formatted.first, formatted.second*/ currText)
+            val newMsg = bot.sendMessage(
+                chatId = chatId,
+                text = currText,
+                messageThreadId = if (replyTo==null) config.topicId else null,
+                replyParameters = if (replyTo!=null) TgReplyParameters(replyTo.toInt()) else null,
+            )
             lastMessage = if (shouldKeepAsLast) LastMessage(
                 LastMessageType.TEXT,
                 newMsg.messageId,
@@ -174,6 +222,7 @@ object ChatSyncBotLogic {
 //                entities = formatted.second,
 //                componentOfLastAppend = formattedComponent
             ) else null
+            return newMsg
         }
     }
 
@@ -297,6 +346,15 @@ object ChatSyncBotLogic {
                 fn()
             }
         }
+    }
+    private fun <T> withScopeAndLockReturnable(fn: suspend () -> T): T? {
+        var out: T? = null
+        coroutineScope.launch {
+            lastMessageLock.withLock {
+                out = fn()
+            }
+        }
+        return out
     }
 
 //    private suspend fun sendMessageWithFormatting(message: String) =

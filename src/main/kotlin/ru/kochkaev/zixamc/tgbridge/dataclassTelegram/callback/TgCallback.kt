@@ -3,7 +3,7 @@ package ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.serialize.CallbackDataAdapter
+import ru.kochkaev.zixamc.tgbridge.config.serialize.CallbackDataAdapter
 
 data class TgCallback<T: CallbackData> (
     @SerializedName("t")

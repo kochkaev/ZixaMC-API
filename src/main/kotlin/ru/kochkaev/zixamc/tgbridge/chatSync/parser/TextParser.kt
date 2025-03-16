@@ -11,6 +11,8 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessageMedia
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
+import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 
 object TextParser {
 
@@ -79,24 +81,24 @@ object TextParser {
         }
     }
 
-    private fun mediaToText(media: TgMessageMedia): String? {
+    private fun mediaToText(media: TgMessageMedia, url: String = "about:blank"): Component? {
         listOf(
-            media.animation to lang.minecraft.messageMeta.gif,
-            media.document to lang.minecraft.messageMeta.document,
-            media.photo to lang.minecraft.messageMeta.photo,
-            media.audio to lang.minecraft.messageMeta.audio,
-            media.sticker to lang.minecraft.messageMeta.sticker,
-            media.video to lang.minecraft.messageMeta.video,
-            media.videoNote to lang.minecraft.messageMeta.videoMessage,
-            media.voice to lang.minecraft.messageMeta.voiceMessage,
+            media.animation to lang.minecraft.gif,
+            media.document to lang.minecraft.document,
+            media.photo to lang.minecraft.photo,
+            media.audio to lang.minecraft.audio,
+            media.sticker to lang.minecraft.sticker,
+            media.video to lang.minecraft.video,
+            media.videoNote to lang.minecraft.videoMessage,
+            media.voice to lang.minecraft.voiceMessage,
         ).forEach {
             if (it.first != null) {
-                return it.second
+                return it.second.get(listOf("url" to url))
             }
         }
 
         media.poll?.let {
-            return formatLang(lang.minecraft.messageMeta.poll, "title" to it.question)
+            return lang.minecraft.poll.get(listOf("title" to it.question, "url" to url))
         }
 
         return null
@@ -105,11 +107,11 @@ object TextParser {
     private data class ReplyInfo(
         var isReplyToMinecraft: Boolean,
         var senderName: String,
-        var media: String?,
+        var media: Component?,
         var text: String?,
     )
 
-    private fun replyToText(message: TgMessage, botId: Long): String? {
+    fun replyToText(message: TgMessage, botId: Long): Component? {
         var info: ReplyInfo? = null
         message.replyToMessage?.let { reply ->
             if (
@@ -123,7 +125,7 @@ object TextParser {
             info = ReplyInfo(
                 isReplyToMinecraft = reply.from?.id == botId,
                 senderName = escapeSenderName(reply)?:reply.senderName,
-                media = mediaToText(reply),
+                media = mediaToText(reply, resolveMessageLink(message)),
                 text = reply.effectiveText
             )
         }
@@ -131,7 +133,7 @@ object TextParser {
             info = ReplyInfo(
                 isReplyToMinecraft = false,
                 senderName = reply.senderName,
-                media = mediaToText(reply),
+                media = mediaToText(reply, resolveMessageLink(message)),
                 text = null,
             )
         }
@@ -142,18 +144,17 @@ object TextParser {
         return info?.let {
             val fullText = "${it.media ?: ""} ${trimReplyMessageText(it.text ?: "")}".trim()
             if (it.isReplyToMinecraft) {
-                formatLang(lang.minecraft.messageMeta.replyToMinecraft, "text" to fullText)
+                lang.minecraft.replyToMinecraft.get(listOf("text" to fullText))
             } else {
-                formatLang(
-                    lang.minecraft.messageMeta.reply,
+                lang.minecraft.reply.get(listOf(
                     "sender" to it.senderName,
-                    "text" to fullText,
-                )
+                    "text" to fullText
+                ))
             }
         }
     }
 
-    private fun forwardFromToText(message: TgMessage): String? {
+    private fun forwardFromToText(message: TgMessage): Component? {
 //        val entity = if (message.from != null) MySQLIntegration.getLinkedEntity(message.from.id) else null
         val forwardFromName = message.forwardFrom?.let {
             escapeSenderName(message.forwardFrom.id) ?: message.senderUserName
@@ -161,7 +162,7 @@ object TextParser {
             message.forwardFromChat.title
         }
         return if (message.forwardFrom!=null) forwardFromName?.let {
-            formatLang(lang.minecraft.messageMeta.forward, "from" to it)
+            lang.minecraft.forward.get(listOf("from" to it, "url" to resolveMessageLink(message)))
         } else null
     }
 
@@ -171,51 +172,29 @@ object TextParser {
 //    components.add(Component.text("<${this.senderName}>", NamedTextColor.AQUA))
 
         message.pinnedMessage?.let { pinnedMsg ->
-            val pinnedMessageText = mutableListOf<String>()
+            val pinnedMessageText = mutableListOf<Component>()
             forwardFromToText(pinnedMsg)?.let { pinnedMessageText.add(it) }
             mediaToText(pinnedMsg)?.let { pinnedMessageText.add(it) }
 //        pinnedMsg.effectiveText?.let { pinnedMessageText.add(it) }
-            message.effectiveText?.let { pinnedMessageText.add(it) }
+            message.effectiveText?.let { pinnedMessageText.add(TgEntities2TextComponentParser.parse(message, it, message.entities)) }
             components.add(
-                StyleManager.applyStyle(
-                    component = Component.text(lang.minecraft.messageMeta.pin + " " + pinnedMessageText.joinToString(" ")),
-                    color = lang.minecraft.messageFormatting.mediaColor,
-                    decorations = lang.minecraft.messageFormatting.mediaFormatting,
-                    hover = Component.text(lang.minecraft.messageMeta.hoverOpenInTelegram),
-                    clickEvent = ClickEvent.openUrl(resolveMessageLink(message))
+                lang.minecraft.pin.get(
+                    plainPlaceholders = listOf(
+                        "url" to resolveMessageLink(message)
+                    ),
+                    componentPlaceholders = listOf(
+                        "text" to pinnedMessageText.fold(Component.text()) { acc, it1 -> acc.append(it1) } .build()
+                    )
                 )
             )
         }
-
-        forwardFromToText(message)?.let { components.add(
-            StyleManager.applyStyle(
-                component = Component.text(it),
-                color = lang.minecraft.messageFormatting.forwardColor,
-                decorations = lang.minecraft.messageFormatting.forwardFormatting,
-                hover = Component.text(lang.minecraft.messageMeta.hoverOpenInTelegram),
-                clickEvent = ClickEvent.openUrl(resolveMessageLink(message))
-            )
-        ) }
-        replyToText(message, botId)?.let {
-            val replyText = StyleManager.applyStyle(
-                component = Component.text(it),
-                color = lang.minecraft.messageFormatting.replyColor,
-                decorations = lang.minecraft.messageFormatting.replyFormatting,
-                hover = Component.text(lang.minecraft.messageMeta.hoverOpenInTelegram),
-                clickEvent = ClickEvent.openUrl(resolveMessageLink(message))
-            )
-            if (!config.messages.replyInDifferentLine) components.add(replyText)
-            else ChatSyncBotCore.broadcastMessage(replyText)
+        replyToText(message, botId)?.also {
+            if (!config.messages.replyInDifferentLine) components.add(it)
+            else ChatSyncBotCore.broadcastMessage(it)
         }
-        mediaToText(message)?.let { components.add(
-            StyleManager.applyStyle(
-                component = Component.text(it),
-                color = lang.minecraft.messageFormatting.mediaColor,
-                decorations = lang.minecraft.messageFormatting.mediaFormatting,
-                hover = Component.text(lang.minecraft.messageMeta.hoverOpenInTelegram),
-                clickEvent = ClickEvent.openUrl(resolveMessageLink(message))
-            )
-        ) }
+        forwardFromToText(message)?.let { components.add(it) }
+
+        mediaToText(message, resolveMessageLink(message))?.let { components.add(it) }
         message.effectiveText?.let { components.add((if (config.messages.styledTelegramMessagesInMinecraft) TgEntities2TextComponentParser.parse(
             message,
             it,
@@ -223,17 +202,18 @@ object TextParser {
         ) else Component.text(it))) }
 
         val senderNickname = escapeSenderName(message)
-        return Component.text(lang.minecraft.messageMeta.messageFormat)
-            .replaceText {it.matchLiteral("{sender}")
-                .replacement(
-                    Component.text(senderNickname?:message.senderName)
-                        .clickEvent(ClickEvent.suggestCommand("@${senderNickname?:message.senderUserName}"))
-                        .hoverEvent(Component.text(lang.minecraft.messageMeta.hoverTagToReply).asHoverEvent())
-                )}
-            .replaceText { it.matchLiteral("{text}").replacement(components
-                .flatMap { component -> listOf(component, Component.text(" ")) }
-                .fold(Component.text()) { acc, component -> acc.append(component) }
-                .build()) }
+        return lang.minecraft.messageFormat.get(
+            plainPlaceholders = listOf(
+                "sender" to (senderNickname?:message.senderName),
+            ),
+            componentPlaceholders = listOf(
+                "prefix" to config.lang.minecraft.defaultPrefix.get(listOf("message_id" to message.messageId.toString())),
+                "text" to components
+                    .flatMap { component -> listOf(component, Component.text(" ")) }
+                    .fold(Component.text()) { acc, component -> acc.append(component) }
+                    .build()
+            )
+        )
     }
 
     fun escapeSenderName(userId: Long) =
@@ -241,7 +221,8 @@ object TextParser {
     fun escapeSenderName(message: TgMessage) =
         escapeSenderName(message.from?.id?:0)
 
-    fun resolveMessageLink(message: TgMessage): String = "https://t.me/c/${-message.chat.id-1000000000000}/" + (if (message.messageThreadId!=null) "${message.messageThreadId}/" else "") + "${message.messageId}"
+    fun resolveMessageLink(message: TgMessage): String =
+        "https://t.me/c/${-message.chat.id-1000000000000}/" + (if (message.messageThreadId!=null) "${message.messageThreadId}/" else "") + "${message.messageId}"
 
     val XAERO_WAYPOINT_RGX =
         Regex("""xaero-waypoint:([^:]+):[^:]:([-\d]+):([-\d]+|~):([-\d]+):\d+:(?:false|true):\d+:Internal-(?:the-)?(overworld|nether|end)-waypoints""")

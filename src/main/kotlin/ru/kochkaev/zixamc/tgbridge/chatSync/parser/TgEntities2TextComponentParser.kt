@@ -6,6 +6,7 @@ import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser.resolveMessageLink
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntityType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
@@ -19,7 +20,8 @@ object TgEntities2TextComponentParser {
         val nextEntities = ArrayList<TgEntity>()
         var isLegacy = false
         var isSpoiler = false
-        var previousIsSpoiler = false
+//        var previousIsSpoiler = false
+        var spoiler: SpoilerComponent? = null
         var tempText = ""
         entities.forEach { if (it.offset == 0) {
             currentEntities.add(it)
@@ -46,49 +48,55 @@ object TgEntities2TextComponentParser {
                         TgEntityType.ITALIC -> tempComponent.decoration(TextDecoration.ITALIC, true)
                         TgEntityType.UNDERLINE -> tempComponent.decoration(TextDecoration.UNDERLINED, true)
                         TgEntityType.STRIKETHROUGH -> tempComponent.decoration(TextDecoration.STRIKETHROUGH, true)
-                        TgEntityType.TEXT_LINK -> tempComponent = FormattingManager.getAsLinkComponent(
-                            tempComponent.build(),
-                            it.url!!
+                        TgEntityType.TEXT_LINK -> tempComponent = lang.minecraft.link.getTextComponent(
+                            plainPlaceholders = listOf("url" to it.url!!),
+                            componentPlaceholders = listOf("title" to tempComponent.build()),
                         ).toBuilder()
-                        TgEntityType.URL -> tempComponent = FormattingManager.getAsLinkComponent(tempComponent.build()).toBuilder()
-                        TgEntityType.MENTION -> StyleManager.decorateAll(
-                            tempComponent,
-                            lang.minecraft.messageFormatting.mentionFormatting
-                        ).color(
-                            TextColor.fromHexString(lang.minecraft.messageFormatting.mentionColor))
-                            .clickEvent(ClickEvent.suggestCommand(tempText))
-                            .insertion(tempText)
-                            .hoverEvent(Component.text(lang.minecraft.messageMeta.hoverTagToReply).asHoverEvent())
-                        TgEntityType.HASHTAG, TgEntityType.CASHTAG -> StyleManager.decorateAll(
-                            tempComponent,
-                            lang.minecraft.messageFormatting.hashtagFormatting
-                        ).color(
-                            TextColor.fromHexString(lang.minecraft.messageFormatting.hashtagColor))
-                            .clickEvent(ClickEvent.openUrl("https://t.me/c/${-message.chat.id-1000000000000}/" + (if (message.messageThreadId!=null) "${message.messageThreadId}/" else "") + "${message.messageId}"))
-                            .hoverEvent(Component.text(lang.minecraft.messageMeta.hoverOpenInTelegram).asHoverEvent())
+                        TgEntityType.URL -> tempComponent = lang.minecraft.link.getTextComponent(
+                            plainPlaceholders = listOf("url" to tempText),
+                            componentPlaceholders = listOf("title" to tempComponent.build()),
+                        ).toBuilder()
+                        TgEntityType.MENTION -> tempComponent = lang.minecraft.mention.getTextComponent(
+                            plainPlaceholders = listOf("mention" to tempText),
+                            componentPlaceholders = listOf("title" to tempComponent.build())
+                        ).toBuilder()
+                        TgEntityType.HASHTAG, TgEntityType.CASHTAG -> tempComponent = lang.minecraft.hashtag.getTextComponent(
+                            plainPlaceholders = listOf("url" to resolveMessageLink(message)),
+                            componentPlaceholders = listOf("title" to tempComponent.build())
+                        ).toBuilder()
                         TgEntityType.SPOILER -> isSpoiler = true
-                        TgEntityType.CODE, TgEntityType.PRE -> tempComponent = FormattingManager.getAsCodeComponent(tempComponent.build()).toBuilder()
+                        TgEntityType.CODE, TgEntityType.PRE -> tempComponent = lang.minecraft.code.getTextComponent(
+                            plainPlaceholders = listOf("text" to tempText),
+                            componentPlaceholders = listOf("title" to tempComponent.build()),
+                        ).toBuilder()
                         else -> {}
                     }
                 }
-                if (isSpoiler) {
-                    if (previousIsSpoiler) {
-                        tempComponent = FormattingManager.appendToSpoilerComponent(
-                            components.last(),
-                            tempComponent.build()
-                        ).toBuilder()
-                        components.removeLast()
-                    }
-                    else {
-                        tempComponent = FormattingManager.getAsSpoilerComponent(tempComponent.build()).toBuilder()
-                        previousIsSpoiler = true
-                    }
-                    components.add(tempComponent.build())
+                if (isSpoiler && spoiler!=null) spoiler.append(tempComponent.build(), tempText)
+                else if (isSpoiler) spoiler = SpoilerComponent().apply { this.append(tempComponent.build(), tempText) }
+                else if (spoiler==null) components.add(tempComponent.build())
+                if (spoiler!=null && (!isSpoiler || i == text.length-1)) {
+                    components.add(spoiler.build())
+                    spoiler = null
                 }
-                else {
-                    if (previousIsSpoiler) previousIsSpoiler = false
-                    components.add(tempComponent.build())
-                }
+//                if (isSpoiler) {
+//                    if (previousIsSpoiler) {
+//                        tempComponent = FormattingManager.appendToSpoilerComponent(
+//                            components.last(),
+//                            tempComponent.build()
+//                        ).toBuilder()
+//                        components.removeLast()
+//                    }
+//                    else {
+//                        tempComponent = FormattingManager.getAsSpoilerComponent(tempComponent.build()).toBuilder()
+//                        previousIsSpoiler = true
+//                    }
+//                    components.add(tempComponent.build())
+//                }
+//                else {
+//                    if (previousIsSpoiler) previousIsSpoiler = false
+//                    components.add(tempComponent.build())
+//                }
                 isSpoiler = false
                 tempText = ""
                 currentEntities.clear()
@@ -96,5 +104,18 @@ object TgEntities2TextComponentParser {
             }
         }
         return components.fold(Component.text()) { acc, component -> acc.append(component) } .build()
+    }
+
+    class SpoilerComponent {
+        private val list = arrayListOf<TextComponent>()
+        private val rawList = arrayListOf<String>()
+        fun build() = lang.minecraft.spoiler.getTextComponent(
+            plainPlaceholders = listOf("placeholder" to lang.minecraft.spoilerReplaceWithChar?.repeat(rawList.joinToString("").length).toString()),
+            componentPlaceholders = listOf("text" to list.fold(Component.text()) { acc, it -> acc.append(it) } .build())
+        )
+        fun append(component: TextComponent, raw: String) {
+            list.add(component)
+            rawList.add(raw)
+        }
     }
 }
