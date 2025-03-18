@@ -180,12 +180,21 @@ data class Config (
             val isEnabled: Boolean = true,
             val chatId: Long = 0,
             val topicId: Int? = 0,
+            val defaultGroup: DefaultGroup = DefaultGroup(),
             val messages: ServerBotChatSyncMessageDataClass = ServerBotChatSyncMessageDataClass(),
             val events: ServerBotChatSyncGameEventsDataClass = ServerBotChatSyncGameEventsDataClass(),
             val lang: ServerBotChatSyncLangDataClass = ServerBotChatSyncLangDataClass(),
             val betaMarkdown: Boolean = false,
             val reply: ChatSyncReply = ChatSyncReply(),
         ) {
+            data class DefaultGroup(
+                val chatId: Long = 0,
+                val topicId: Int? = 0,
+                val name: String = "zixa",
+                val aliases: List<String> = listOf("main"),
+                val prefix: TextData = TextData("<color:aqua>Telegram</color:aqua>"),
+                val fromMcPrefix: TextData = TextData("<color:dark_green>Minecraft</color:dark_green>"),
+            )
             data class ServerBotChatSyncLangDataClass (
                 val telegram: LangTelegram = LangTelegram(),
                 val minecraft: LangMinecraft = LangMinecraft()
@@ -260,8 +269,6 @@ data class Config (
             data class ChatSyncReply(
                 val minecraftCommand: ChatSyncReplyCommand = ChatSyncReplyCommand(),
                 val prefixAppend: TextData = TextData("<hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r {group} {message_id} '><prefix></click></hover>"),
-                val defaultPrefix: TextData = TextData("<color:aqua>Telegram</color:aqua>"),
-                val defaultMcPrefix: TextData = TextData("<color:dark_green>Minecraft</color:dark_green>"),
             ) {
                 data class ChatSyncReplyCommand(
                     val chatNotFound: TextData = TextData("<color:gray><italic>Чат \"{group}\" не найден!</italic></color:gray>"),

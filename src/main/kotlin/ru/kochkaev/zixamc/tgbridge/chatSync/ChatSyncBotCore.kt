@@ -12,13 +12,12 @@ import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.config.Config
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.ServerBot
-import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.server
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthCustomEvents
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 
 object ChatSyncBotCore {
@@ -201,8 +200,10 @@ object ChatSyncBotCore {
         server.commandManager.dispatcher.register(builder)
     }
 
-    fun broadcastMessage(text: Component) {
-        server.playerManager.broadcast(MinecraftAdventureConverter.adventureToMinecraft(text), false)
+    fun broadcastMessage(text: Component, group: SQLGroup) {
+        server.playerManager.playerList
+            .filter { group.members.contains(SQLEntity.get(it.nameForScoreboard)?.userId.toString()) }
+            .forEach { it.sendMessage(MinecraftAdventureConverter.adventureToMinecraft(text), false) }
     }
 
     fun getOnlinePlayerNames(): Array<String> {
@@ -211,15 +212,5 @@ object ChatSyncBotCore {
             !vanishInstance!!.isVanished(it)
         }
         return players.map { it.nameForScoreboard }.toTypedArray()
-    }
-
-    suspend fun sendMessage(text: String, entities: List<TgEntity>? = null): TgMessage {
-        return bot.sendMessage(config.chatId, text, messageThreadId = config.topicId, entities=entities)
-    }
-    suspend fun editMessageText(messageId: Int, text: String, entities: List<TgEntity>? = null): TgMessage {
-        return bot.editMessageText(config.chatId, messageId, text, entities=entities)
-    }
-    suspend fun deleteMessage(messageId: Int) {
-        bot.deleteMessage(config.chatId, messageId)
     }
 }

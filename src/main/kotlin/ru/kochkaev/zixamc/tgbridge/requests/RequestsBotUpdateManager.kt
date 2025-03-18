@@ -11,6 +11,7 @@ import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
@@ -112,7 +113,7 @@ object RequestsBotUpdateManager {
                             fromChatId = msg.chat.id,
                             messageId = msg.messageId,
                         )
-                        entity.addToTempArray(forwardedMessage.messageId.toString())
+                        entity.tempArray.add(forwardedMessage.messageId.toString())
                     }
                     else -> {}
                 }
@@ -121,13 +122,13 @@ object RequestsBotUpdateManager {
         else {
             val replied = msg.replyToMessage?:return
             val entity = SQLEntity.getByTempArray(replied.messageId.toString())?:return
-            if (!entity.tempArray!!.contains(replied.messageId.toString()) || !entity.data!!.requests.any { RequestType.getAllPending().contains(it.request_status)}) return
+            if (!entity.tempArray.contains(replied.messageId.toString()) || !entity.data!!.requests.any { RequestType.getAllPending().contains(it.request_status)}) return
             bot.forwardMessage(
                 chatId = entity.userId,
                 fromChatId = msg.chat.id,
                 messageId = msg.messageId,
             )
-            entity.addToTempArray(msg.messageId.toString())
+            entity.tempArray.add(msg.messageId.toString())
         }
     }
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
@@ -246,7 +247,7 @@ object RequestsBotUpdateManager {
                         message_id = forwardedMessage.messageId,
                     ),
                 )
-                userEntity.addToTempArray(poll.messageId.toString())
+                userEntity.tempArray.add(poll.messageId.toString())
                 bot.pinMessage(config.target.chatId, forwardedMessage.messageId.toLong(), true)
                 bot.editMessageReplyMarkup(
                     chatId = userEntity.userId,
@@ -280,8 +281,8 @@ object RequestsBotUpdateManager {
                 request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
                 request.message_id_in_target_chat = forwardedMessage.messageId.toLong()
                 request.poll_message_id = poll.messageId.toLong()
-                userEntity.addToTempArray(forwardedMessage.messageId.toString())
-                userEntity.addToTempArray(newMessage.messageId.toString())
+                userEntity.tempArray.add(forwardedMessage.messageId.toString())
+                userEntity.tempArray.add(newMessage.messageId.toString())
                 request.request_status = RequestType.PENDING
                 userEntity.editRequest(request)
             }
@@ -372,6 +373,7 @@ object RequestsBotUpdateManager {
         if (entity.isRestricted) return
         if (entity.accountType.isPlayer()) {
             bot.approveChatJoinRequest(request.chat.id, request.from.id)
+            SQLGroup.get(request.chat.id)?.members?.add(request.from.id.toString())
         }
     }
 }

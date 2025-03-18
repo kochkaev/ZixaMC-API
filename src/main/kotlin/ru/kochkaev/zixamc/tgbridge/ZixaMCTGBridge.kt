@@ -29,6 +29,13 @@ class ZixaMCTGBridge : ModInitializer {
             val parseResults = dispatcher.parse(StringReader(command), server.commandSource)
             dispatcher.execute(parseResults)
         }
+
+        var isRequestsBotLoaded = false
+        var isServerBotLoaded = false
+        fun executeStopSQL() {
+            if (!isServerBotLoaded && !isRequestsBotLoaded)
+                MySQL.close()
+        }
     }
     override fun onInitialize() {
         ConfigManager.init(false)
@@ -48,6 +55,5 @@ class ZixaMCTGBridge : ModInitializer {
     fun onServerStopped(server: MinecraftServer) {
         ServerBot.stopBot()
         RequestsBot.stopBot()
-        MySQL.close()
     }
 }

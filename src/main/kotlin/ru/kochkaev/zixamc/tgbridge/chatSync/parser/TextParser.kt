@@ -4,16 +4,14 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
 import net.minecraft.util.Language
-import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessageMedia
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 object TextParser {
-
-    private val core = ChatSyncBotCore
 
     fun escapeHTML(text: String): String = text
         .replace("&", "&amp;")
@@ -23,15 +21,13 @@ object TextParser {
     private val fallbackMinecraftLangGetter = {
         key: String -> with(Language.getInstance()) { if (hasTranslation(key)) get(key) else null }
     }
-//    private var minecraftLang: Map<String, String>? = null
     private val hardcodedDefaultMinecraftLang = mapOf(
         "gui.xaero-deathpoint-old" to "Old Death",
         "gui.xaero-deathpoint" to "Death",
     )
 
     fun getMinecraftLangKey(key: String): String? {
-        return /*minecraftLang?.get(key)
-            ?:*/ fallbackMinecraftLangGetter(key)
+        return fallbackMinecraftLangGetter(key)
             ?: hardcodedDefaultMinecraftLang[key]
     }
 
@@ -39,9 +35,8 @@ object TextParser {
         return when (component) {
             is TranslatableComponent -> {
                 var res = getMinecraftLangKey(component.key()) ?: component.key()
-                // We're using older versions of kyori on some platforms, so using deprecated args() is ok
-                component.args().forEachIndexed { i, x ->
-                    val child = translateComponent(x)
+                component.arguments().forEachIndexed { i, x ->
+                    val child = translateComponent(x.asComponent())
                     if (i == 0) {
                         res = res.replace("%s", child)
                     }
@@ -78,102 +73,15 @@ object TextParser {
         }
     }
 
-    private fun mediaToText(media: TgMessageMedia, url: String = "about:blank"): Component? {
-        listOf(
-            media.animation to lang.minecraft.gif,
-            media.document to lang.minecraft.document,
-            media.photo to lang.minecraft.photo,
-            media.audio to lang.minecraft.audio,
-            media.sticker to lang.minecraft.sticker,
-            media.video to lang.minecraft.video,
-            media.videoNote to lang.minecraft.videoMessage,
-            media.voice to lang.minecraft.voiceMessage,
-        ).forEach {
-            if (it.first != null) {
-                return it.second.get(listOf("url" to url))
-            }
-        }
-
-        media.poll?.let {
-            return lang.minecraft.poll.get(listOf("title" to it.question, "url" to url))
-        }
-
-        return null
-    }
-
-    private data class ReplyInfo(
-        var isReplyToMinecraft: Boolean,
-        var senderName: String,
-        var media: Component?,
-        var text: String?,
-    )
-
-    fun replyToText(message: TgMessage, botId: Long): Component? {
-        var info: ReplyInfo? = null
-        message.replyToMessage?.let { reply ->
-            if (
-            // Telegram sends reply message when message is pinned
-                message.pinnedMessage != null
-                // All messages to a topic are sent as replies to a service message
-                || reply.messageId == config.topicId
-            ) {
-                return@let
-            }
-            info = ReplyInfo(
-                isReplyToMinecraft = reply.from?.id == botId,
-                senderName = escapeSenderName(reply)?:reply.senderName,
-                media = mediaToText(reply, resolveMessageLink(message)),
-                text = reply.effectiveText
-            )
-        }
-        message.externalReply?.let { reply ->
-            info = ReplyInfo(
-                isReplyToMinecraft = false,
-                senderName = reply.senderName,
-                media = mediaToText(reply, resolveMessageLink(message)),
-                text = null,
-            )
-        }
-        message.quote?.let {
-            info?.text = it.text
-        }
-
-        return info?.let {
-            val fullText = "${it.media ?: ""} ${trimReplyMessageText(it.text ?: "")}".trim()
-            if (it.isReplyToMinecraft) {
-                lang.minecraft.replyToMinecraft.get(listOf("text" to fullText))
-            } else {
-                lang.minecraft.reply.get(listOf(
-                    "sender" to it.senderName,
-                    "text" to fullText
-                ))
-            }
-        }
-    }
-
-    private fun forwardFromToText(message: TgMessage): Component? {
-//        val entity = if (message.from != null) MySQLIntegration.getLinkedEntity(message.from.id) else null
-        val forwardFromName = message.forwardFrom?.let {
-            escapeSenderName(message.forwardFrom.id) ?: message.senderUserName
-        } ?: message.forwardFromChat?.let {
-            message.forwardFromChat.title
-        }
-        return if (message.forwardFrom!=null) forwardFromName?.let {
-            lang.minecraft.forward.get(listOf("from" to it, "url" to resolveMessageLink(message)))
-        } else null
-    }
-
-    fun toMinecraft(message: TgMessage, botId: Long): Component {
+    fun toMinecraft(message: TgMessage, group: SQLGroup, botId: Long): Component {
+        val messages = mutableListOf<Component>()
         val components = mutableListOf<Component>()
 
-//    components.add(Component.text("<${this.senderName}>", NamedTextColor.AQUA))
-
-        message.pinnedMessage?.let { pinnedMsg ->
+        message.pinnedMessage?.also { pinnedMsg ->
             val pinnedMessageText = mutableListOf<Component>()
-            forwardFromToText(pinnedMsg)?.let { pinnedMessageText.add(it) }
-            mediaToText(pinnedMsg)?.let { pinnedMessageText.add(it) }
-//        pinnedMsg.effectiveText?.let { pinnedMessageText.add(it) }
-            message.effectiveText?.let { pinnedMessageText.add(TgEntities2TextComponentParser.parse(message, it, message.entities)) }
+            forwardFromToText(pinnedMsg)?.also { pinnedMessageText.add(it) }
+            mediaToText(pinnedMsg)?.also { pinnedMessageText.add(it) }
+            message.effectiveText?.also { pinnedMessageText.add(TgEntities2TextComponentParser.parse(message, it, message.entities)) }
             components.add(
                 lang.minecraft.pin.get(
                     plainPlaceholders = listOf(
@@ -185,38 +93,111 @@ object TextParser {
                 )
             )
         }
-        replyToText(message, botId)?.also {
+        forwardFromToText(message)?.also { components.add(it) }
+        replyToText(message, group.data.topicId, botId)?.also {
             if (!config.messages.replyInDifferentLine) components.add(it)
-            else ChatSyncBotCore.broadcastMessage(it)
+            else messages.add(it).also { messages.add(Component.text("\n")) }
         }
-        forwardFromToText(message)?.let { components.add(it) }
+        mediaToText(message, resolveMessageLink(message))?.also { components.add(it) }
+        message.effectiveText?.also {
+            components.add(
+                if (config.messages.styledTelegramMessagesInMinecraft)
+                    TgEntities2TextComponentParser.parse(
+                        message = message,
+                        text = it,
+                        entities = message.entities
+                    )
+                else Component.text(it)
+            )
+        }
 
-        mediaToText(message, resolveMessageLink(message))?.let { components.add(it) }
-        message.effectiveText?.let { components.add((if (config.messages.styledTelegramMessagesInMinecraft) TgEntities2TextComponentParser.parse(
-            message,
-            it,
-            message.entities
-        ) else Component.text(it))) }
-
-        val senderNickname = escapeSenderName(message)
-        return lang.minecraft.messageFormat.get(
+        val senderNickname = SQLEntity.get(message.from?.id?:0)?.nickname
+        messages.add(lang.minecraft.messageFormat.get(
             plainPlaceholders = listOf(
                 "sender" to (senderNickname?:message.senderName),
             ),
             componentPlaceholders = listOf(
-                "prefix" to config.lang.minecraft.defaultPrefix.get(listOf("message_id" to message.messageId.toString())),
+                "prefix" to group.getResolvedPrefix(message.messageId),
                 "text" to components
                     .flatMap { component -> listOf(component, Component.text(" ")) }
                     .fold(Component.text()) { acc, component -> acc.append(component) }
                     .build()
             )
-        )
+        ))
+        return messages
+            .fold(Component.text()) { acc, component -> acc.append(component) }
+            .build()
     }
+    private fun mediaToText(media: TgMessageMedia, url: String = "about:blank"): Component? {
+        listOf(
+            media.animation to lang.minecraft.gif,
+            media.document to lang.minecraft.document,
+            media.photo to lang.minecraft.photo,
+            media.audio to lang.minecraft.audio,
+            media.sticker to lang.minecraft.sticker,
+            media.video to lang.minecraft.video,
+            media.videoNote to lang.minecraft.videoMessage,
+            media.voice to lang.minecraft.voiceMessage,
+        ).firstOrNull { it.first != null } ?.also {
+            return it.second.get(listOf("url" to url))
+        }
+        media.poll?.also {
+            return lang.minecraft.poll.get(listOf("title" to it.question, "url" to url))
+        }
 
-    fun escapeSenderName(userId: Long) =
-        SQLEntity.get(userId)?.nickname
-    fun escapeSenderName(message: TgMessage) =
-        escapeSenderName(message.from?.id?:0)
+        return null
+    }
+    private data class ReplyInfo(
+        var isReplyToMinecraft: Boolean,
+        var senderName: String,
+        var media: Component?,
+        var text: String?,
+    )
+    fun replyToText(message: TgMessage, topicId: Int?, botId: Long): Component? {
+        var info: ReplyInfo? = null
+        message.replyToMessage?.also { reply ->
+            if (message.pinnedMessage != null || reply.messageId == topicId)
+                return@also
+            info = ReplyInfo(
+                isReplyToMinecraft = reply.from?.id == botId,
+                senderName = SQLEntity.get(reply.from?.id?:0)?.nickname ?: reply.senderName,
+                media = mediaToText(reply, resolveMessageLink(message)),
+                text = reply.effectiveText
+            )
+        }
+        message.externalReply?.also { reply ->
+            info = ReplyInfo(
+                isReplyToMinecraft = false,
+                senderName = reply.senderName,
+                media = mediaToText(reply, resolveMessageLink(message)),
+                text = null,
+            )
+        }
+        message.quote?.also {
+            info?.text = it.text
+        }
+        return info?.let {
+            val fullText = "${it.media ?: ""} ${trimReplyMessageText(it.text ?: "")}".trim()
+            if (it.isReplyToMinecraft) {
+                lang.minecraft.replyToMinecraft.get(listOf("text" to fullText))
+            } else {
+                lang.minecraft.reply.get(
+                    listOf(
+                        "sender" to it.senderName,
+                        "text" to fullText
+                    )
+                )
+            }
+        }
+    }
+    private fun forwardFromToText(message: TgMessage) =
+        if (message.forwardFrom!=null) (
+            message.forwardFrom.let {
+                SQLEntity.get(it.id)?.nickname ?: message.senderUserName
+            }
+        ).let {
+            lang.minecraft.forward.get(listOf("from" to it, "url" to resolveMessageLink(message)))
+        } else null
 
     fun resolveMessageLink(message: TgMessage): String =
         "https://t.me/c/${-message.chat.id-1000000000000}/" + (if (message.messageThreadId!=null) "${message.messageThreadId}/" else "") + "${message.messageId}"

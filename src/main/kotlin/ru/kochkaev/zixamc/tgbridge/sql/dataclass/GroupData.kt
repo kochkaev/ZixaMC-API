@@ -7,4 +7,5 @@ data class GroupData(
     val prefix: TextData? = null,
     val fromMcPrefix: TextData? = null,
     val members: List<Long> = listOf(),
+    val enabledChatSync: Boolean = true,
 )

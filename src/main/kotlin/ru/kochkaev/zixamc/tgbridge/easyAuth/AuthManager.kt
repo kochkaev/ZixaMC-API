@@ -34,9 +34,11 @@ object AuthManager {
     suspend fun approve(entity: SQLEntity, nickname: String) {
         val player = server.playerManager.getPlayer(nickname)
         val uuid = (player as PlayerAuth).`easyAuth$getFakeUuid`()
+        ZixaMCTGBridge.logger.info(entity.tempArray.get()?.joinToString(", "))
         (player as PlayerAuth).`easyAuth$setAuthenticated`(true)
         (player as PlayerAuth).`easyAuth$restoreLastLocation`()
         EasyAuth.playerCacheMap[uuid]?.loginTries?.set(0)
+        ZixaMCTGBridge.logger.info(entity.tempArray.get()?.joinToString(", "))
         player.sendMessage(config.easyAuth.langMinecraft.onApprove.getMinecraft())
         try {
             bot.sendMessage(
@@ -86,7 +88,7 @@ object AuthManager {
                     ))
                 )
             )
-            entity.addToTempArray(message.messageId.toString())
+            entity.tempArray.add(message.messageId.toString())
         } catch (e: Exception) {
             ZixaMCTGBridge.logger.error(e.message)
             val botUsername = config.easyAuth.langMinecraft.botUsername
@@ -99,7 +101,7 @@ object AuthManager {
     }
     suspend fun onLeave(nickname: String) {
         val entity = SQLEntity.get(nickname)?:return
-        entity.tempArray?.forEach {
+        entity.tempArray.get()?.forEach {
             try {
                 bot.editMessageReplyMarkup(
                     chatId = entity.userId,
@@ -108,7 +110,7 @@ object AuthManager {
                 )
             } catch (_: Exception) {}
         }
-        entity.tempArray = arrayOf()
+        entity.tempArray.set(arrayOf())
     }
     private fun kickYouAreNotPlayer(player: ServerPlayerEntity?) {
         player?.networkHandler?.disconnect(config.easyAuth.langMinecraft.youAreNotPlayer.getMinecraft())

@@ -7,6 +7,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.ServerBot.config
+import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
 
 object EasyAuthIntegration {
@@ -44,7 +45,7 @@ object EasyAuthIntegration {
     fun registerEasyAuthHandlers() {
         EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register({ authenticated, player ->
             if (!authenticated) onJoin(player)
-            else onLeave(player)
+//            else onLeave(player)
         })
     }
 
@@ -61,7 +62,7 @@ object EasyAuthIntegration {
             "approve" -> AuthManager.approve(entity, /*data.data.nickname*/nickname)
             "deny" -> AuthManager.deny(entity, /*data.data.nickname*/nickname)
         }
-        entity.tempArray = entity.tempArray?.filter { it!=cbq.message.messageId.toString() }?.toTypedArray()
+        entity.tempArray.remove(cbq.message.messageId.toString()).toString()
     }
 
     data class EasyAuthCallbackData(

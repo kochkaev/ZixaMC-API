@@ -35,31 +35,7 @@ class SQLEntity private constructor(val userId: Long) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    var nicknames: Array<String>?
-        get() = try {
-            reConnect()
-            val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT nicknames FROM $tableName WHERE user_id = ?;")
-            preparedStatement.setLong(1, userId)
-            val query = preparedStatement.executeQuery()
-            query.next()
-            gson.fromJson(query.getString(1), ArrayData::class.java).array
-        } catch (e: SQLException) {
-            ZixaMCTGBridge.logger.error("getUserData error", e)
-            null
-        }
-        set(nicknames) {
-            try {
-                reConnect()
-                val preparedStatement =
-                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET nicknames = ? WHERE user_id = ?;")
-                preparedStatement.setString(1, "{\"array\":[${nicknames?.joinToString(", ") { "\"$this\"" }}]}")
-                preparedStatement.setLong(2, userId)
-                preparedStatement.executeUpdate()
-            } catch (e: SQLException) {
-                ZixaMCTGBridge.logger.error("updateUserData error", e)
-            }
-        }
+    var nicknames = SQLArray(SQLEntity, "temp_array", userId, "user_id")
     var accountType: AccountType
         get() = try {
             reConnect()
@@ -85,31 +61,7 @@ class SQLEntity private constructor(val userId: Long) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    var tempArray: Array<String>?
-        get() = try {
-            reConnect()
-            val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT temp_array FROM $tableName WHERE user_id = ?;")
-            preparedStatement.setLong(1, userId)
-            val query = preparedStatement.executeQuery()
-            query.next()
-            gson.fromJson(query.getString(1), ArrayData::class.java).array
-        } catch (e: SQLException) {
-            ZixaMCTGBridge.logger.error("getUserData error", e)
-            null
-        }
-        set(tempArray) {
-            try {
-                reConnect()
-                val preparedStatement =
-                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET temp_array = ? WHERE user_id = ?;")
-                preparedStatement.setString(1, "{\"array\":[${tempArray?.joinToString(", ") { "\"$this\"" }}]}")
-                preparedStatement.setLong(2, userId)
-                preparedStatement.executeUpdate()
-            } catch (e: SQLException) {
-                ZixaMCTGBridge.logger.error("updateUserData error", e)
-            }
-        }
+    val tempArray = SQLArray(SQLEntity, "temp_array", userId, "user_id")
     var agreedWithRules: Boolean
         get() = try {
             reConnect()
@@ -264,7 +216,7 @@ class SQLEntity private constructor(val userId: Long) {
         fun exists(nickname: String) = try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE nickname = ? OR json_as_array_contains(nicknames, ?);")
+                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$.array');")
             preparedStatement.setString(1, nickname)
             preparedStatement.setString(2, nickname)
             preparedStatement.executeQuery().next()
@@ -277,7 +229,7 @@ class SQLEntity private constructor(val userId: Long) {
             reConnect()
             if (exists(nickname)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE nickname = ? OR json_as_array_contains(nicknames, ?);")
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$.array');")
                 preparedStatement.setString(1, nickname)
                 preparedStatement.setString(2, nickname)
                 val query = preparedStatement.executeQuery()
@@ -291,7 +243,7 @@ class SQLEntity private constructor(val userId: Long) {
         fun getIdByTempArrayVal(value: String) = try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE json_as_array_contains(temp_array, ?);")
+                MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE JSON_CONTAINS(temp_array, JSON_QUOTE(?), '$.array');")
             preparedStatement.setString(1, value)
             val query = preparedStatement.executeQuery()
             if (!query.next()) null
@@ -329,7 +281,7 @@ class SQLEntity private constructor(val userId: Long) {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR json_as_array_contains(nicknames, ?));")
+                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$.array'));")
             preparedStatement.setLong(1, userId)
             preparedStatement.setString(2, nickname)
             preparedStatement.setString(3, nickname)
@@ -339,28 +291,13 @@ class SQLEntity private constructor(val userId: Long) {
             false
         }
 
-    fun addToNicknames(nickname: String) : Boolean = try {
-        reConnect()
-        val preparedStatement =
-            MySQLConnection!!.prepareStatement("UPDATE $tableName SET nicknames = json_as_array_append(nicknames, ?) WHERE user_id = ?;")
-        preparedStatement.setString(1, nickname)
-        preparedStatement.setLong(2, userId)
-        preparedStatement.executeUpdate()
-        true
-    } catch (e: SQLException) {
-        ZixaMCTGBridge.logger.error("updateUserData error", e)
-        false
-    }
-    fun removeFromNicknames(nickname: String) {
-        nicknames = nicknames?.filter { it!=nickname }?.toTypedArray()
-    }
     fun setPreferNickname(nickname: String) {
         if ((data?.minecraftAccounts?:return).stream().anyMatch{it.nickname == nickname}) {
             addNickname(nickname)
         }
     }
     fun addNickname(nickname: String) {
-        if (nicknames?.contains(nickname) == false) addToNicknames(nickname)
+        if (!nicknames.contains(nickname)) nicknames.add(nickname)
         this.nickname = nickname
     }
 
@@ -373,7 +310,7 @@ class SQLEntity private constructor(val userId: Long) {
         val accounts = createAndOrGetData().minecraftAccounts
         if (accounts.stream().anyMatch{it.nickname == account.nickname}) return false
         else accounts.add(account)
-        if (nicknames?.contains(account.nickname) == false) addToNicknames(account.nickname)
+        if (!nicknames.contains(account.nickname)) nicknames.add(account.nickname)
         if (nickname == null) nickname = account.nickname
         data = data!!.apply { this.minecraftAccounts = accounts }
         return true
@@ -407,19 +344,6 @@ class SQLEntity private constructor(val userId: Long) {
 //            }
 //        }
         data = data!!.apply { this.requests = requests }
-    }
-
-    fun addToTempArray(value: String) = try {
-        reConnect()
-        val preparedStatement =
-            MySQLConnection!!.prepareStatement("UPDATE $tableName SET temp_array = json_as_array_append(temp_array, ?) WHERE user_id = ?;")
-        preparedStatement.setString(1, value)
-        preparedStatement.setLong(2, userId)
-        preparedStatement.executeUpdate()
-        true
-    } catch (e: SQLException) {
-        ZixaMCTGBridge.logger.error("updateUserData error", e)
-        false
     }
 
     fun setProtectedInfoMessage(

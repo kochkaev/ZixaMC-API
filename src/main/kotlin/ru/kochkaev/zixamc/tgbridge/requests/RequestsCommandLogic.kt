@@ -130,7 +130,7 @@ object RequestsCommandLogic {
         request.request_status = if (isAccepted) RequestType.ACCEPTED else RequestType.REJECTED
         request.message_id_in_chat_with_user = newMessage.messageId.toLong()
         entity.editRequest(request)
-        entity.tempArray = arrayOf()
+        entity.tempArray.set(arrayOf())
         if (isAccepted) {
             RequestsLogic.sendOnJoinInfoMessage(entity, newMessage.messageId)
             entity.accountType = AccountType.PLAYER

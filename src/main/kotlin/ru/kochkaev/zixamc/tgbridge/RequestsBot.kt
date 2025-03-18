@@ -39,6 +39,7 @@ object RequestsBot {
         bot.registerCommandHandler("cancel", RequestsBotCommands::onTelegramCancelCommand)
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
+            ZixaMCTGBridge.isRequestsBotLoaded = true
         }
         isInitialized = true
     }
@@ -46,8 +47,10 @@ object RequestsBot {
         if (config.isEnabled) {
             coroutineScope.launch {
                 bot.shutdown()
+                ZixaMCTGBridge.isRequestsBotLoaded = false
+                ZixaMCTGBridge.executeStopSQL()
+                coroutineScope.cancel()
             }
-            coroutineScope.cancel()
         }
         isInitialized = false
     }

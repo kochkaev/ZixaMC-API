@@ -12,6 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
+import ru.kochkaev.zixamc.tgbridge.sql.MySQL
 
 /**
  * @author kochkaev
@@ -45,6 +46,7 @@ object ServerBot {
 //        bot.registerCommandHandler("cancel", this::onTelegramCancelCommand)
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
+            ZixaMCTGBridge.isServerBotLoaded = true
             ServerBotLogic.registerTelegramHandlers()
             if (EasyAuthIntegration.isEnabled) {
 //                ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
@@ -68,8 +70,10 @@ object ServerBot {
             coroutineScope.launch {
                 if (config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
                 bot.shutdown()
+                ZixaMCTGBridge.isServerBotLoaded = false
+                ZixaMCTGBridge.executeStopSQL()
+                coroutineScope.cancel()
             }
-            coroutineScope.cancel()
         }
         isInitialized = false
     }

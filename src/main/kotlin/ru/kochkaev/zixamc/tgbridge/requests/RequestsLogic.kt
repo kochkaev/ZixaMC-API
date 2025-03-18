@@ -47,7 +47,7 @@ object RequestsLogic {
                 text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onCancel, request.request_nickname)
             )
         }
-        entity.tempArray = arrayOf()
+        entity.tempArray.set(arrayOf())
         return true
     }
     suspend fun cancelSendingRequest(entity: SQLEntity): Boolean {
@@ -309,7 +309,7 @@ object RequestsLogic {
         request.request_status = if (isAccepted) RequestType.ACCEPTED else RequestType.REJECTED
         request.message_id_in_chat_with_user = newMessage.messageId.toLong()
         entity.editRequest(request)
-        entity.tempArray = arrayOf()
+        entity.tempArray.set(arrayOf())
         if (isAccepted) {
             sendOnJoinInfoMessage(entity, newMessage.messageId)
             entity.accountType = AccountType.PLAYER
