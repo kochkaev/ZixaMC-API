@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.kyori.adventure.text.Component
+import org.objectweb.asm.Type
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.coroutineScope
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
@@ -51,6 +52,58 @@ class SQLGroup private constructor(val chatId: Long) {
         }
     val aliases = SQLArray(SQLGroup, "aliases", chatId, "chat_id")
     val members = SQLArray(SQLGroup, "members", chatId, "chat_id")
+    var agreedWithRules: Boolean
+        get() = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT agreed_with_rules FROM $tableName WHERE chat_id = ?;")
+            preparedStatement.setLong(1, chatId)
+            val query = preparedStatement.executeQuery()
+            query.next()
+            query.getBoolean(1)
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("getUserData error", e)
+            false
+        }
+        set(agreedWithRules) {
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET agreed_with_rules = ? WHERE chat_id = ?;")
+                preparedStatement.setBoolean(1, agreedWithRules)
+                preparedStatement.setLong(2, chatId)
+                preparedStatement.executeUpdate()
+            } catch (e: SQLException) {
+                ZixaMCTGBridge.logger.error("updateUserData error", e)
+            }
+        }
+    var topicId: Int?
+        get() = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT topic_id FROM $tableName WHERE chat_id = ?;")
+            preparedStatement.setLong(1, chatId)
+            val query = preparedStatement.executeQuery()
+            query.next()
+            query.getInt(1)
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("getUserData error", e)
+            null
+        }
+        set(topicId) {
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET topic_id = ? WHERE chat_id = ?;")
+                if (topicId != null)
+                    preparedStatement.setInt(1, topicId)
+                else preparedStatement.setNull(1, Type.INT)
+                preparedStatement.setLong(2, chatId)
+                preparedStatement.executeUpdate()
+            } catch (e: SQLException) {
+                ZixaMCTGBridge.logger.error("updateUserData error", e)
+            }
+        }
     var data: GroupData
         get() = try {
             reConnect()
@@ -88,6 +141,8 @@ class SQLGroup private constructor(val chatId: Long) {
                     `name` VARCHAR(16),
                     `aliases` JSON DEFAULT "{\"array\":[]}",
                     `members` JSON DEFAULT "{\"array\":[]}",
+                    `agreed_with_rules` BOOLEAN NOT NULL DEFAULT FALSE,
+                    `topic_id` INT DEFAULT NULL,
                     `data` JSON NOT NULL DEFAULT "{}",
                     PRIMARY KEY (`id`), UNIQUE (`chat_id`)
                 ) ENGINE = InnoDB;
@@ -108,8 +163,9 @@ class SQLGroup private constructor(val chatId: Long) {
                 name = config.defaultGroup.name,
                 aliases = config.defaultGroup.aliases.toTypedArray(),
                 members = SQLEntity.userIDs.map { it.toString() } .toTypedArray(),
+                agreedWithRules = true,
+                topicId = config.defaultGroup.topicId,
                 data = gson.toJson(GroupData(
-                    topicId = config.defaultGroup.topicId,
                     prefix = config.defaultGroup.prefix,
                     fromMcPrefix = config.defaultGroup.fromMcPrefix
                 ))
@@ -124,20 +180,24 @@ class SQLGroup private constructor(val chatId: Long) {
         }
         fun getOrCreate(chatId: Long): SQLGroup {
             if (!exists(chatId))
-                create(chatId, null, arrayOf(), arrayOf(), gson.toJson(GroupData()))
+                create(chatId, null, arrayOf(), arrayOf(), false, null, gson.toJson(GroupData()))
             return SQLGroup(chatId)
         }
-        fun create(chatId: Long, name:String?, aliases: Array<String>?, members: Array<String>?, data:String?): Boolean {
+        fun create(chatId: Long, name:String?, aliases: Array<String>?, members: Array<String>?, agreedWithRules: Boolean, topicId: Int?, data:String?): Boolean {
             try {
                 reConnect()
                 if (!exists(chatId) && (name == null || !exists(name))) {
                     val preparedStatement =
-                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (chat_id, name, aliases, members, data) VALUES (?, ?, ?, ?, ?);")
+                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (chat_id, name, aliases, members, agreed_with_rules, topic_id, data) VALUES (?, ?, ?, ?, ?, ?, ?);")
                     preparedStatement.setLong(1, chatId)
                     preparedStatement.setString(2, name)
                     preparedStatement.setString(3, "{\"array\":[${aliases?.joinToString(", ") { "\"$this\"" }}]}")
                     preparedStatement.setString(4, "{\"array\":[${members?.joinToString(", ") { "\"$this\"" }}]}")
-                    preparedStatement.setString(5, data?:gson.toJson(GroupData()))
+                    preparedStatement.setBoolean(5, agreedWithRules)
+                    if (topicId != null)
+                        preparedStatement.setInt(6, topicId)
+                    else preparedStatement.setNull(6, Type.INT)
+                    preparedStatement.setString(7, data?:gson.toJson(GroupData()))
                     preparedStatement.executeUpdate()
                     return true
                 }
@@ -267,8 +327,9 @@ class SQLGroup private constructor(val chatId: Long) {
         )
 
     fun checkValidMsg(msg: TgMessage) = msg.let {
+        agreedWithRules &&
         data.enabledChatSync &&
-        msg.messageThreadId == data.topicId
+        msg.messageThreadId == topicId
     }
     fun isMember(nickname: String) =
         members.contains(SQLEntity.get(nickname)?.userId.toString())
@@ -277,7 +338,7 @@ class SQLGroup private constructor(val chatId: Long) {
         return bot.sendMessage(
             chatId = chatId,
             text = text,
-            messageThreadId = data.topicId,
+            messageThreadId = topicId,
             entities = entities,
             replyParameters = reply?.let { TgReplyParameters(reply) }
         )

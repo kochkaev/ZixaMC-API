@@ -94,7 +94,7 @@ object TextParser {
             )
         }
         forwardFromToText(message)?.also { components.add(it) }
-        replyToText(message, group.data.topicId, botId)?.also {
+        replyToText(message, group.topicId, botId)?.also {
             if (!config.messages.replyInDifferentLine) components.add(it)
             else messages.add(it).also { messages.add(Component.text("\n")) }
         }

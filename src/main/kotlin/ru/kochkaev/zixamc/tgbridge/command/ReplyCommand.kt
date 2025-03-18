@@ -61,7 +61,7 @@ object ReplyCommand {
         if (tgMessage != null) {
             val messages = mutableListOf<Component>()
             var mcMessage = message
-            replyToText(tgMessage, group.data.topicId, ServerBot.bot.me.id)?.also {
+            replyToText(tgMessage, group.topicId, ServerBot.bot.me.id)?.also {
                 if (!config.messages.replyInDifferentLine) mcMessage = "$it $mcMessage"
                 else messages.add(it).also { messages.add(Component.text("\n")) }
             }

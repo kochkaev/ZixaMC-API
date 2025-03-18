@@ -169,8 +169,6 @@ data class Config (
         val botToken: String = "",
         val botAPIURL: String = "https://api.telegram.org",
         val pollTimeout: Int = 60,
-        val targetChatId: Long = 0,
-        val targetTopicId: Int = 0,
         val mentionAllReplaceWith: String = "▌",
         val chatSync: ServerBotChatSyncDataClass = ServerBotChatSyncDataClass(),
         val easyAuth: ServerBotEasyAuth = ServerBotEasyAuth(),
@@ -178,8 +176,6 @@ data class Config (
     ) {
         data class ServerBotChatSyncDataClass (
             val isEnabled: Boolean = true,
-            val chatId: Long = 0,
-            val topicId: Int? = 0,
             val defaultGroup: DefaultGroup = DefaultGroup(),
             val messages: ServerBotChatSyncMessageDataClass = ServerBotChatSyncMessageDataClass(),
             val events: ServerBotChatSyncGameEventsDataClass = ServerBotChatSyncGameEventsDataClass(),
