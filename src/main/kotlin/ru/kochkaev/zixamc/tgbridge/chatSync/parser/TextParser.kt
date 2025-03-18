@@ -94,7 +94,7 @@ object TextParser {
             )
         }
         forwardFromToText(message)?.also { components.add(it) }
-        replyToText(message, group.topicId, botId)?.also {
+        replyToText(message, group.topicId, resolveMessageLink(message), botId)?.also {
             if (!config.messages.replyInDifferentLine) components.add(it)
             else messages.add(it).also { messages.add(Component.text("\n")) }
         }
@@ -112,7 +112,7 @@ object TextParser {
         }
 
         val senderNickname = SQLEntity.get(message.from?.id?:0)?.nickname
-        messages.add(lang.minecraft.messageFormat.get(
+        messages.add(lang.minecraft.messageTGFormat.get(
             plainPlaceholders = listOf(
                 "sender" to (senderNickname?:message.senderName),
             ),
@@ -153,7 +153,7 @@ object TextParser {
         var media: Component?,
         var text: String?,
     )
-    fun replyToText(message: TgMessage, topicId: Int?, botId: Long): Component? {
+    fun replyToText(message: TgMessage, topicId: Int?, messageURL: String, botId: Long): Component? {
         var info: ReplyInfo? = null
         message.replyToMessage?.also { reply ->
             if (message.pinnedMessage != null || reply.messageId == topicId)
@@ -183,6 +183,7 @@ object TextParser {
             } else {
                 lang.minecraft.reply.get(
                     listOf(
+                        "url" to messageURL,
                         "sender" to it.senderName,
                         "text" to fullText
                     )

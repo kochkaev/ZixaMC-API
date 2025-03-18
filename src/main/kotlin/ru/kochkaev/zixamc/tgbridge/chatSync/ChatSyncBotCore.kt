@@ -31,8 +31,8 @@ object ChatSyncBotCore {
         ChatSyncBotLogic.registerTelegramHandlers()
         ChatSyncBotLogic.registerMinecraftHandlers()
     }
-    fun registerChatMessageListener(handler: (TBPlayerEventData) -> Unit) {
-        ServerMessageEvents.CHAT_MESSAGE.register { message: SignedMessage, sender, params ->
+    fun registerChatMessageListener(handler: (TBPlayerEventData) -> Boolean) {
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register { message: SignedMessage, sender, params ->
             if (
                 params.type.matchesKey(MessageType.CHAT) &&
                 sender is ServerPlayerEntity
@@ -41,11 +41,11 @@ object ChatSyncBotCore {
             ) {
                 handler.invoke(
                     TBPlayerEventData(
-                        sender.displayName?.string ?: return@register,
+                        sender.displayName?.string ?: return@register true,
                         Component.text(message.signedBody.content),
                     )
                 )
-            }
+            } else true
         }
 //        else styledChatInstance.registerMessageEvent(handler)
     }

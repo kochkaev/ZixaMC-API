@@ -19,7 +19,7 @@ class GroupNameSuggestionProvider : SuggestionProvider<ServerCommandSource?> {
     ): CompletableFuture<Suggestions> {
         SQLGroup.all
             .map { it.value }
-            .filter { it.isMember(context.source?.name?:"") }
+            .filter { it.enabled && it.isMember(context.source?.name?:"") }
             .forEach { builder.suggest(it.name) }
         return builder.buildFuture()
     }

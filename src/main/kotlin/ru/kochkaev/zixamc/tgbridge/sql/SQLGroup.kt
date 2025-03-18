@@ -1,17 +1,27 @@
 package ru.kochkaev.zixamc.tgbridge.sql
 
 import com.google.gson.GsonBuilder
+import com.mojang.brigadier.arguments.LongArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType
+import eu.pb4.placeholders.api.parsers.MarkdownLiteParserV1
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.kyori.adventure.text.Component
 import org.objectweb.asm.Type
+import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.coroutineScope
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.config
+import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.chatSync.LastMessage
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
+import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser.replyToText
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
+import ru.kochkaev.zixamc.tgbridge.config.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
@@ -85,7 +95,9 @@ class SQLGroup private constructor(val chatId: Long) {
             preparedStatement.setLong(1, chatId)
             val query = preparedStatement.executeQuery()
             query.next()
-            query.getInt(1)
+            val int = query.getInt(1)
+            if (query.wasNull()) null
+            else int
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("getUserData error", e)
             null
@@ -306,7 +318,7 @@ class SQLGroup private constructor(val chatId: Long) {
         }
 
     fun getResolvedPrefix(messageId: Int): Component =
-        config.reply.prefixAppend.get(
+        config.lang.minecraft.prefixAppend.get(
             plainPlaceholders = listOf(
                 "group" to name.toString(),
                 "message_id" to messageId.toString()
@@ -316,7 +328,7 @@ class SQLGroup private constructor(val chatId: Long) {
             )
         )
     fun getResolvedFromMcPrefix(messageId: Int): Component =
-        config.reply.prefixAppend.get(
+        config.lang.minecraft.prefixAppend.get(
             plainPlaceholders = listOf(
                 "group" to name.toString(),
                 "message_id" to messageId.toString()
@@ -327,10 +339,11 @@ class SQLGroup private constructor(val chatId: Long) {
         )
 
     fun checkValidMsg(msg: TgMessage) = msg.let {
-        agreedWithRules &&
-        data.enabledChatSync &&
-        msg.messageThreadId == topicId
+        enabled &&
+        it.messageThreadId == topicId
     }
+    val enabled: Boolean
+        get() = agreedWithRules && data.enabledChatSync
     fun isMember(nickname: String) =
         members.contains(SQLEntity.get(nickname)?.userId.toString())
 
@@ -350,6 +363,47 @@ class SQLGroup private constructor(val chatId: Long) {
         bot.deleteMessage(chatId, messageId)
     }
 
+    suspend fun broadcastMinecraft(
+        nickname: String,
+        message: String,
+        replyTo: Int? = null,
+    ): BroadcastMinecraftResult {
+        if (!enabled || !isMember(nickname)) return BroadcastMinecraftResult.NOT_FOUND
+        val tgMessage = ChatSyncBotLogic.sendReply(message, this, nickname, replyTo)
+        if (tgMessage != null) {
+            val messages = mutableListOf<Component>()
+            var mcMessage = message
+            replyToText(tgMessage, topicId, TextParser.resolveMessageLink(tgMessage), bot.me.id)?.also {
+                if (!config.messages.replyInDifferentLine) mcMessage = "$it $mcMessage"
+                else messages.add(it).also { messages.add(Component.text("\n")) }
+            }
+            messages.add(
+                config.lang.minecraft.messageMCFormat.get(
+                    plainPlaceholders = listOf(
+                        "nickname" to nickname,
+                    ),
+                    componentPlaceholders = listOf(
+                        "text" to MinecraftAdventureConverter.minecraftToAdventure(
+                            MarkdownLiteParserV1.ALL.parseNode(mcMessage).toText()
+                        ),
+                        "prefix" to getResolvedFromMcPrefix(tgMessage.messageId),
+                    )
+                )
+            )
+            ChatSyncBotCore.broadcastMessage(
+                messages
+                    .fold(Component.text()) { acc, component -> acc.append(component) }
+                    .build(),
+                this
+            )
+            return BroadcastMinecraftResult.SUCCESS
+        } else return BroadcastMinecraftResult.TG_ERROR
+    }
+    enum class BroadcastMinecraftResult {
+        SUCCESS,
+        NOT_FOUND,
+        TG_ERROR,
+    }
 
     fun withScopeAndLock(fn: suspend () -> Unit) {
         coroutineScope.launch {
@@ -357,5 +411,14 @@ class SQLGroup private constructor(val chatId: Long) {
                 fn()
             }
         }
+    }
+
+    fun mentionAll() : String {
+        val output = StringBuilder()
+        val placeholder = CONFIG?.serverBot?.mentionAllReplaceWith?:"+"
+        members.get()?.forEach {
+            output.append("<a href=\"tg://user?id=$it\">$placeholder</a>")
+        }
+        return output.toString()
     }
 }

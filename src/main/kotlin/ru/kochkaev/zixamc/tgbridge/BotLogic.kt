@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge
 
+import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.sql.dataclass.ProtectedMessageData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyMarkup
@@ -11,6 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.sql.dataclass.AccountType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 object BotLogic {
 
@@ -79,19 +81,10 @@ object BotLogic {
         return newMessage
     }
 
-    fun getMentionOfAllPlayers() : String {
-        val output = StringBuilder()
-        val placeholder = CONFIG?.serverBot?.mentionAllReplaceWith?:"+"
-        SQLEntity.linkedEntities.filter { it.value.accountType.isPlayer() } .forEach {
-            output.append("<a href=\"tg://user?id=${it.key}\">$placeholder</a>")
-        }
-        return output.toString()
-    }
-
-    fun escapePlaceholders(text: String, nickname: String? = null) : String {
+    fun escapePlaceholders(text: String, nickname: String? = null, group: SQLGroup = ChatSyncBotLogic.DEFAULT_GROUP) : String {
         return TextParser.formatLang(text,
             "nickname" to (nickname?:""),
-            "mentionAll" to getMentionOfAllPlayers(),
+            "mentionAll" to group.mentionAll(),
             "serverIP" to config.general.serverIP,
         )
     }

@@ -103,16 +103,24 @@ object ChatSyncBotLogic {
         return true
     }
 
-    private fun onChatMessage(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) {
-        sendChatMessage(e, group, lang.telegram.chatMessage, true, true)
-    }
+    private fun onChatMessage(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) =
+        if (!config.addPrefixToChatMessages) {
+            sendChatMessage(e, group, lang.telegram.chatMessage, true, true)
+            true
+        }
+        else {
+            runBlocking {
+                group.broadcastMinecraft(e.username, (e.text as TextComponent).content())
+            }
+            false
+        }
     private fun onSayMessage(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) {
         sendChatMessage(e, group, lang.telegram.sayMessage, false, false)
     }
     private fun onMeMessage(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) {
         sendChatMessage(e, group, lang.telegram.meMessage, false, false)
     }
-    suspend fun sendReply(text: String, group: SQLGroup, username: String, replyTo: Long?) =
+    suspend fun sendReply(text: String, group: SQLGroup, username: String, replyTo: Int?) =
         sendChatMessage(
             rawMinecraftText = text,
             group = group,
@@ -128,7 +136,7 @@ object ChatSyncBotLogic {
         base: String,
         canMergeMessages: Boolean = true,
         shouldKeepAsLast: Boolean = true,
-        replyTo: Long? = null
+        replyTo: Int? = null
     ) = group.withScopeAndLock {
         sendChatMessage(
             rawMinecraftText = (e.text as TextComponent).content(),
@@ -147,7 +155,7 @@ object ChatSyncBotLogic {
         base: String,
         canMergeMessages: Boolean = true,
         shouldKeepAsLast: Boolean = true,
-        replyTo: Long? = null
+        replyTo: Int? = null
     ): TgMessage? {
         val bluemapLink = TextParser.asBluemapLinkOrNone(rawMinecraftText)
         val prefix = config.messages.requirePrefixInMinecraft ?: ""

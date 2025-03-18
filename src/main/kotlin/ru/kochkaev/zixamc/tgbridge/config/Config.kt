@@ -181,6 +181,7 @@ data class Config (
             val events: ServerBotChatSyncGameEventsDataClass = ServerBotChatSyncGameEventsDataClass(),
             val lang: ServerBotChatSyncLangDataClass = ServerBotChatSyncLangDataClass(),
             val betaMarkdown: Boolean = false,
+            val addPrefixToChatMessages: Boolean = true,
             val reply: ChatSyncReply = ChatSyncReply(),
         ) {
             data class DefaultGroup(
@@ -215,8 +216,9 @@ data class Config (
                 )
 
                 data class LangMinecraft(
-                    val messageFormat: TextData = TextData("[<prefix><reset>] <hover:show_text:'Упомянуть его/её (Shift + клик)'><insert:'@{sender}'>{sender}</insert></hover> » <text>"),
-                    val defaultPrefix: TextData = TextData("<color:aqua><hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r zixa {message_id} '>Telegram</click></hover></color:aqua>"),
+                    val messageTGFormat: TextData = TextData("[<prefix><reset>] <hover:show_text:'Упомянуть его/её (Shift + клик)'><insert:'@{sender}'>{sender}</insert></hover> » <text>"),
+                    val messageMCFormat: TextData = TextData("[<prefix><reset>] <hover:show_text:'Написать личное сообщение'><click:suggest_command:'/tell {nickname} '>{nickname}</click></hover> » <text>"),
+                    val prefixAppend: TextData = TextData("<hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r {group} {message_id} '><prefix></click></hover>"),
                     val reply: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── {sender} » {text}</click></hover></color:gray>"),
                     val replyToMinecraft: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── {text}</click></hover></color:gray>"),
                     val forward: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>{from} »</click></hover></color:gray>"),
@@ -263,15 +265,9 @@ data class Config (
                 )
             }
             data class ChatSyncReply(
-                val minecraftCommand: ChatSyncReplyCommand = ChatSyncReplyCommand(),
-                val prefixAppend: TextData = TextData("<hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r {group} {message_id} '><prefix></click></hover>"),
-            ) {
-                data class ChatSyncReplyCommand(
-                    val chatNotFound: TextData = TextData("<color:gray><italic>Чат \"{group}\" не найден!</italic></color:gray>"),
-                    val errorDueSending: TextData = TextData("<color:gray><italic>Возникла ошибка во время отправки вашего сообщения<color:gray><italic>"),
-                    val minecraftSchema: TextData = TextData("[<prefix><reset>] <hover:show_text:'Написать личное сообщение'><click:suggest_command:'/tell {nickname} '>{nickname}</click></hover> » <text>"),
-                )
-            }
+                val chatNotFound: TextData = TextData("<color:gray><italic>Чат \"{group}\" не найден!</italic></color:gray>"),
+                val errorDueSending: TextData = TextData("<color:gray><italic>Возникла ошибка во время отправки вашего сообщения<color:gray><italic>"),
+            )
         }
         data class ServerBotIntegration(
             val messageNotPlayer: String = "<b>👋 Приветствую!</b>\nЯ бот приватного Minecraft сервера Zixa City.\n\n<i>Вы не являетесь игроком сервера</i> »\n<b>Подать заявку</b> -> @ZixaMC_request_bot",

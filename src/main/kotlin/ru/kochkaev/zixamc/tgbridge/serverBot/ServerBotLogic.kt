@@ -9,6 +9,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
 import ru.kochkaev.zixamc.tgbridge.serverBot.integration.Menu
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 object ServerBotLogic {
 
@@ -37,6 +38,14 @@ object ServerBotLogic {
     fun registerTelegramHandlers() {
         bot.registerCallbackQueryHandler(ServerBotUpdateManager::onTelegramCallbackQuery)
         bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id) }
+        bot.registerCommandHandler("mentionAll") { SQLGroup.get(it.chat.id)?.also { group ->
+            bot.sendMessage(
+                chatId = it.chat.id,
+                text = group.mentionAll(),
+                replyParameters = TgReplyParameters(it.replyToMessage?.messageId?:it.messageId)
+            )
+            try { bot.deleteMessage(it.chat.id, it.messageId) } catch (_: Exception) {}
+        } }
         bot.registerMessageHandler(Menu::onMessage)
 
         bot.registerCallbackQueryHandler(/*"easyauth", EasyAuthIntegration.EasyAuthCallbackData::class.java,*/ EasyAuthIntegration::onTelegramCallbackQuery)
