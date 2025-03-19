@@ -347,7 +347,7 @@ object RequestsLogic {
             ),
             replyParameters = if (toReplyMessageId!=null) TgReplyParameters(toReplyMessageId) else null,
         )
-        SQLEntity.linkedEntities.map {it.value} .filter { it.agreedWithRules } .forEach {
+        SQLEntity.users.map {it.getSQLAssert()} .filter { it.agreedWithRules } .forEach {
             if (revokeAccepts) it.agreedWithRules = false
             try {
                 bot.sendMessage(

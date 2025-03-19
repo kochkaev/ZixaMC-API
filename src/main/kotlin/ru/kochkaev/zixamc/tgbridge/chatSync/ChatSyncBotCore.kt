@@ -202,7 +202,7 @@ object ChatSyncBotCore {
 
     fun broadcastMessage(text: Component, group: SQLGroup) {
         server.playerManager.playerList
-            .filter { group.members.contains(SQLEntity.get(it.nameForScoreboard)?.userId.toString()) }
+            .filter { group.isMember(it.nameForScoreboard) }
             .forEach { it.sendMessage(MinecraftAdventureConverter.adventureToMinecraft(text), false) }
     }
 

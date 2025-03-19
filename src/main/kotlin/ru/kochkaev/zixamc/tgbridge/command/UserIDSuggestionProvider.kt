@@ -7,6 +7,7 @@ import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import net.minecraft.server.command.ServerCommandSource
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.LinkedUser
 import java.util.concurrent.CompletableFuture
 
 
@@ -16,7 +17,7 @@ class UserIDSuggestionProvider : SuggestionProvider<ServerCommandSource?> {
         context: CommandContext<ServerCommandSource?>,
         builder: SuggestionsBuilder
     ): CompletableFuture<Suggestions> {
-        SQLEntity.userIDs.forEach { builder.suggest(it.toString()) }
+        SQLEntity.users.forEach { builder.suggest(it.key.toString()) }
         return builder.buildFuture()
     }
 }

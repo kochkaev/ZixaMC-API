@@ -253,14 +253,9 @@ class SQLEntity private constructor(val userId: Long) {
             null
         }
 
-        val linkedEntities: HashMap<Long, SQLEntity>
-            get() = userIDs.fold(hashMapOf()) { acc, it ->
-                acc[it] = get(it)!!
-                acc
-            }
-        val userIDs: List<Long>
+        val users: List<LinkedUser>
             get() {
-                val ids = arrayListOf<Long>()
+                val users = arrayListOf<LinkedUser>()
                 try {
                     reConnect()
                     val preparedStatement =
@@ -268,12 +263,12 @@ class SQLEntity private constructor(val userId: Long) {
                     val query = preparedStatement.executeQuery()
                     while (query.next()) {
                         val userId = query.getLong(1)
-                        ids.add(userId)
+                        users.add(LinkedUser(userId))
                     }
                 } catch (e: SQLException) {
                     ZixaMCTGBridge.logger.error("getAllData error", e)
                 }
-                return ids
+                return users
             }
     }
 

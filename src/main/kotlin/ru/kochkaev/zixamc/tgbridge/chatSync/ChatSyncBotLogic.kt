@@ -94,7 +94,7 @@ object ChatSyncBotLogic {
         }
         runBlocking {
             bot.recoverPolling(coroutineScope)
-            SQLGroup.all.map { it.value } .forEach {
+            SQLGroup.groups.map { it.getSQLAssert() } .forEach {
                 if (it.lastMessageLock.isLocked)
                     it.lastMessageLock.unlock()
             }

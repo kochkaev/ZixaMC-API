@@ -3,15 +3,13 @@ package ru.kochkaev.zixamc.tgbridge.requests
 import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.RequestsBot.config
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.AccountType
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.MinecraftAccountType
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.RequestType
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
 
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
@@ -219,7 +217,7 @@ object RequestsBotUpdateManager {
                 entity.addNickname(request.request_nickname!!)
             }
             "approve_request" -> {
-                val userEntity = SQLEntity.linkedEntities.values.first {
+                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
@@ -287,7 +285,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             "deny_request" -> {
-                val userEntity = SQLEntity.linkedEntities.values.first {
+                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
@@ -318,7 +316,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             "restrict_user" -> {
-                val userEntity = SQLEntity.linkedEntities.values.first {
+                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
@@ -343,7 +341,7 @@ object RequestsBotUpdateManager {
             }
             "close_poll" -> {
                 if (entity.accountType != AccountType.ADMIN) return
-                val userEntity = SQLEntity.linkedEntities.values.first {
+                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
                     it.data!!.requests.any { it1 -> it1.request_status == RequestType.PENDING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data!!.requests.first { it.request_status == RequestType.PENDING }
@@ -373,7 +371,7 @@ object RequestsBotUpdateManager {
         if (entity.isRestricted) return
         if (entity.accountType.isPlayer()) {
             bot.approveChatJoinRequest(request.chat.id, request.from.id)
-            SQLGroup.get(request.chat.id)?.members?.add(request.from.id.toString())
+            SQLGroup.get(request.chat.id)?.members?.add(request.from.id)
         }
     }
 }

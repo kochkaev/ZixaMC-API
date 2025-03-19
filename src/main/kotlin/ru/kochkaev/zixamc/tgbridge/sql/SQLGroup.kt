@@ -1,15 +1,11 @@
 package ru.kochkaev.zixamc.tgbridge.sql
 
 import com.google.gson.GsonBuilder
-import com.mojang.brigadier.arguments.LongArgumentType
-import com.mojang.brigadier.arguments.StringArgumentType
 import eu.pb4.placeholders.api.parsers.MarkdownLiteParserV1
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.kyori.adventure.text.Component
-import org.objectweb.asm.Type
-import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.ServerBot.coroutineScope
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
@@ -20,18 +16,19 @@ import ru.kochkaev.zixamc.tgbridge.chatSync.LastMessage
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser.replyToText
-import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
+import ru.kochkaev.zixamc.tgbridge.config.serialize.TopicTypeAdapter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.GroupData
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.SQLArray
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
 import java.sql.SQLException
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.TopicTypes.CHAT_SYNC
+import java.util.ArrayList
 
 class SQLGroup private constructor(val chatId: Long) {
 
@@ -61,7 +58,7 @@ class SQLGroup private constructor(val chatId: Long) {
             }
         }
     val aliases = SQLArray(SQLGroup, "aliases", chatId, "chat_id")
-    val members = SQLArray(SQLGroup, "members", chatId, "chat_id")
+    val members = SQLUsersArray(SQLGroup, "members", chatId, "chat_id")
     var agreedWithRules: Boolean
         get() = try {
             reConnect()
@@ -87,35 +84,32 @@ class SQLGroup private constructor(val chatId: Long) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    var topicId: Int?
+    var isRestricted: Boolean
         get() = try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT topic_id FROM $tableName WHERE chat_id = ?;")
+                MySQLConnection!!.prepareStatement("SELECT is_restricted FROM $tableName WHERE chat_id = ?;")
             preparedStatement.setLong(1, chatId)
             val query = preparedStatement.executeQuery()
             query.next()
-            val int = query.getInt(1)
-            if (query.wasNull()) null
-            else int
+            query.getBoolean(1)
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("getUserData error", e)
-            null
+            false
         }
-        set(topicId) {
+        set(agreedWithRules) {
             try {
                 reConnect()
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET topic_id = ? WHERE chat_id = ?;")
-                if (topicId != null)
-                    preparedStatement.setInt(1, topicId)
-                else preparedStatement.setNull(1, Type.INT)
+                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET agreed_with_rules = ? WHERE chat_id = ?;")
+                preparedStatement.setBoolean(1, agreedWithRules)
                 preparedStatement.setLong(2, chatId)
                 preparedStatement.executeUpdate()
             } catch (e: SQLException) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
+    val topics = SQLTopicsMap(SQLGroup, "topics", chatId, "chat_id")
     var data: GroupData
         get() = try {
             reConnect()
@@ -154,7 +148,8 @@ class SQLGroup private constructor(val chatId: Long) {
                     `aliases` JSON DEFAULT "{\"array\":[]}",
                     `members` JSON DEFAULT "{\"array\":[]}",
                     `agreed_with_rules` BOOLEAN NOT NULL DEFAULT FALSE,
-                    `topic_id` INT DEFAULT NULL,
+                    `is_restricted` BOOLEAN NOT NULL DEFAULT FALSE,
+                    `topics` JSON NOT NULL DEFAULT "{\"map\":[]}",
                     `data` JSON NOT NULL DEFAULT "{}",
                     PRIMARY KEY (`id`), UNIQUE (`chat_id`)
                 ) ENGINE = InnoDB;
@@ -166,21 +161,30 @@ class SQLGroup private constructor(val chatId: Long) {
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .serializeNulls()
+            .enableComplexMapKeySerialization()
             .registerTypeAdapter(TextData::class.java, TextDataAdapter())
+            .registerTypeAdapter(Topic::class.java, TopicTypeAdapter())
             .create()
         override fun afterCreateTable() {
-            val config = ConfigManager.CONFIG!!.serverBot.chatSync
+            val config = CONFIG!!.serverBot.chatSync
             create(
                 chatId = config.defaultGroup.chatId,
                 name = config.defaultGroup.name,
-                aliases = config.defaultGroup.aliases.toTypedArray(),
-                members = SQLEntity.userIDs.map { it.toString() } .toTypedArray(),
+                aliases = config.defaultGroup.aliases,
+                members = SQLEntity.users.map { it.key.toString() },
                 agreedWithRules = true,
-                topicId = config.defaultGroup.topicId,
-                data = gson.toJson(GroupData(
-                    prefix = config.defaultGroup.prefix,
-                    fromMcPrefix = config.defaultGroup.fromMcPrefix
-                ))
+                isRestricted = false,
+                topics = mapOf(
+                    CHAT_SYNC to ChatSyncTopicData(
+                        enabled = true,
+                        topicId = config.defaultGroup.topicId,
+//                        name = config.defaultGroup.name,
+//                        aliases = ArrayList(config.defaultGroup.aliases),
+                        prefix = config.defaultGroup.prefix,
+                        fromMcPrefix = config.defaultGroup.fromMcPrefix
+                    )
+                ),
+                data = gson.toJson(GroupData())
             )
         }
 
@@ -192,24 +196,23 @@ class SQLGroup private constructor(val chatId: Long) {
         }
         fun getOrCreate(chatId: Long): SQLGroup {
             if (!exists(chatId))
-                create(chatId, null, arrayOf(), arrayOf(), false, null, gson.toJson(GroupData()))
+                create(chatId, null, listOf(), listOf(), false, false, mapOf(), gson.toJson(GroupData()))
             return SQLGroup(chatId)
         }
-        fun create(chatId: Long, name:String?, aliases: Array<String>?, members: Array<String>?, agreedWithRules: Boolean, topicId: Int?, data:String?): Boolean {
+        fun create(chatId: Long, name:String?, aliases: List<String>?, members: List<String>?, agreedWithRules: Boolean, isRestricted: Boolean, topics: Map<Topic<out TopicData>, TopicData>, data:String?): Boolean {
             try {
                 reConnect()
                 if (!exists(chatId) && (name == null || !exists(name))) {
                     val preparedStatement =
-                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (chat_id, name, aliases, members, agreed_with_rules, topic_id, data) VALUES (?, ?, ?, ?, ?, ?, ?);")
+                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (chat_id, name, aliases, members, agreed_with_rules, is_restricted, topics, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?);")
                     preparedStatement.setLong(1, chatId)
                     preparedStatement.setString(2, name)
-                    preparedStatement.setString(3, "{\"array\":[${aliases?.joinToString(", ") { "\"$this\"" }}]}")
-                    preparedStatement.setString(4, "{\"array\":[${members?.joinToString(", ") { "\"$this\"" }}]}")
+                    preparedStatement.setString(3, "{\"array\":[${aliases?.joinToString(", ") { "\"$it\"" }}]}")
+                    preparedStatement.setString(4, "{\"array\":[${members?.joinToString(", ") { "\"$it\"" }}]}")
                     preparedStatement.setBoolean(5, agreedWithRules)
-                    if (topicId != null)
-                        preparedStatement.setInt(6, topicId)
-                    else preparedStatement.setNull(6, Type.INT)
-                    preparedStatement.setString(7, data?:gson.toJson(GroupData()))
+                    preparedStatement.setBoolean(6, isRestricted)
+                    preparedStatement.setString(7, gson.toJson(topics))
+                    preparedStatement.setString(8, data?:gson.toJson(GroupData()))
                     preparedStatement.executeUpdate()
                     return true
                 }
@@ -234,6 +237,7 @@ class SQLGroup private constructor(val chatId: Long) {
             try {
                 reConnect()
                 val preparedStatement =
+//                    MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE JSON_CONTAINS_PATH(topics, 'one', '$.map.CHAT_SYNC') AND (topics->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(topics, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
                     MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$.array');")
                 preparedStatement.setString(1, name)
                 preparedStatement.setString(2, name)
@@ -248,6 +252,7 @@ class SQLGroup private constructor(val chatId: Long) {
                 reConnect()
                 if (exists(name)) {
                     val preparedStatement =
+//                        MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE JSON_CONTAINS_PATH(topics, 'one', '$.map.CHAT_SYNC') AND (topics->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(topics, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
                         MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$.array');")
                     preparedStatement.setString(1, name)
                     preparedStatement.setString(2, name)
@@ -260,14 +265,9 @@ class SQLGroup private constructor(val chatId: Long) {
                 null
             }
 
-        val all: HashMap<Long, SQLGroup>
-            get() = chatIDs.fold(hashMapOf()) { acc, it ->
-                acc[it] = get(it)!!
-                acc
-            }
-        val chatIDs: List<Long>
+        val groups: List<LinkedGroup>
             get() {
-                val ids = arrayListOf<Long>()
+                val groups = arrayListOf<LinkedGroup>()
                 try {
                     reConnect()
                     val preparedStatement =
@@ -275,12 +275,12 @@ class SQLGroup private constructor(val chatId: Long) {
                     val query = preparedStatement.executeQuery()
                     while (query.next()) {
                         val chatId = query.getLong(1)
-                        ids.add(chatId)
+                        groups.add(LinkedGroup(chatId))
                     }
                 } catch (e: SQLException) {
                     ZixaMCTGBridge.logger.error("getAllData error", e)
                 }
-                return ids
+                return groups
             }
     }
 
@@ -291,7 +291,8 @@ class SQLGroup private constructor(val chatId: Long) {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND (name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$.array'));")
+//                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND JSON_CONTAINS_PATH(topics, 'one', '$.map.CHAT_SYNC') AND (topics->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(topics, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
+                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND (name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$.array');")
             preparedStatement.setLong(1, chatId)
             preparedStatement.setString(2, value)
             preparedStatement.setString(3, value)
@@ -324,7 +325,9 @@ class SQLGroup private constructor(val chatId: Long) {
                 "message_id" to messageId.toString()
             ),
             componentPlaceholders = listOf(
-                "prefix" to (data.prefix?.get()?:Component.text(name.toString()))
+                "prefix" to topics.getCasted(CHAT_SYNC).let {
+                    it?.prefix?.get() ?: Component.text(name.toString())
+                }
             )
         )
     fun getResolvedFromMcPrefix(messageId: Int): Component =
@@ -334,24 +337,29 @@ class SQLGroup private constructor(val chatId: Long) {
                 "message_id" to messageId.toString()
             ),
             componentPlaceholders = listOf(
-                "prefix" to (data.fromMcPrefix?.get()?:data.prefix?.get()?:Component.text(name.toString()))
+                "prefix" to (topics.getCasted(CHAT_SYNC).let {
+                    it?.fromMcPrefix?.get() ?: it?.prefix?.get() ?: Component.text(name.toString())
+                } )
             )
         )
 
     fun checkValidMsg(msg: TgMessage) = msg.let {
         enabled &&
-        it.messageThreadId == topicId
+        enabledChatSync &&
+        it.messageThreadId == topics.getCasted(CHAT_SYNC)?.topicId
     }
     val enabled: Boolean
-        get() = agreedWithRules && data.enabledChatSync
+        get() = agreedWithRules
+    val enabledChatSync: Boolean
+        get() = topics.contains(CHAT_SYNC) && topics.getCasted(CHAT_SYNC)!!.enabled
     fun isMember(nickname: String) =
-        members.contains(SQLEntity.get(nickname)?.userId.toString())
+        members.contains(SQLEntity.get(nickname))
 
     suspend fun sendMessage(text: String, reply: Int? = null, entities: List<TgEntity>? = null): TgMessage {
         return bot.sendMessage(
             chatId = chatId,
             text = text,
-            messageThreadId = topicId,
+            messageThreadId = topics.getCasted(CHAT_SYNC)!!.topicId,
             entities = entities,
             replyParameters = reply?.let { TgReplyParameters(reply) }
         )
@@ -373,7 +381,7 @@ class SQLGroup private constructor(val chatId: Long) {
         if (tgMessage != null) {
             val messages = mutableListOf<Component>()
             var mcMessage = message
-            replyToText(tgMessage, topicId, TextParser.resolveMessageLink(tgMessage), bot.me.id)?.also {
+            replyToText(tgMessage, topics.getCasted(CHAT_SYNC)!!.topicId, TextParser.resolveMessageLink(tgMessage), bot.me.id)?.also {
                 if (!config.messages.replyInDifferentLine) mcMessage = "$it $mcMessage"
                 else messages.add(it).also { messages.add(Component.text("\n")) }
             }
@@ -417,7 +425,7 @@ class SQLGroup private constructor(val chatId: Long) {
         val output = StringBuilder()
         val placeholder = CONFIG?.serverBot?.mentionAllReplaceWith?:"+"
         members.get()?.forEach {
-            output.append("<a href=\"tg://user?id=$it\">$placeholder</a>")
+            output.append("<a href=\"tg://user?id=${it.key}\">$placeholder</a>")
         }
         return output.toString()
     }
