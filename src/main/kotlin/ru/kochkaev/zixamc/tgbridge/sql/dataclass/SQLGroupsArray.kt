@@ -19,21 +19,21 @@ class SQLGroupsArray(
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
     deserializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedGroup::class.java, LinkedGroupAdapter())
         .create()
-        .fromJson<List<LinkedGroup>>(it, List::class.java) },
+        .fromJson(it, object: TypeToken<List<LinkedGroup>>(){}.type) },
     serializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedGroup::class.java, LinkedGroupAdapter())
         .create()
         .toJson(it) },
     valSerializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedGroup::class.java, LinkedGroupAdapter())

@@ -35,7 +35,7 @@ class SQLEntity private constructor(val userId: Long) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    var nicknames = SQLArray(SQLEntity, "temp_array", userId, "user_id")
+    var nicknames = SQLArray(SQLEntity, "nicknames", userId, "user_id")
     var accountType: AccountType
         get() = try {
             reConnect()

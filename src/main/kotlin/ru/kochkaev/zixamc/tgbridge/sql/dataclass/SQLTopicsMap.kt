@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
+import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
 import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
@@ -34,7 +35,7 @@ class SQLTopicsMap(
         .registerTypeAdapter(TextData::class.java, TextDataAdapter())
         .registerTypeAdapter(Topic::class.java, TopicTypeAdapter())
         .create()
-        .fromJson<Map<Topic<out  TopicData>, TopicData>>(it, Map::class.java)
+        .fromJson(it, object: TypeToken<Map<Topic<out  TopicData>, TopicData>>(){}.type)
     },
     keySerializer = { it.serializedName },
     valSerializer = { GsonBuilder()
@@ -61,7 +62,4 @@ class SQLTopicsMap(
 ) {
     fun <R: TopicData> getCasted(key: Topic<R>): R? =
         get(key)?.let { key.model.cast(it) }
-    data class TopicMap(
-        val map: Map<Topic<out  TopicData>, TopicData> = mapOf()
-    )
 }

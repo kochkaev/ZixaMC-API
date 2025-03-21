@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
+import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
 import ru.kochkaev.zixamc.tgbridge.config.serialize.LinkedUserAdapter
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL
@@ -16,21 +17,21 @@ class SQLUsersArray(
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
     deserializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedUser::class.java, LinkedUserAdapter())
         .create()
-        .fromJson<List<LinkedUser>>(it, List::class.java) },
+        .fromJson(it, object:TypeToken<List<LinkedUser>>(){}.type) },
     serializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedUser::class.java, LinkedUserAdapter())
         .create()
         .toJson(it) },
     valSerializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedUser::class.java, LinkedUserAdapter())
@@ -49,7 +50,4 @@ class SQLUsersArray(
     fun add(entity: SQLEntity?) {
         add(entity?.userId)
     }
-    private data class UsersArrayData(
-        val array: Array<LinkedUser>
-    )
 }

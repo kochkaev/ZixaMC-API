@@ -22,21 +22,21 @@ class SQLCallbacksArray(
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
     deserializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedCallback::class.java, LinkedCallbackAdapter())
         .create()
         .fromJson(it, object: TypeToken<List<LinkedCallback>>(){}.type) },
     serializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedCallback::class.java, LinkedCallbackAdapter())
         .create()
         .toJson(it) },
     valSerializer = { GsonBuilder()
-        .setPrettyPrinting()
+//        .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedCallback::class.java, LinkedCallbackAdapter())

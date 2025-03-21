@@ -10,7 +10,10 @@ import ru.kochkaev.zixamc.tgbridge.sql.dataclass.LinkedUser
 class LinkedUserAdapter() : TypeAdapter<LinkedUser>() {
     override fun write(out: JsonWriter, value: LinkedUser?) {
         if (value == null) out.nullValue()
-        else out.value(value.key)
+        else {
+            val key: Long = value.key
+            out.value(key)
+        }
     }
 
     override fun read(reader: JsonReader) =
