@@ -110,7 +110,7 @@ object AuthManager {
                 )
             } catch (_: Exception) {}
         }
-        entity.tempArray.set(arrayOf())
+        entity.tempArray.set(listOf())
     }
     private fun kickYouAreNotPlayer(player: ServerPlayerEntity?) {
         player?.networkHandler?.disconnect(config.easyAuth.langMinecraft.youAreNotPlayer.getMinecraft())

@@ -49,7 +49,7 @@ object ServerBotLogic {
         bot.registerMessageHandler(Menu::onMessage)
 
         bot.registerCallbackQueryHandler(/*"easyauth", EasyAuthIntegration.EasyAuthCallbackData::class.java,*/ EasyAuthIntegration::onTelegramCallbackQuery)
-        bot.registerCallbackQueryHandler(/*"menu", Menu.MenuCallbackData::class.java,*/ Menu::onCallback)
+        bot.registerCallbackQueryHandler("menu", Menu::onCallback)
     }
 
 }

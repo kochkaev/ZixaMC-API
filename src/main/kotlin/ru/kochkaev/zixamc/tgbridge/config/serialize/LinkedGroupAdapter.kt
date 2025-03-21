@@ -11,7 +11,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.dataclass.LinkedUser
 class LinkedGroupAdapter() : TypeAdapter<LinkedGroup>() {
     override fun write(out: JsonWriter, value: LinkedGroup?) {
         if (value == null) out.nullValue()
-        else out.value(value.key.toString())
+        else out.value(value.key)
     }
 
     override fun read(reader: JsonReader) =

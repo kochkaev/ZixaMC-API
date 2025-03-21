@@ -147,9 +147,9 @@ class SQLEntity private constructor(val userId: Long) {
                     `id` INT NOT NULL AUTO_INCREMENT,
                     `user_id` BIGINT NOT NULL,
                     `nickname` VARCHAR(16),
-                    `nicknames` JSON DEFAULT "{\"array\":[]}",
+                    `nicknames` JSON DEFAULT "[]",
                     `account_type` INT NOT NULL DEFAULT 3,
-                    `temp_array` JSON NOT NULL DEFAULT "{\"array\":[]}",
+                    `temp_array` JSON NOT NULL DEFAULT "[]",
                     `agreed_with_rules` BOOLEAN NOT NULL DEFAULT FALSE,
                     `is_restricted` BOOLEAN NOT NULL DEFAULT FALSE,
                     `data` JSON NOT NULL DEFAULT "{}",
@@ -173,16 +173,10 @@ class SQLEntity private constructor(val userId: Long) {
             return get(userId)
         }
         fun getOrCreate(userId: Long): SQLEntity {
-            if (!exists(userId)) create(
-                userId,
-                null,
-                arrayOf(),
-                3,
-                gson.toJson(AccountData())
-            )
+            if (!exists(userId)) createDefault(userId)
             return SQLEntity(userId)
         }
-        fun create(userId: Long, nickname: String?, nicknames: Array<String>?, accountType: Int?, data: String?): Boolean {
+        fun create(userId: Long, nickname: String?, nicknames: List<String>?, accountType: Int?, data: String?): Boolean {
             try {
                 reConnect()
                 if (!exists(userId) && (nickname == null || !exists(nickname)) && (nicknames?.any{ exists(it) } != true)) {
@@ -190,9 +184,9 @@ class SQLEntity private constructor(val userId: Long) {
                         MySQLConnection!!.prepareStatement("INSERT INTO $tableName (user_id, nickname, nicknames, account_type, temp_array, data) VALUES (?, ?, ?, ?, ?, ?);")
                     preparedStatement.setLong(1, userId)
                     preparedStatement.setString(2, nickname)
-                    preparedStatement.setString(3, "{\"array\":[${nicknames?.joinToString(", ") { "\"$this\"" }}]}")
+                    preparedStatement.setString(3, gson.toJson(nicknames?:listOf<String>()))
                     preparedStatement.setInt(4, accountType?:3)
-                    preparedStatement.setString(5, "{\"array\":[]}")
+                    preparedStatement.setString(5, gson.toJson(listOf<String>()))
                     preparedStatement.setString(6, data)
                     preparedStatement.executeUpdate()
                     return true
@@ -202,6 +196,14 @@ class SQLEntity private constructor(val userId: Long) {
             }
             return false
         }
+        fun createDefault(userId: Long) =
+            create(
+                userId = userId,
+                nickname = null,
+                nicknames = listOf(),
+                accountType = AccountType.UNKNOWN.getId(),
+                data = gson.toJson(AccountData())
+            )
         
         fun exists(userId: Long) = try {
             reConnect()
@@ -216,7 +218,7 @@ class SQLEntity private constructor(val userId: Long) {
         fun exists(nickname: String) = try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$.array');")
+                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$');")
             preparedStatement.setString(1, nickname)
             preparedStatement.setString(2, nickname)
             preparedStatement.executeQuery().next()
@@ -229,7 +231,7 @@ class SQLEntity private constructor(val userId: Long) {
             reConnect()
             if (exists(nickname)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$.array');")
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$');")
                 preparedStatement.setString(1, nickname)
                 preparedStatement.setString(2, nickname)
                 val query = preparedStatement.executeQuery()
@@ -243,7 +245,7 @@ class SQLEntity private constructor(val userId: Long) {
         fun getIdByTempArrayVal(value: String) = try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE JSON_CONTAINS(temp_array, JSON_QUOTE(?), '$.array');")
+                MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE JSON_CONTAINS(temp_array, JSON_QUOTE(?), '$');")
             preparedStatement.setString(1, value)
             val query = preparedStatement.executeQuery()
             if (!query.next()) null
@@ -276,7 +278,7 @@ class SQLEntity private constructor(val userId: Long) {
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$.array'));")
+                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$'));")
             preparedStatement.setLong(1, userId)
             preparedStatement.setString(2, nickname)
             preparedStatement.setString(3, nickname)

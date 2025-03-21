@@ -4,11 +4,13 @@ import com.google.gson.*
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.LinkedCallback
 import ru.kochkaev.zixamc.tgbridge.sql.dataclass.LinkedEntity
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.LinkedGroup
 import ru.kochkaev.zixamc.tgbridge.sql.dataclass.LinkedUser
 
-class LinkedUserAdapter() : TypeAdapter<LinkedUser>() {
-    override fun write(out: JsonWriter, value: LinkedUser?) {
+class LinkedCallbackAdapter() : TypeAdapter<LinkedCallback>() {
+    override fun write(out: JsonWriter, value: LinkedCallback?) {
         if (value == null) out.nullValue()
         else out.value(value.key)
     }
@@ -17,6 +19,6 @@ class LinkedUserAdapter() : TypeAdapter<LinkedUser>() {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull()
             null
-        } else LinkedUser(reader.nextString().toLong())
+        } else LinkedCallback(reader.nextString().toLong())
 
 }

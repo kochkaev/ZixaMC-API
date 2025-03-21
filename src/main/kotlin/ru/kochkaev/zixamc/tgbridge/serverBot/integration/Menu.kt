@@ -5,10 +5,16 @@ import kotlinx.coroutines.runBlocking
 import net.fabricmc.loader.api.FabricLoader
 import ru.kochkaev.zixamc.tgbridge.ServerBot
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCBHandlerResult.Companion.DELETE_CALLBACK
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCBHandlerResult.Companion.SUCCESS
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.serverBot.ServerBotLogic
+import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 
 object Menu {
@@ -17,6 +23,11 @@ object Menu {
     private enum class Processes {
         AUDIO_PLAYER;
     }
+    val BACK_BUTTON = SQLCallback.of(
+        display = ServerBot.config.integration.buttonBackToMenu,
+        type = "menu",
+        data = MenuCallbackData("back")
+    )
 
     private val isAudioPlayerLoaded = FabricLoader.getInstance().isModLoaded("audioplayer")
 
@@ -26,24 +37,18 @@ object Menu {
             ServerBot.bot.sendMessage(
                 chatId = chatId,
                 text = ServerBot.config.integration.messageMenu,
-                replyMarkup = TgInlineKeyboardMarkup(
-                    listOf(
-                        listOf(
-                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                ServerBot.config.integration.infoButton,
-//                                callback_data = TgCallback("menu", MenuCallbackData("info")).serialize()
-                                callback_data = "menu\$info"
-                            )
-                        ),
-                        listOf(
-                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                ServerBot.config.integration.audioPlayer.buttonMenu,
-//                                callback_data = TgCallback("menu", MenuCallbackData("audioPlayer")).serialize()
-                                callback_data = "menu\$audioPlayer"
-                            )
-                        ),
-                    )
-                ),
+                replyMarkup = TgMenu(listOf(
+                    listOf(SQLCallback.of(
+                        display = ServerBot.config.integration.infoButton,
+                        type = "menu",
+                        data = MenuCallbackData("info")
+                    )),
+                    listOf(SQLCallback.of(
+                        display = ServerBot.config.integration.audioPlayer.buttonMenu,
+                        type = "menu",
+                        data = MenuCallbackData("audioPlayer")
+                    )),
+                )).inline()
             )
             process.remove(entity.userId)
         }
@@ -53,39 +58,43 @@ object Menu {
                 text = ServerBot.config.integration.messageNotPlayer,
             )
     }
-    suspend fun onCallback(cbq: TgCallbackQuery, /*data: TgCallback<MenuCallbackData>*/) {
-        if (cbq.data == null || !cbq.data.startsWith("menu")) return
-        val entity = SQLEntity.get(cbq.from.id)?:return
+    suspend fun onCallback(cbq: TgCallbackQuery, data: TgCallback<MenuCallbackData>): TgCBHandlerResult {
+//        if (cbq.data == null || !cbq.data.startsWith("menu")) return
+        val entity = SQLEntity.get(cbq.from.id)?:return SUCCESS
         if (!entity.accountType.isPlayer()) {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,
                 messageId = cbq.message.messageId,
                 text = ServerBot.config.integration.messageNotPlayer,
             )
-            return
+            return DELETE_MARKUP
         }
-        when (/*data.data!!.operation*/ cbq.data) {
-            "menu\$back" -> sendMenu(cbq.message.chat.id)
-            "menu\$info" -> ServerBotLogic.sendInfoMessage(entity)
-            "menu\$audioPlayer" -> {
+        when (data.data!!.operation /*cbq.data*/) {
+            "back" -> sendMenu(cbq.message.chat.id)
+            "info" -> ServerBotLogic.sendInfoMessage(entity)
+            "audioPlayer" -> {
                 ServerBot.bot.sendMessage(
                     chatId = cbq.message.chat.id,
                     text = if (isAudioPlayerLoaded) ServerBot.config.integration.audioPlayer.messageUpload else ServerBot.config.integration.audioPlayer.modIsNodInstalled,
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    ServerBot.config.integration.buttonBackToMenu,
-//                                    callback_data = TgCallback("menu", MenuCallbackData("back")).serialize()
-                                    callback_data = "menu\$back"
-                                )
-                            )
-                        )
-                    )
+//                    replyMarkup = TgInlineKeyboardMarkup(
+//                        listOf(
+//                            listOf(
+//                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+//                                    ServerBot.config.integration.buttonBackToMenu,
+////                                    callback_data = TgCallback("menu", MenuCallbackData("back")).serialize()
+//                                    callback_data = "menu\$back"
+//                                )
+//                            )
+//                        )
+//                    )
+                    replyMarkup = TgMenu(listOf(listOf(
+                        BACK_BUTTON
+                    ))).inline()
                 )
                 if (isAudioPlayerLoaded) process[cbq.message.chat.id] = Processes.AUDIO_PLAYER
             }
         }
+        return DELETE_MARKUP
     }
     suspend fun onMessage(msg: TgMessage) {
         runBlocking {
@@ -143,17 +152,9 @@ object Menu {
                         ServerBot.bot.editMessageReplyMarkup(
                             chatId = message.chat.id,
                             messageId = message.messageId,
-                            replyMarkup = TgInlineKeyboardMarkup(
-                                listOf(
-                                    listOf(
-                                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                            ServerBot.config.integration.buttonBackToMenu,
-//                                            callback_data = TgCallback("menu", MenuCallbackData("back")).serialize()
-                                            callback_data = "menu\$back"
-                                        )
-                                    )
-                                )
-                            )
+                            replyMarkup = TgMenu(listOf(listOf(
+                                BACK_BUTTON
+                            ))).inline()
                         )
                     }
 
@@ -173,7 +174,6 @@ object Menu {
     }
 
     data class MenuCallbackData(
-        @SerializedName("o")
         val operation: String
     ) : CallbackData
 }

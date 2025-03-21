@@ -1,11 +1,14 @@
 package ru.kochkaev.zixamc.tgbridge.config
 
+import com.google.gson.annotations.JsonAdapter
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
+import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
 
+@JsonAdapter(TextDataAdapter::class)
 data class TextData (
     val raw: String
 ) {

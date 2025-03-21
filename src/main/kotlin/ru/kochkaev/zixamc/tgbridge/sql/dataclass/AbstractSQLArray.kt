@@ -12,8 +12,8 @@ open class AbstractSQLArray<T>(
     private val column: String,
     private val uniqueId: Long,
     private val uniqueColumn: String,
-    private val serializer: (Array<T>) -> String,
-    private val deserializer: (String) -> Array<T>,
+    private val serializer: (List<T>) -> String,
+    private val deserializer: (String) -> List<T>,
     private val valSerializer: (T) -> String,
 ) {
     companion object {
@@ -32,7 +32,7 @@ open class AbstractSQLArray<T>(
             ZixaMCTGBridge.logger.error("getUserData error", e)
             null
         }
-    fun set(array: Array<T>) {
+    fun set(array: List<T>) {
         try {
             reConnect()
             val preparedStatement =
@@ -49,7 +49,7 @@ open class AbstractSQLArray<T>(
         try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT JSON_CONTAINS($column, JSON_QUOTE(?), '$.array') FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
+                MySQLConnection!!.prepareStatement("SELECT JSON_CONTAINS($column, JSON_QUOTE(?), '$') FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
             preparedStatement.setString(1, valSerializer(value))
             preparedStatement.setLong(2, uniqueId)
             val query = preparedStatement.executeQuery()
@@ -62,7 +62,7 @@ open class AbstractSQLArray<T>(
     fun add(value: T) = try {
         reConnect()
         val preparedStatement =
-            MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_ARRAY_APPEND($column, '$.array', ?) WHERE $uniqueColumn = ?;")
+            MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_ARRAY_APPEND($column, '$', ?) WHERE $uniqueColumn = ?;")
         preparedStatement.setString(1, valSerializer(value))
         preparedStatement.setLong(2, uniqueId)
         preparedStatement.executeUpdate()
@@ -76,7 +76,7 @@ open class AbstractSQLArray<T>(
         else {
             reConnect()
             val statement = "UPDATE ${sql.tableName} " +
-                    "SET $column = JSON_REMOVE($column, JSON_UNQUOTE(JSON_SEARCH($column, 'one', ?, NULL, '$.array'))) " +
+                    "SET $column = JSON_REMOVE($column, JSON_UNQUOTE(JSON_SEARCH($column, 'one', ?, NULL, '$'))) " +
                     "WHERE $uniqueColumn = ?;"
             ZixaMCTGBridge.logger.info(statement)
             val preparedStatement =

@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 
+import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
 import ru.kochkaev.zixamc.tgbridge.config.serialize.LinkedGroupAdapter
 import ru.kochkaev.zixamc.tgbridge.config.serialize.LinkedUserAdapter
@@ -23,14 +24,14 @@ class SQLGroupsArray(
         .serializeNulls()
         .registerTypeAdapter(LinkedGroup::class.java, LinkedGroupAdapter())
         .create()
-        .fromJson(it, GroupsArrayData::class.java).array },
+        .fromJson<List<LinkedGroup>>(it, List::class.java) },
     serializer = { GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()
         .serializeNulls()
         .registerTypeAdapter(LinkedGroup::class.java, LinkedGroupAdapter())
         .create()
-        .toJson(GroupsArrayData(it)) },
+        .toJson(it) },
     valSerializer = { GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()
@@ -51,7 +52,4 @@ class SQLGroupsArray(
     fun add(group: SQLGroup?) {
         add(group?.chatId)
     }
-    private data class GroupsArrayData(
-        val array: Array<LinkedGroup>
-    )
 }

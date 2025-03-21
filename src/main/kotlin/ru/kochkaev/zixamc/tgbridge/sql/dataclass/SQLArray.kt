@@ -12,7 +12,7 @@ class SQLArray(
     column = column,
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
-    deserializer = { gson.fromJson(it, ArrayData::class.java).array },
-    serializer = { "{\"array\":[${it.joinToString(", ") { "\"$this\"" }}]}" },
+    deserializer = { gson.fromJson<List<String>>(it, List::class.java) },
+    serializer = { gson.toJson(it) },
     valSerializer = { it },
 )

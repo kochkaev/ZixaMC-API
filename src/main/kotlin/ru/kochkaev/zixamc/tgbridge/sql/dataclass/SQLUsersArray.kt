@@ -21,7 +21,7 @@ class SQLUsersArray(
         .serializeNulls()
         .registerTypeAdapter(LinkedUser::class.java, LinkedUserAdapter())
         .create()
-        .fromJson(it, UsersArrayData::class.java).array },
+        .fromJson<List<LinkedUser>>(it, List::class.java) },
     serializer = { GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()

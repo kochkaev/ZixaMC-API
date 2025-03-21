@@ -30,6 +30,7 @@ data class Config (
         val password: String = "",
         val usersTable: String = "",
         val groupsTable: String = "",
+        val callbacksTable: String = "",
     )
     data class RequestsBotDataClass (
         val isEnabled: Boolean = true,
@@ -275,7 +276,16 @@ data class Config (
             val buttonBackToMenu: String = "« Вернуться в меню",
             val infoButton: String = "Информация о сервере 📌",
             val audioPlayer: ServerBotAudioPlayer = ServerBotAudioPlayer(),
+            val group: ServerBotGroupConfig = ServerBotGroupConfig(),
         ) {
+            data class ServerBotGroupConfig(
+                val features: Features = Features(),
+            ) {
+                data class Features(
+                    val chatSyncDisplay: String = "Синхронизация чата 💬",
+                    val chatSyncDescription: String = "<b>Вы можете связать эту группу с чатом Minecraft сервера! 💬</b>\nСообщения из этой группы будут видны только её членам, также как и написать в эту группу из Minecraft смогут только её члены.\n\n<i>Для отправки сообщения из Minecraft, выполните:</i>\n<code>/r {groupName} &lt;Сообщение&gt;</code>"
+                )
+            }
             data class ServerBotAudioPlayer(
                 val modIsNodInstalled: String = "Похоже, AudioPlayer не установлен на сервере...",
                 val buttonMenu: String = "Загрузить аудио в AudioPlayer 🎧",

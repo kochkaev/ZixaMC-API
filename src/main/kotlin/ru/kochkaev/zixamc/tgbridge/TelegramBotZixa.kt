@@ -9,7 +9,10 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
+import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.time.Duration
@@ -32,8 +35,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
     private val commandHandlers: MutableList<suspend (TgMessage) -> Boolean> = mutableListOf()
     private val messageHandlers: MutableList<suspend (TgMessage) -> Unit> = mutableListOf()
     private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()
-    private val callbackQueryTypes: HashMap<String, Class<out CallbackData>> = hashMapOf()
-    private val typedCallbackQueryHandlers: HashMap<String, suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> Unit> = hashMapOf()
+    private val typedCallbackQueryHandlers: HashMap<String, suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> TgCBHandlerResult> = hashMapOf()
     private val chatJoinRequestHandlers: MutableList<suspend (TgChatJoinRequest) -> Unit> = mutableListOf()
     lateinit var me: TgUser
         private set
@@ -45,10 +47,9 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
     fun registerCallbackQueryHandler(handler: suspend (TgCallbackQuery) -> Unit) {
         callbackQueryHandlers.add(handler)
     }
-    fun <T: CallbackData> registerCallbackQueryHandler(type: String, dataClass: Class<T>, handler: suspend (TgCallbackQuery, TgCallback<T>) -> Unit) {
-        callbackQueryTypes[type] = dataClass
+    fun <T: CallbackData> registerCallbackQueryHandler(type: String, handler: suspend (TgCallbackQuery, TgCallback<T>) -> TgCBHandlerResult) {
         @Suppress("UNCHECKED_CAST")
-        typedCallbackQueryHandlers[type] = handler as suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> Unit
+        typedCallbackQueryHandlers[type] = handler as suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> TgCBHandlerResult
     }
     fun registerChatJoinRequestHandlers(handler: suspend (TgChatJoinRequest) -> Unit) {
         chatJoinRequestHandlers.add(handler)
@@ -91,30 +92,44 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                     }
                     offset = updates.last().updateId + 1
                     updates.forEach { update ->
-                        when {
-                            update.message != null -> {
-                                for (handler in commandHandlers) {
-                                    if (handler.invoke(update.message)) {
-                                        return@forEach
+                        update.message?.run {
+                            SQLGroup.collectData(this.chat.id, this.from?.id)
+                            var itCommand = false
+                            for (handler in commandHandlers) {
+                                itCommand = itCommand || handler.invoke(this)
+                            }
+                            if (!itCommand) messageHandlers.forEach {
+                                it.invoke(this)
+                            }
+                        }
+                        update.callbackQuery?.run {
+                            SQLGroup.collectData(this.message.chat.id, this.from.id)
+                            val sql = this.data?.toLongOrNull()?.let {
+                                SQLCallback.get(it)
+                            }
+                            if (sql != null) {
+                                typedCallbackQueryHandlers[sql.type]?.invoke(this, sql.callback)?.also { result ->
+                                    if (result.deleteCallback) {
+                                        if (result.deleteAllLinked) {
+                                            if (result.deleteMarkup) editMessageReplyMarkup(
+                                                chatId = this.message.chat.id,
+                                                messageId = this.message.messageId,
+                                                replyMarkup = TgReplyMarkup()
+                                            )
+                                            sql.linked.get()?.forEach { linked -> linked.getSQL()?.drop() }
+                                        }
+                                        sql.drop()
                                     }
                                 }
-                                messageHandlers.forEach {
-                                    it.invoke(update.message)
-                                }
                             }
-                            update.callbackQuery != null -> {
-//                              update.callbackQuery.data?.matches(Regex("\\{*+}")) == true)
-                                val callback = TgCallback.deserialize(update.callbackQuery, callbackQueryTypes)
-                                if (callback != null)
-                                    typedCallbackQueryHandlers[callback.type]!!.invoke(update.callbackQuery, callback)
-                                else callbackQueryHandlers.forEach {
-                                    it.invoke(update.callbackQuery)
-                                }
+                            else callbackQueryHandlers.forEach {
+                                it.invoke(this)
                             }
-                            update.chatJoinRequest != null -> {
-                                chatJoinRequestHandlers.forEach {
-                                    it.invoke(update.chatJoinRequest)
-                                }
+                        }
+                        update.chatJoinRequest?.run {
+                            SQLGroup.collectData(this.chat.id, this.from.id)
+                            chatJoinRequestHandlers.forEach {
+                                it.invoke(this)
                             }
                         }
                     }
