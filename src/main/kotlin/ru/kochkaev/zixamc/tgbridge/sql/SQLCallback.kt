@@ -1,26 +1,10 @@
 package ru.kochkaev.zixamc.tgbridge.sql
 
 import com.google.gson.GsonBuilder
-import eu.pb4.placeholders.api.parsers.MarkdownLiteParserV1
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import net.kyori.adventure.text.Component
-import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.ServerBot.coroutineScope
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore
-import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.config
-import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
-import ru.kochkaev.zixamc.tgbridge.chatSync.LastMessage
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.MinecraftAdventureConverter
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser.replyToText
-import ru.kochkaev.zixamc.tgbridge.config.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.CallbackDataAdapter
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
-import ru.kochkaev.zixamc.tgbridge.config.serialize.TopicTypeAdapter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
@@ -28,10 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
 import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
 import java.sql.SQLException
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.TopicTypes.CHAT_SYNC
-import java.util.ArrayList
 import java.util.Random
-import java.util.random.RandomGenerator
 
 class SQLCallback<T:CallbackData> private constructor(
     val callbackId: Long,

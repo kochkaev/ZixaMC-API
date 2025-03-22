@@ -4,13 +4,12 @@ import com.google.gson.*
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
-import ru.kochkaev.zixamc.tgbridge.config.TextData
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.Topic
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.TopicTypes
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.FeatureType
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.FeatureTypes
 
-class TopicTypeAdapter() : TypeAdapter<Topic<*>>() {
+class FeatureTypeAdapter() : TypeAdapter<FeatureType<*>>() {
 
-    override fun write(out: JsonWriter, value: Topic<*>?) {
+    override fun write(out: JsonWriter, value: FeatureType<*>?) {
         if (value == null) out.nullValue()
         else out.value(value.serializedName)
     }
@@ -19,6 +18,6 @@ class TopicTypeAdapter() : TypeAdapter<Topic<*>>() {
         if (reader.peek() == JsonToken.NULL) {
             reader.nextNull()
             null
-        } else TopicTypes.entries[reader.nextString()]
+        } else FeatureTypes.entries[reader.nextString()]
 
 }

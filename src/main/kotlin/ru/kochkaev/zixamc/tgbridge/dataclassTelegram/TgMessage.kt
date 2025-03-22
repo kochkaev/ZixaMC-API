@@ -42,6 +42,10 @@ data class TgMessage(
     override val poll: TgPoll? = null,
     @SerializedName("pinned_message")
     val pinnedMessage: TgMessage? = null,
+    @SerializedName("migrate_to_chat_id")
+    val migrateToChatId: Long? = null,
+    @SerializedName("migrate_from_chat_id")
+    val migrateFromChatId: Long? = null,
 ) : TgMessageMedia {
     val senderName
         get() = authorSignature

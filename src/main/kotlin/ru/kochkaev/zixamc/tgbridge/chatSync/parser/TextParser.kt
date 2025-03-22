@@ -10,8 +10,7 @@ import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.GroupData
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.TopicTypes
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.FeatureTypes
 
 object TextParser {
 
@@ -96,7 +95,7 @@ object TextParser {
             )
         }
         forwardFromToText(message)?.also { components.add(it) }
-        replyToText(message, group.topics.getCasted(TopicTypes.CHAT_SYNC)!!.topicId, resolveMessageLink(message), botId)?.also {
+        replyToText(message, group.features.getCasted(FeatureTypes.CHAT_SYNC)!!.topicId, resolveMessageLink(message), botId)?.also {
             if (!config.messages.replyInDifferentLine) components.add(it)
             else messages.add(it).also { messages.add(Component.text("\n")) }
         }

@@ -12,4 +12,6 @@ data class TgUser(
     @SerializedName("last_name")
     val lastName: String?,
     val username: String?,
+    @SerializedName("is_bot")
+    val isBot: Boolean = false,
 )

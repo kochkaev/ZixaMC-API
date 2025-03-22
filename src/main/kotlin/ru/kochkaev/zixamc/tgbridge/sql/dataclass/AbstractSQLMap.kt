@@ -80,8 +80,9 @@ open class AbstractSQLMap<T, V>(
     fun set(key: T, value: V) = try {
         reConnect()
         val preparedStatement =
-            MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_SET($column, '$.${keySerializer(key)}', ?) WHERE $uniqueColumn = ?;")
-        preparedStatement.setString(1, valSerializer(value))
+            MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_SET($column, '$.${keySerializer(key)}', JSON_EXTRACT(?, '$')) WHERE $uniqueColumn = ?;")
+        val serialized = valSerializer(value)
+        preparedStatement.setString(1, serialized)
         preparedStatement.setLong(2, uniqueId)
         preparedStatement.executeUpdate()
         true

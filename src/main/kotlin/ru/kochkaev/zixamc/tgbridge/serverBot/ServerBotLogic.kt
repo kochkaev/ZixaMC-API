@@ -8,6 +8,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
+import ru.kochkaev.zixamc.tgbridge.serverBot.group.ServerBotGroupUpdateManager
 import ru.kochkaev.zixamc.tgbridge.serverBot.integration.Menu
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
@@ -50,6 +51,11 @@ object ServerBotLogic {
 
         bot.registerCallbackQueryHandler(/*"easyauth", EasyAuthIntegration.EasyAuthCallbackData::class.java,*/ EasyAuthIntegration::onTelegramCallbackQuery)
         bot.registerCallbackQueryHandler("menu", Menu::onCallback)
+
+        bot.registerBotChatMemberUpdatedHandler(ServerBotGroupUpdateManager::addedToGroup)
+        bot.registerCallbackQueryHandler("group", ServerBotGroupUpdateManager::onCallback)
+        bot.registerMessageHandler(ServerBotGroupUpdateManager::onMessage)
+        bot.registerCommandHandler("selectTopic", ServerBotGroupUpdateManager::selectTopicCommand)
     }
 
 }

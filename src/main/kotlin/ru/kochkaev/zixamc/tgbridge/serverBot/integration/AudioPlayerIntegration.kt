@@ -38,7 +38,7 @@ object AudioPlayerIntegration {
                 ruToEnBase.append(if (it.isUpperCase()) en.replaceFirstChar { it1 -> it1.uppercaseChar() } else en)
             } else ruToEnBase.append(it)
         }
-        val sanitizedBase = ruToEnBase.replace(Regex("[^a-z0-9_ \\-]"), "")
+        val sanitizedBase = ruToEnBase.replace(Regex("[^a-z0-9_ \\-]", RegexOption.IGNORE_CASE), "")
         return sanitizedBase + extension
     }
 }

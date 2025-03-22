@@ -4,15 +4,15 @@ import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
 import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
-import ru.kochkaev.zixamc.tgbridge.config.serialize.TopicTypeAdapter
+import ru.kochkaev.zixamc.tgbridge.config.serialize.FeatureTypeAdapter
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL
 
-class SQLTopicsMap(
+class SQLFeaturesMap(
     sql: MySQL,
     column: String,
     uniqueId: Long,
     uniqueColumn: String,
-): AbstractSQLMap<Topic<out TopicData>, TopicData>(
+): AbstractSQLMap<FeatureType<out FeatureData>, FeatureData>(
     sql = sql,
     column = column,
     uniqueId = uniqueId,
@@ -23,7 +23,7 @@ class SQLTopicsMap(
         .serializeNulls()
         .enableComplexMapKeySerialization()
         .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-        .registerTypeAdapter(Topic::class.java, TopicTypeAdapter())
+        .registerTypeAdapter(FeatureType::class.java, FeatureTypeAdapter())
         .create()
         .toJson(it)
     },
@@ -33,9 +33,9 @@ class SQLTopicsMap(
         .serializeNulls()
         .enableComplexMapKeySerialization()
         .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-        .registerTypeAdapter(Topic::class.java, TopicTypeAdapter())
+        .registerTypeAdapter(FeatureType::class.java, FeatureTypeAdapter())
         .create()
-        .fromJson(it, object: TypeToken<Map<Topic<out  TopicData>, TopicData>>(){}.type)
+        .fromJson(it, object: TypeToken<Map<FeatureType<out  FeatureData>, FeatureData>>(){}.type)
     },
     keySerializer = { it.serializedName },
     valSerializer = { GsonBuilder()
@@ -44,7 +44,7 @@ class SQLTopicsMap(
         .serializeNulls()
         .enableComplexMapKeySerialization()
         .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-        .registerTypeAdapter(Topic::class.java, TopicTypeAdapter())
+        .registerTypeAdapter(FeatureType::class.java, FeatureTypeAdapter())
         .create()
         .toJson(it)
     },
@@ -55,11 +55,11 @@ class SQLTopicsMap(
             .serializeNulls()
             .enableComplexMapKeySerialization()
             .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-            .registerTypeAdapter(Topic::class.java, TopicTypeAdapter())
+            .registerTypeAdapter(FeatureType::class.java, FeatureTypeAdapter())
             .create()
-            .fromJson<TopicData>(it, key.model)
+            .fromJson<FeatureData>(it, key.model)
     },
 ) {
-    fun <R: TopicData> getCasted(key: Topic<R>): R? =
+    fun <R: FeatureData> getCasted(key: FeatureType<R>): R? =
         get(key)?.let { key.model.cast(it) }
 }

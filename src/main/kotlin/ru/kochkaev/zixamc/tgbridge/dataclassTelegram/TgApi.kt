@@ -41,8 +41,20 @@ interface TgApi {
     @POST("unbanChatMember")
     suspend fun unbanChatMember(@Body data: TgUnbanChatMemberRequest): TgResponse<Boolean>
 
+    @POST("getChatMember")
+    suspend fun getChatMember(@Body data: TgGetChatMemberRequest): TgResponse<TgChatMember>
+
+    @POST("getChatMemberCount")
+    suspend fun getChatMemberCount(@Body data: TgGetChatMemberCountRequest): TgResponse<Int>
+
     @POST("approveChatJoinRequest")
     suspend fun approveChatJoinRequest(@Body data: TgApproveChatJoinRequest): TgResponse<Boolean>
+
+    @POST("leaveChat")
+    suspend fun leaveChat(@Body data: TgLeaveChatRequest): TgResponse<Boolean>
+
+    @POST("answerCallbackQuery")
+    suspend fun answerCallbackQuery(@Body data: TgAnswerCallbackQueryRequest): TgResponse<Boolean>
 
     @POST("getFile")
     suspend fun getFile(@Body data: TgGetFileRequest): TgResponse<TgFile>

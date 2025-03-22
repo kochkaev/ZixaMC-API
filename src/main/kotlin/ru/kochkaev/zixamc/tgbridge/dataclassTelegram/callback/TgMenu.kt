@@ -18,4 +18,16 @@ class TgMenu<T: CallbackData>(
         }
         return markup
     }
+    fun inlineAndId(): Pair<TgInlineKeyboardMarkup, List<Long>> {
+        val linked = arrayListOf<SQLCallback<out CallbackData>>()
+        val markup = TgInlineKeyboardMarkup(
+            buttons.map { list -> list
+                .map { it.inlineAndId().also { ret -> linked.add(SQLCallback.get(ret.second)!!) }.first }
+            }
+        )
+        if (linked.size>1) linked.forEach {
+            it.linked.addAllSQL(linked.filter { it1 -> it1 != it })
+        }
+        return markup to linked.map { it.callbackId }
+    }
 }

@@ -24,7 +24,7 @@ object RequestsBot {
         }
         bot.registerMessageHandler(RequestsBotUpdateManager::onTelegramMessage)
         bot.registerCallbackQueryHandler(RequestsBotUpdateManager::onTelegramCallbackQuery)
-        bot.registerChatJoinRequestHandlers(RequestsBotUpdateManager::onTelegramChatJoinRequest)
+        bot.registerChatJoinRequestHandler(RequestsBotUpdateManager::onTelegramChatJoinRequest)
         bot.registerCommandHandler("accept", RequestsBotCommands::onTelegramAcceptCommand)
         bot.registerCommandHandler("reject", RequestsBotCommands::onTelegramRejectCommand)
         bot.registerCommandHandler("promote", RequestsBotCommands::onTelegramPromoteCommand)

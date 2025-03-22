@@ -19,17 +19,15 @@ import ru.kochkaev.zixamc.tgbridge.chatSync.parser.TextParser.replyToText
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
-import ru.kochkaev.zixamc.tgbridge.config.serialize.TopicTypeAdapter
+import ru.kochkaev.zixamc.tgbridge.config.serialize.FeatureTypeAdapter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntity
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgEntityType
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
 import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
 import java.sql.SQLException
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.TopicTypes.CHAT_SYNC
-import java.util.ArrayList
+import ru.kochkaev.zixamc.tgbridge.sql.dataclass.FeatureTypes.CHAT_SYNC
 
 class SQLGroup private constructor(val chatId: Long) {
 
@@ -110,7 +108,7 @@ class SQLGroup private constructor(val chatId: Long) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    val topics = SQLTopicsMap(SQLGroup, "topics", chatId, "chat_id")
+    val features = SQLFeaturesMap(SQLGroup, "features", chatId, "chat_id")
     var data: GroupData
         get() = try {
             reConnect()
@@ -145,12 +143,12 @@ class SQLGroup private constructor(val chatId: Long) {
                 CREATE TABLE `%s`.`%s` (
                     `id` INT NOT NULL AUTO_INCREMENT,
                     `chat_id` BIGINT NOT NULL,
-                    `name` VARCHAR(16),
+                    `name` VARCHAR(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
                     `aliases` JSON DEFAULT "[]",
                     `members` JSON DEFAULT "[]",
                     `agreed_with_rules` BOOLEAN NOT NULL DEFAULT FALSE,
                     `is_restricted` BOOLEAN NOT NULL DEFAULT FALSE,
-                    `topics` JSON NOT NULL DEFAULT "{}",
+                    `features` JSON NOT NULL DEFAULT "{}",
                     `data` JSON NOT NULL DEFAULT "{}",
                     PRIMARY KEY (`id`), UNIQUE (`chat_id`)
                 ) ENGINE = InnoDB;
@@ -164,7 +162,7 @@ class SQLGroup private constructor(val chatId: Long) {
             .serializeNulls()
             .enableComplexMapKeySerialization()
             .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-            .registerTypeAdapter(Topic::class.java, TopicTypeAdapter())
+            .registerTypeAdapter(FeatureType::class.java, FeatureTypeAdapter())
             .create()
         override fun afterCreateTable() {
             val config = CONFIG!!.serverBot.chatSync
@@ -175,7 +173,7 @@ class SQLGroup private constructor(val chatId: Long) {
                 members = SQLEntity.users.map { it.key.toString() },
                 agreedWithRules = true,
                 isRestricted = false,
-                topics = mapOf(
+                features = mapOf(
                     CHAT_SYNC to ChatSyncTopicData(
                         enabled = true,
                         topicId = config.defaultGroup.topicId,
@@ -200,19 +198,19 @@ class SQLGroup private constructor(val chatId: Long) {
                 create(chatId, null, listOf(), listOf(), false, false, mapOf(), gson.toJson(GroupData()))
             return SQLGroup(chatId)
         }
-        fun create(chatId: Long, name:String?, aliases: List<String>?, members: List<String>?, agreedWithRules: Boolean, isRestricted: Boolean, topics: Map<Topic<out TopicData>, TopicData>, data:String?): Boolean {
+        fun create(chatId: Long, name:String?, aliases: List<String>?, members: List<String>?, agreedWithRules: Boolean, isRestricted: Boolean, features: Map<FeatureType<out FeatureData>, FeatureData>, data:String?): Boolean {
             try {
                 reConnect()
                 if (!exists(chatId) && (name == null || !exists(name))) {
                     val preparedStatement =
-                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (chat_id, name, aliases, members, agreed_with_rules, is_restricted, topics, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?);")
+                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (chat_id, name, aliases, members, agreed_with_rules, is_restricted, features, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?);")
                     preparedStatement.setLong(1, chatId)
                     preparedStatement.setString(2, name)
                     preparedStatement.setString(3, gson.toJson(aliases?:listOf<String>()))
                     preparedStatement.setString(4, gson.toJson(members?:listOf<String>()))
                     preparedStatement.setBoolean(5, agreedWithRules)
                     preparedStatement.setBoolean(6, isRestricted)
-                    preparedStatement.setString(7, gson.toJson(topics))
+                    preparedStatement.setString(7, gson.toJson(features))
                     preparedStatement.setString(8, data?:gson.toJson(GroupData()))
                     preparedStatement.executeUpdate()
                     return true
@@ -238,7 +236,7 @@ class SQLGroup private constructor(val chatId: Long) {
             try {
                 reConnect()
                 val preparedStatement =
-//                    MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE JSON_CONTAINS_PATH(topics, 'one', '$.map.CHAT_SYNC') AND (topics->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(topics, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
+//                    MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE JSON_CONTAINS_PATH(features, 'one', '$.map.CHAT_SYNC') AND (features->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(features, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
                     MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$');")
                 preparedStatement.setString(1, name)
                 preparedStatement.setString(2, name)
@@ -253,7 +251,7 @@ class SQLGroup private constructor(val chatId: Long) {
                 reConnect()
                 if (exists(name)) {
                     val preparedStatement =
-//                        MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE JSON_CONTAINS_PATH(topics, 'one', '$.map.CHAT_SYNC') AND (topics->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(topics, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
+//                        MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE JSON_CONTAINS_PATH(features, 'one', '$.map.CHAT_SYNC') AND (features->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(features, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
                         MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$');")
                     preparedStatement.setString(1, name)
                     preparedStatement.setString(2, name)
@@ -301,8 +299,8 @@ class SQLGroup private constructor(val chatId: Long) {
         try {
             reConnect()
             val preparedStatement =
-//                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND JSON_CONTAINS_PATH(topics, 'one', '$.map.CHAT_SYNC') AND (topics->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(topics, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
-                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND (name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$');")
+//                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND JSON_CONTAINS_PATH(features, 'one', '$.map.CHAT_SYNC') AND (features->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(features, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
+                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE chat_id != ? AND (name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$'));")
             preparedStatement.setLong(1, chatId)
             preparedStatement.setString(2, value)
             preparedStatement.setString(3, value)
@@ -335,7 +333,7 @@ class SQLGroup private constructor(val chatId: Long) {
                 "message_id" to messageId.toString()
             ),
             componentPlaceholders = listOf(
-                "prefix" to topics.getCasted(CHAT_SYNC).let {
+                "prefix" to features.getCasted(CHAT_SYNC).let {
                     it?.prefix?.get() ?: Component.text(name.toString())
                 }
             )
@@ -347,7 +345,7 @@ class SQLGroup private constructor(val chatId: Long) {
                 "message_id" to messageId.toString()
             ),
             componentPlaceholders = listOf(
-                "prefix" to (topics.getCasted(CHAT_SYNC).let {
+                "prefix" to (features.getCasted(CHAT_SYNC).let {
                     it?.fromMcPrefix?.get() ?: it?.prefix?.get() ?: Component.text(name.toString())
                 } )
             )
@@ -356,20 +354,31 @@ class SQLGroup private constructor(val chatId: Long) {
     fun checkValidMsg(msg: TgMessage) = msg.let {
         enabled &&
         enabledChatSync &&
-        it.messageThreadId == topics.getCasted(CHAT_SYNC)?.topicId
+        it.messageThreadId == features.getCasted(CHAT_SYNC)?.topicId
     }
     val enabled: Boolean
         get() = agreedWithRules
     val enabledChatSync: Boolean
-        get() = topics.contains(CHAT_SYNC) && topics.getCasted(CHAT_SYNC)!!.enabled
+        get() = features.contains(CHAT_SYNC) && features.getCasted(CHAT_SYNC)!!.enabled
     fun isMember(nickname: String) =
         members.contains(SQLEntity.get(nickname))
+    suspend fun isOnlyPlayers(): Boolean {
+        val count = bot.getChatMemberCount(chatId)
+        val members: List<LinkedUser> = members.get()?:return false
+        val allInTable = count-1 == members.size
+        return allInTable &&
+            members.map { it.getSQL()?.accountType?.isPlayer() == true || bot.getChatMember(chatId, it.key).user.isBot } .fold(true) { acc, b -> acc && b }
+    }
+    suspend fun getNoBotsMembers(): List<LinkedUser> =
+        members.get()?.let {
+            it.filter { it1 -> !bot.getChatMember(chatId, it1.key).user.isBot }
+        } ?: listOf()
 
     suspend fun sendMessage(text: String, reply: Int? = null, entities: List<TgEntity>? = null): TgMessage {
         return bot.sendMessage(
             chatId = chatId,
             text = text,
-            messageThreadId = topics.getCasted(CHAT_SYNC)!!.topicId,
+            messageThreadId = features.getCasted(CHAT_SYNC)!!.topicId,
             entities = entities,
             replyParameters = reply?.let { TgReplyParameters(reply) }
         )
@@ -391,7 +400,7 @@ class SQLGroup private constructor(val chatId: Long) {
         if (tgMessage != null) {
             val messages = mutableListOf<Component>()
             var mcMessage = message
-            replyToText(tgMessage, topics.getCasted(CHAT_SYNC)!!.topicId, TextParser.resolveMessageLink(tgMessage), bot.me.id)?.also {
+            replyToText(tgMessage, features.getCasted(CHAT_SYNC)!!.topicId, TextParser.resolveMessageLink(tgMessage), bot.me.id)?.also {
                 if (!config.messages.replyInDifferentLine) mcMessage = "$it $mcMessage"
                 else messages.add(it).also { messages.add(Component.text("\n")) }
             }

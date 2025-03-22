@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge
 
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
@@ -37,6 +38,8 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
     private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()
     private val typedCallbackQueryHandlers: HashMap<String, suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> TgCBHandlerResult> = hashMapOf()
     private val chatJoinRequestHandlers: MutableList<suspend (TgChatJoinRequest) -> Unit> = mutableListOf()
+    private val chatMemberUpdatedHandlers: MutableList<suspend (TgChatMemberUpdated) -> Unit> = mutableListOf()
+    private val botChatMemberUpdatedHandlers: MutableList<suspend (TgChatMemberUpdated) -> Unit> = mutableListOf()
     lateinit var me: TgUser
         private set
 
@@ -51,8 +54,14 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
         @Suppress("UNCHECKED_CAST")
         typedCallbackQueryHandlers[type] = handler as suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> TgCBHandlerResult
     }
-    fun registerChatJoinRequestHandlers(handler: suspend (TgChatJoinRequest) -> Unit) {
+    fun registerChatJoinRequestHandler(handler: suspend (TgChatJoinRequest) -> Unit) {
         chatJoinRequestHandlers.add(handler)
+    }
+    fun registerChatMemberUpdatedHandler(handler: suspend (TgChatMemberUpdated) -> Unit) {
+        chatMemberUpdatedHandlers.add(handler)
+    }
+    fun registerBotChatMemberUpdatedHandler(handler: suspend (TgChatMemberUpdated) -> Unit) {
+        botChatMemberUpdatedHandlers.add(handler)
     }
 
     fun registerCommandHandler(command: String, handler: suspend (TgMessage) -> Unit) {
@@ -95,10 +104,15 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                         update.message?.run {
                             SQLGroup.collectData(this.chat.id, this.from?.id)
                             var itCommand = false
-                            for (handler in commandHandlers) {
+                            var itSystem = false
+                            if (this.migrateToChatId!=null && this.migrateFromChatId!=null){
+                                itSystem = true
+                                SQLGroup.get(this.migrateFromChatId)?.updateChatId(this.migrateToChatId)
+                            }
+                            if (!itSystem) for (handler in commandHandlers) {
                                 itCommand = itCommand || handler.invoke(this)
                             }
-                            if (!itCommand) messageHandlers.forEach {
+                            if (!itCommand && !itSystem) messageHandlers.forEach {
                                 it.invoke(this)
                             }
                         }
@@ -129,6 +143,21 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                         update.chatJoinRequest?.run {
                             SQLGroup.collectData(this.chat.id, this.from.id)
                             chatJoinRequestHandlers.forEach {
+                                it.invoke(this)
+                            }
+                        }
+                        update.chatMember?.run {
+                            if (this.from.id != this.newChatMember.user.id)
+                                SQLGroup.collectData(this.chat.id, this.from.id)
+                            if (!(this.newChatMember.status == TgChatMemberStatuses.BANNED && (this.newChatMember as TgChatMemberBanned).untilDate == 0 || this.newChatMember.status == TgChatMemberStatuses.LEFT))
+                                SQLGroup.collectData(this.chat.id, this.newChatMember.user.id)
+                            chatMemberUpdatedHandlers.forEach {
+                                it.invoke(this)
+                            }
+                        }
+                        update.myChatMember?.run {
+                            SQLGroup.collectData(this.chat.id, this.from.id)
+                            botChatMemberUpdatedHandlers.forEach {
                                 it.invoke(this)
                             }
                         }
@@ -311,6 +340,12 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
     suspend fun unbanChatMember(chatId: Long, userId: Long, onlyIfBanned: Boolean) = call {
         client.unbanChatMember(TgUnbanChatMemberRequest(chatId, userId, onlyIfBanned))
     }
+    suspend fun getChatMember(chatId: Long, userId: Long) = call {
+        client.getChatMember(TgGetChatMemberRequest(chatId, userId))
+    }
+    suspend fun getChatMemberCount(chatId: Long) = call {
+        client.getChatMemberCount(TgGetChatMemberCountRequest(chatId))
+    }
 
     suspend fun pinMessage(chatId: Long, messageId: Long, disableNotification: Boolean = false) = call {
         client.pinMessage(TgPinChatMessageRequest(chatId, messageId, disableNotification))
@@ -318,6 +353,14 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
 
     suspend fun approveChatJoinRequest(chatId: Long, userId: Long) = call {
         client.approveChatJoinRequest(TgApproveChatJoinRequest(chatId, userId))
+    }
+
+    suspend fun leaveChat(chatId: Long) = call {
+        client.leaveChat(TgLeaveChatRequest(chatId))
+    }
+
+    suspend fun answerCallbackQuery(callbackQueryId: String, text: String? = null, showAlert: Boolean = false, url: String? = null) = call {
+        client.answerCallbackQuery(TgAnswerCallbackQueryRequest(callbackQueryId, text, showAlert, url))
     }
 
     suspend fun getFile(fileId: String) = call {

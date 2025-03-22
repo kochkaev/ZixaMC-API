@@ -42,6 +42,7 @@ class ZixaMCTGBridge : ModInitializer {
 
         MySQL.connect()
         SQLCallback.connectTable()
+        SQLProcess.connectTable()
         SQLEntity.connectTable()
         SQLGroup.connectTable()
 

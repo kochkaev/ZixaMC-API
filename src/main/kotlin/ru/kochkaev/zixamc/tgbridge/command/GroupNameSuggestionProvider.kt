@@ -6,9 +6,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import net.minecraft.server.command.ServerCommandSource
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.TopicTypes
 import java.util.concurrent.CompletableFuture
 
 
