@@ -53,6 +53,9 @@ interface TgApi {
     @POST("leaveChat")
     suspend fun leaveChat(@Body data: TgLeaveChatRequest): TgResponse<Boolean>
 
+    @POST("getChat")
+    suspend fun getChat(@Body data: TgGetChatRequest): TgResponse<TgChatFullInfo>
+
     @POST("answerCallbackQuery")
     suspend fun answerCallbackQuery(@Body data: TgAnswerCallbackQueryRequest): TgResponse<Boolean>
 

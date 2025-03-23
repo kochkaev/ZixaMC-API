@@ -3,6 +3,7 @@ package ru.kochkaev.zixamc.tgbridge.sql.dataclass
 import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
 import ru.kochkaev.zixamc.tgbridge.config.TextData
+import ru.kochkaev.zixamc.tgbridge.config.serialize.FeatureMapDeserializer
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
 import ru.kochkaev.zixamc.tgbridge.config.serialize.FeatureTypeAdapter
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL
@@ -34,8 +35,13 @@ class SQLFeaturesMap(
         .enableComplexMapKeySerialization()
         .registerTypeAdapter(TextData::class.java, TextDataAdapter())
         .registerTypeAdapter(FeatureType::class.java, FeatureTypeAdapter())
+        .registerTypeAdapter(
+            object : TypeToken<Map<FeatureType<out FeatureData>, FeatureData>>() {}.type,
+            FeatureMapDeserializer()
+        )
         .create()
         .fromJson(it, object: TypeToken<Map<FeatureType<out  FeatureData>, FeatureData>>(){}.type)
+//        .mapValues { value -> gson.fromJson(value.value, value.key.model) }
     },
     keySerializer = { it.serializedName },
     valSerializer = { GsonBuilder()

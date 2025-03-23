@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.dataclassTelegram
 
 import com.google.gson.annotations.SerializedName
+import ru.kochkaev.zixamc.tgbridge.ServerBot
 
 open class TgChatMember(
     val status: TgChatMemberStatuses,

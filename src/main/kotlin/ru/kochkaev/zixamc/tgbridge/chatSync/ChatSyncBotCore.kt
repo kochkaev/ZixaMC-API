@@ -28,8 +28,6 @@ object ChatSyncBotCore {
     fun init() {
         config = ConfigManager.CONFIG!!.serverBot.chatSync
         lang = ConfigManager.CONFIG!!.serverBot.chatSync.lang
-        ChatSyncBotLogic.registerTelegramHandlers()
-        ChatSyncBotLogic.registerMinecraftHandlers()
     }
     fun registerChatMessageListener(handler: (TBPlayerEventData) -> Boolean) {
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register { message: SignedMessage, sender, params ->

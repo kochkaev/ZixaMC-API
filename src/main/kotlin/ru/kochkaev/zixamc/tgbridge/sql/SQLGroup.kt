@@ -313,12 +313,14 @@ class SQLGroup private constructor(val chatId: Long) {
     fun updateChatId(newChatId: Long) =
         try {
             reConnect()
-            if (exists(chatId) && !exists(newChatId)) {
+            val old = chatId
+            if (exists(old) && !exists(newChatId)) {
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("UPDATE $tableName SET chat_id = ? WHERE chat_id = ?;")
-                preparedStatement.setLong(1, chatId)
-                preparedStatement.setLong(2, newChatId)
+                preparedStatement.setLong(1, newChatId)
+                preparedStatement.setLong(2, old)
                 preparedStatement.executeUpdate()
+                SQLProcess.migrateChatId(old, newChatId)
                 SQLGroup(newChatId)
             } else this
         } catch (e: SQLException) {

@@ -11,6 +11,7 @@ import ru.kochkaev.zixamc.tgbridge.command.ReplyCommand
 import ru.kochkaev.zixamc.tgbridge.command.ZixaMCCommand
 import ru.kochkaev.zixamc.tgbridge.config.Config
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CancelCallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.*
 
 /**
@@ -48,6 +49,9 @@ class ZixaMCTGBridge : ModInitializer {
 
         RequestsBot.startBot()
         ServerBot.startBot()
+        RequestsBot.bot.registerCallbackQueryHandler("cancel", CancelCallbackData::class.java, CancelCallbackData.ON_REQUESTS_CALLBACK)
+        ServerBot.bot.registerCallbackQueryHandler("cancel", CancelCallbackData::class.java, CancelCallbackData.ON_SERVER_CALLBACK)
+
         ServerLifecycleEvents.SERVER_STOPPED.register(this::onServerStopped)
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             ZixaMCCommand.registerCommand(dispatcher)

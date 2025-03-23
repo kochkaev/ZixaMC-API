@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge
 
 import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
@@ -36,7 +37,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
     private val commandHandlers: MutableList<suspend (TgMessage) -> Boolean> = mutableListOf()
     private val messageHandlers: MutableList<suspend (TgMessage) -> Unit> = mutableListOf()
     private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()
-    private val typedCallbackQueryHandlers: HashMap<String, suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> TgCBHandlerResult> = hashMapOf()
+    val typedCallbackQueryHandlers: HashMap<String, suspend (TgCallbackQuery, SQLCallback<out CallbackData>) -> TgCBHandlerResult> = hashMapOf()
     private val chatJoinRequestHandlers: MutableList<suspend (TgChatJoinRequest) -> Unit> = mutableListOf()
     private val chatMemberUpdatedHandlers: MutableList<suspend (TgChatMemberUpdated) -> Unit> = mutableListOf()
     private val botChatMemberUpdatedHandlers: MutableList<suspend (TgChatMemberUpdated) -> Unit> = mutableListOf()
@@ -50,9 +51,10 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
     fun registerCallbackQueryHandler(handler: suspend (TgCallbackQuery) -> Unit) {
         callbackQueryHandlers.add(handler)
     }
-    fun <T: CallbackData> registerCallbackQueryHandler(type: String, handler: suspend (TgCallbackQuery, TgCallback<T>) -> TgCBHandlerResult) {
+    fun <T: CallbackData> registerCallbackQueryHandler(type: String, model: Class<T>, handler: suspend (TgCallbackQuery, SQLCallback<T>) -> TgCBHandlerResult) {
         @Suppress("UNCHECKED_CAST")
-        typedCallbackQueryHandlers[type] = handler as suspend (TgCallbackQuery, TgCallback<out CallbackData>) -> TgCBHandlerResult
+        typedCallbackQueryHandlers[type] = handler as suspend (TgCallbackQuery, SQLCallback<out CallbackData>) -> TgCBHandlerResult
+        SQLCallback.registries[type] = model
     }
     fun registerChatJoinRequestHandler(handler: suspend (TgChatJoinRequest) -> Unit) {
         chatJoinRequestHandlers.add(handler)
@@ -122,14 +124,16 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                                 SQLCallback.get(it)
                             }
                             if (sql != null) {
-                                typedCallbackQueryHandlers[sql.type]?.invoke(this, sql.callback)?.also { result ->
+                                typedCallbackQueryHandlers[sql.type]?.invoke(this, sql)?.also { result ->
                                     if (result.deleteCallback) {
                                         if (result.deleteAllLinked) {
-                                            if (result.deleteMarkup) editMessageReplyMarkup(
-                                                chatId = this.message.chat.id,
-                                                messageId = this.message.messageId,
-                                                replyMarkup = TgReplyMarkup()
-                                            )
+                                            if (result.deleteMarkup) try {
+                                                editMessageReplyMarkup(
+                                                    chatId = this.message.chat.id,
+                                                    messageId = this.message.messageId,
+                                                    replyMarkup = TgReplyMarkup()
+                                                )
+                                            } catch (_: Exception) {}
                                             sql.linked.get()?.forEach { linked -> linked.getSQL()?.drop() }
                                         }
                                         sql.drop()
@@ -357,6 +361,10 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
 
     suspend fun leaveChat(chatId: Long) = call {
         client.leaveChat(TgLeaveChatRequest(chatId))
+    }
+
+    suspend fun getChat(chatId: Long) = call {
+        client.getChat(TgGetChatRequest(chatId))
     }
 
     suspend fun answerCallbackQuery(callbackQueryId: String, text: String? = null, showAlert: Boolean = false, url: String? = null) = call {

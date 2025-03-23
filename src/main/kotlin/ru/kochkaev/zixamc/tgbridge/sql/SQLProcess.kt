@@ -7,6 +7,7 @@ import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.*
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup.Companion
 import java.sql.SQLException
 import java.util.Random
 
@@ -115,15 +116,15 @@ class SQLProcess<T: ProcessData> private constructor(
             type: ProcessType<T>,
             data: T,
         ): Builder<T> = Builder(type, data)
-        fun create(chatId: Long, type: String?, data:String?): Boolean {
+        fun create(chatId: Long, type: ProcessType<*>, data:ProcessData?): Boolean {
             try {
                 reConnect()
-                if (!exists(chatId)) {
+                if (!exists(chatId, type)) {
                     val preparedStatement =
                         MySQLConnection!!.prepareStatement("INSERT INTO $tableName (chat_id, type, data) VALUES (?, ?, ?);")
                     preparedStatement.setLong(1, chatId)
-                    preparedStatement.setString(2, type?:"{}")
-                    preparedStatement.setString(3, data?:"{}")
+                    preparedStatement.setString(2, gson.toJson(type))
+                    preparedStatement.setString(3, gson.toJson(data))
                     preparedStatement.executeUpdate()
                     return true
                 }
@@ -160,10 +161,24 @@ class SQLProcess<T: ProcessData> private constructor(
             var data: T
         ) {
             fun pull(chatId: Long) {
-                create(chatId, gson.toJson(type), gson.toJson(data))
+                create(chatId, type, data)
             }
             fun with(mod: (T) -> T): Builder<T> =
                 Builder(type, mod(data))
+        }
+
+
+        fun migrateChatId(oldChatId: Long, newChatId: Long) {
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET chat_id = ? WHERE chat_id = ?;")
+                preparedStatement.setLong(1, newChatId)
+                preparedStatement.setLong(2, oldChatId)
+                preparedStatement.executeUpdate()
+            } catch (e: SQLException) {
+                ZixaMCTGBridge.logger.error("Register error ", e)
+            }
         }
     }
     fun drop() {
@@ -171,8 +186,9 @@ class SQLProcess<T: ProcessData> private constructor(
             reConnect()
             if (exists(chatId)) {
                 val preparedStatement =
-                    MySQLConnection!!.prepareStatement("DELETE FROM $tableName WHERE chat_id = ?;")
+                    MySQLConnection!!.prepareStatement("DELETE FROM $tableName WHERE chat_id = ? AND type = ?;")
                 preparedStatement.setLong(1, chatId)
+                preparedStatement.setString(2, gson.toJson(type))
                 preparedStatement.executeUpdate()
             }
         } catch (e: SQLException) {

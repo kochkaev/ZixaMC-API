@@ -58,7 +58,7 @@ object Menu {
                 text = ServerBot.config.integration.messageNotPlayer,
             )
     }
-    suspend fun onCallback(cbq: TgCallbackQuery, data: TgCallback<MenuCallbackData>): TgCBHandlerResult {
+    suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<MenuCallbackData>): TgCBHandlerResult {
 //        if (cbq.data == null || !cbq.data.startsWith("menu")) return
         val entity = SQLEntity.get(cbq.from.id)?:return SUCCESS
         if (!entity.accountType.isPlayer()) {
@@ -69,7 +69,7 @@ object Menu {
             )
             return DELETE_MARKUP
         }
-        when (data.data!!.operation /*cbq.data*/) {
+        when (sql.data!!.operation /*cbq.data*/) {
             "back" -> sendMenu(cbq.message.chat.id)
             "info" -> ServerBotLogic.sendInfoMessage(entity)
             "audioPlayer" -> {

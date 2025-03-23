@@ -4,6 +4,7 @@ import ru.kochkaev.zixamc.tgbridge.BotLogic
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.dataclass.ProtectedMessageData
 import ru.kochkaev.zixamc.tgbridge.ServerBot.bot
+import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
@@ -37,6 +38,9 @@ object ServerBotLogic {
         )
 
     fun registerTelegramHandlers() {
+        ChatSyncBotLogic.registerTelegramHandlers()
+        ChatSyncBotLogic.registerMinecraftHandlers()
+
         bot.registerCallbackQueryHandler(ServerBotUpdateManager::onTelegramCallbackQuery)
         bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id) }
         bot.registerCommandHandler("mentionAll") { SQLGroup.get(it.chat.id)?.also { group ->
@@ -50,12 +54,13 @@ object ServerBotLogic {
         bot.registerMessageHandler(Menu::onMessage)
 
         bot.registerCallbackQueryHandler(/*"easyauth", EasyAuthIntegration.EasyAuthCallbackData::class.java,*/ EasyAuthIntegration::onTelegramCallbackQuery)
-        bot.registerCallbackQueryHandler("menu", Menu::onCallback)
+        bot.registerCallbackQueryHandler("menu", Menu.MenuCallbackData::class.java, Menu::onCallback)
 
         bot.registerBotChatMemberUpdatedHandler(ServerBotGroupUpdateManager::addedToGroup)
-        bot.registerCallbackQueryHandler("group", ServerBotGroupUpdateManager::onCallback)
+        bot.registerCallbackQueryHandler("group", ServerBotGroupUpdateManager.GroupCallback::class.java, ServerBotGroupUpdateManager::onCallback)
         bot.registerMessageHandler(ServerBotGroupUpdateManager::onMessage)
         bot.registerCommandHandler("selectTopic", ServerBotGroupUpdateManager::selectTopicCommand)
+        bot.registerCommandHandler("settings", ServerBotGroupUpdateManager::settingsCommand)
     }
 
 }

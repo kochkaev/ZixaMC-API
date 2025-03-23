@@ -3,8 +3,8 @@ package ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 
-class TgMenu<T: CallbackData>(
-    val buttons: List<List<SQLCallback.Companion.Builder<T>>>
+class TgMenu(
+    val buttons: List<List<SQLCallback.Companion.Builder<out CallbackData>>>
 ) {
     fun inline(): TgInlineKeyboardMarkup {
         val linked = arrayListOf<SQLCallback<out CallbackData>>()

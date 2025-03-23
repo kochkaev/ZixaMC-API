@@ -6,6 +6,7 @@ import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.CallbackDataAdapter
 import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
+import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackCanExecute
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
@@ -19,6 +20,31 @@ class SQLCallback<T:CallbackData> private constructor(
     private val model: Class<T>,
 ) {
     val linked = SQLCallbacksArray(SQLCallback, "linked", callbackId, "callback_id")
+    var canExecute: CallbackCanExecute?
+        get() = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT can_execute FROM $tableName WHERE callback_id = ?;")
+            preparedStatement.setLong(1, callbackId)
+            val query = preparedStatement.executeQuery()
+            query.next()
+            gson.fromJson(query.getString(1), CallbackCanExecute::class.java)
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("Register error ", e)
+            null
+        }
+        set(canExecute) {
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET can_execute = ? WHERE callback_id = ?;")
+                preparedStatement.setString(1, gson.toJson(canExecute))
+                preparedStatement.setLong(2, callbackId)
+                preparedStatement.executeUpdate()
+            } catch (e: SQLException) {
+                ZixaMCTGBridge.logger.error("Register error ", e)
+            }
+        }
     var data: T?
         get() = try {
             reConnect()
@@ -57,6 +83,7 @@ class SQLCallback<T:CallbackData> private constructor(
                     `id` INT NOT NULL AUTO_INCREMENT,
                     `callback_id` BIGINT NOT NULL,
                     `linked` JSON NOT NULL DEFAULT "[]",
+                    `can_execute` JSON NOT NULL DEFAULT "{}",
                     `data` JSON NOT NULL DEFAULT "{}",
                     PRIMARY KEY (`id`), UNIQUE (`callback_id`)
                 ) ENGINE = InnoDB;
@@ -84,19 +111,21 @@ class SQLCallback<T:CallbackData> private constructor(
             display: String,
             type: String,
             data: T,
+            canExecute: CallbackCanExecute = CallbackCanExecute(),
         ): Builder<T> {
             if (!registries.contains(type))
                 registries[type] = data.javaClass
-            return Builder(display, type, data)
+            return Builder(display, type, data, canExecute)
         }
-        fun create(callbackId: Long, data:String?): Boolean {
+        fun create(callbackId: Long, canExecute: String?, data:String?): Boolean {
             try {
                 reConnect()
                 if (!exists(callbackId)) {
                     val preparedStatement =
-                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (callback_id, data) VALUES (?, ?);")
+                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (callback_id, can_execute, data) VALUES (?, ?, ?);")
                     preparedStatement.setLong(1, callbackId)
-                    preparedStatement.setString(2, data?:"{\"type\": \"dummy\", \"data\": {}}")
+                    preparedStatement.setString(2, canExecute?:"{}")
+                    preparedStatement.setString(3, data?:"{\"type\": \"dummy\", \"data\": {}}")
                     preparedStatement.executeUpdate()
                     return true
                 }
@@ -139,11 +168,12 @@ class SQLCallback<T:CallbackData> private constructor(
         class Builder<T: CallbackData> internal constructor(
             var display: String,
             var type: String,
-            var data: T
+            var data: T,
+            var canExecute: CallbackCanExecute = CallbackCanExecute(),
         ) {
             fun pull(): Long {
                 val callbackId = getRandom()
-                create(callbackId, gson.toJson(TgCallback(type, data)))
+                create(callbackId, gson.toJson(canExecute), gson.toJson(TgCallback(type, data)))
                 return callbackId
             }
             fun with(mod: (T) -> T): Builder<T> =
