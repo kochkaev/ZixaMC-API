@@ -12,6 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.command.ZixaMCCommand
 import ru.kochkaev.zixamc.tgbridge.config.Config
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CancelCallbackData
+import ru.kochkaev.zixamc.tgbridge.serverBot.group.ConsoleFeature
 import ru.kochkaev.zixamc.tgbridge.sql.*
 
 /**
@@ -39,14 +40,6 @@ class ZixaMCTGBridge : ModInitializer {
         }
     }
     override fun onInitialize() {
-        ConfigManager.init(false)
-
-        MySQL.connect()
-        SQLCallback.connectTable()
-        SQLProcess.connectTable()
-        SQLEntity.connectTable()
-        SQLGroup.connectTable()
-
         RequestsBot.startBot()
         ServerBot.startBot()
         RequestsBot.bot.registerCallbackQueryHandler("cancel", CancelCallbackData::class.java, CancelCallbackData.ON_REQUESTS_CALLBACK)
@@ -57,9 +50,12 @@ class ZixaMCTGBridge : ModInitializer {
             ZixaMCCommand.registerCommand(dispatcher)
             ReplyCommand.registerCommand(dispatcher)
         }
+
+        ConsoleFeature.startPeriodicBroadcast()
     }
     fun onServerStopped(server: MinecraftServer) {
         ServerBot.stopBot()
         RequestsBot.stopBot()
+        ConsoleFeature.stopBroadcast()
     }
 }

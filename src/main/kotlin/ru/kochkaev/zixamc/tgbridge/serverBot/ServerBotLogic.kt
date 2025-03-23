@@ -9,6 +9,7 @@ import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
 import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.easyAuth.EasyAuthIntegration
+import ru.kochkaev.zixamc.tgbridge.serverBot.group.ConsoleFeature
 import ru.kochkaev.zixamc.tgbridge.serverBot.group.ServerBotGroupUpdateManager
 import ru.kochkaev.zixamc.tgbridge.serverBot.integration.Menu
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
@@ -61,6 +62,8 @@ object ServerBotLogic {
         bot.registerMessageHandler(ServerBotGroupUpdateManager::onMessage)
         bot.registerCommandHandler("selectTopic", ServerBotGroupUpdateManager::selectTopicCommand)
         bot.registerCommandHandler("settings", ServerBotGroupUpdateManager::settingsCommand)
+
+        bot.registerMessageHandler(ConsoleFeature::executeCommand)
     }
 
 }

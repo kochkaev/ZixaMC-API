@@ -93,17 +93,24 @@ object FeatureTypes {
             return origin
         }
     }
-    val CONSOLE = FeatureType(
-        model = ChatSyncTopicData::class.java,
+    val CONSOLE = TopicFeatureType(
+        model = ConsoleTopicData::class.java,
         serializedName = "CONSOLE",
-        tgDisplayName = { config.integration.group.features.chatSync.display },
-        tgDescription = { config.integration.group.features.chatSync.description },
+        tgDisplayName = { config.integration.group.features.console.display },
+        tgDescription = { config.integration.group.features.console.description },
         checkAvailable = { group ->
             group.getNoBotsMembers()
                 .map { it.getSQL() }
                 .fold(true) { acc, sql ->
                     acc && sql?.accountType == AccountType.ADMIN
                 }
+        },
+        getDefault = { ConsoleTopicData() },
+        optionsResolver = {
+            TextParser.formatLang(
+                text = config.integration.group.features.console.options,
+                "topicId" to (it.topicId?.toString() ?: config.integration.group.settings.nullTopicPlaceholder),
+            )
         },
     )
 

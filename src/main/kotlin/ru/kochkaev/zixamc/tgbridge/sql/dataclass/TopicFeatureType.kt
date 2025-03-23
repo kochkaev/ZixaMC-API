@@ -66,7 +66,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
     }
 
     open suspend fun finishSetUp(group: SQLGroup, replyTo: Int? = null, topicId: Int? = null) {
-        group.features.set(FeatureTypes.CHAT_SYNC, getDefault().apply {
+        group.features.set(this, getDefault().apply {
             this.topicId = topicId
         })
     }

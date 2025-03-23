@@ -15,6 +15,9 @@
     ],
     "main": [
       "ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge"
+    ],
+    "preLaunch": [
+      "ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridgePreLaunch"
     ]
   },
   "mixins": [

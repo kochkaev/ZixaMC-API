@@ -303,7 +303,8 @@ data class Config (
                 val memberStatus: MemberStatus = MemberStatus(),
             ) {
                 data class Features(
-                    val chatSync: ChatSync = ChatSync()
+                    val chatSync: ChatSync = ChatSync(),
+                    val console: Console = Console(),
                 ) {
                     data class ChatSync(
                         val display: String = "Синхронизация чата 💬",
@@ -315,6 +316,15 @@ data class Config (
                         val options: String = "» ID топика -> <code>{topicId}</code>\n» Префикс -> <code>{prefix}</code>\n» Префикс (Minecraft) -> <code>{fromMcPrefix}</code>\n\n<i>Префикс (Minecraft) — префикс, отображаемый в Minecraft для сообщений, отправленных из Minecraft. Если не установлен, то используется обычный префикс.</i>",
                         val editPrefix: String = "Изменить префикс 🎨",
                         val editPrefixMC: String = "Изменить префикс (Minecraft) ✏️",
+                    )
+                    data class Console(
+                        val display: String = "Консоль 💻",
+                        val description: String = "<b>Вы можете связать эту группу с консолью Minecraft сервера! 💻</b>\nВы сможете видеть всё сообщения из консоли в этой группе, а также сможете выполнять команды сервера.",
+                        val doneTopic: String = "<b>Готово!</b> 🎉\nТеперь этот топик синхронизирован с консолью сервера!",
+                        val doneNoTopic: String = "<b>Готово!</b> 🎉\nТеперь эта группа синхронизирована с консолью сервера!",
+                        val options: String = "» ID топика -> <code>{topicId}</code>",
+                        val newSession: String = "<b>Стартовала новая сессия!</b> ✅",
+                        val stopSession: String = "<b>Сессия завершена</b> ❌",
                     )
                 }
                 data class Settings(
