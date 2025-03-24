@@ -9,7 +9,7 @@ import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 
 
 object ZixaMCCommand {
@@ -45,7 +45,7 @@ object ZixaMCCommand {
                         ZixaMCTGBridge.tmp.isSilentRestart = true
                         ConfigManager.update()
                         context.source.sendFeedback({ Text.of("Server restart will not be seen in telegram.") }, true)
-                        context.source.server.shutdown()
+                        context.source.server.stop(false)
                         0
                     }
                 )

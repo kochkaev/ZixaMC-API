@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncCustomEvents;
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncCustomEvents;
 
 import java.lang.reflect.InvocationTargetException;
 

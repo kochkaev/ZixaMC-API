@@ -2,24 +2,74 @@ package ru.kochkaev.zixamc.tgbridge.sql
 
 import com.google.gson.GsonBuilder
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
 import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.config.serialize.CallbackDataAdapter
-import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.*
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackCanExecute
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackCanExecute
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCallback
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
+import ru.kochkaev.zixamc.tgbridge.sql.util.*
 import java.sql.SQLException
+import java.sql.Types
 import java.util.Random
 
-class SQLCallback<T:CallbackData> private constructor(
+class SQLCallback<T: CallbackData> private constructor(
     val callbackId: Long,
-    private val model: Class<T>,
 ) {
-    val linked = SQLCallbacksArray(SQLCallback, "linked", callbackId, "callback_id")
+    val linked = CallbacksSQLArray(SQLCallback, "linked", callbackId, "callback_id")
+    var chatId: Long
+        get() = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE callback_id = ?;")
+            preparedStatement.setLong(1, callbackId)
+            val query = preparedStatement.executeQuery()
+            query.next()
+            query.getLong(1)
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("Register error ", e)
+            0
+        }
+        set(chatId) {
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET chat_id = ? WHERE callback_id = ?;")
+                preparedStatement.setLong(1, chatId)
+                preparedStatement.setLong(2, callbackId)
+                preparedStatement.executeUpdate()
+            } catch (e: SQLException) {
+                ZixaMCTGBridge.logger.error("Register error ", e)
+            }
+        }
+    var messageId: Int?
+        get() = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT message_id FROM $tableName WHERE callback_id = ?;")
+            preparedStatement.setLong(1, callbackId)
+            val query = preparedStatement.executeQuery()
+            query.next()
+            query.getInt(1)
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("Register error ", e)
+            null
+        }
+        set(messageId) {
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("UPDATE $tableName SET message_id = ? WHERE callback_id = ?;")
+                if (messageId!=null) preparedStatement.setInt(1, messageId)
+                else preparedStatement.setNull(1, Types.INTEGER)
+                preparedStatement.setLong(2, callbackId)
+                preparedStatement.executeUpdate()
+            } catch (e: SQLException) {
+                ZixaMCTGBridge.logger.error("Register error ", e)
+            }
+        }
     var canExecute: CallbackCanExecute?
         get() = try {
             reConnect()
@@ -82,6 +132,8 @@ class SQLCallback<T:CallbackData> private constructor(
                 CREATE TABLE `%s`.`%s` (
                     `id` INT NOT NULL AUTO_INCREMENT,
                     `callback_id` BIGINT NOT NULL,
+                    `chat_id` BIGINT NOT NULL,
+                    `message_id` INTEGER DEFAULT NULL,
                     `linked` JSON NOT NULL DEFAULT "[]",
                     `can_execute` JSON NOT NULL DEFAULT "{}",
                     `data` JSON NOT NULL DEFAULT "{}",
@@ -91,22 +143,32 @@ class SQLCallback<T:CallbackData> private constructor(
                 config.database,
                 tableName
             )
-        val gson = GsonBuilder()
-            .setPrettyPrinting()
-            .disableHtmlEscaping()
-            .serializeNulls()
-            .enableComplexMapKeySerialization()
-            .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-            .registerTypeAdapter(TgCallback::class.java, CallbackDataAdapter(registries))
-            .create()
         private val random = Random()
 
         fun get(callbackId: Long) =
             if (exists(callbackId))
-                registries[resolve(callbackId)]?.let {
-                    SQLCallback(callbackId, it)
-                }
+                registries[resolve(callbackId)]?.let { get(callbackId, it) }
             else null
+        private fun <T: CallbackData> get(callbackId: Long, model: Class<T>) =
+            SQLCallback<T>(callbackId)
+        fun getAll(chatId: Long, messageId: Int) = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT callback_id FROM $tableName WHERE chat_id = ? AND message_id = ?;")
+            preparedStatement.setLong(1, chatId)
+            preparedStatement.setInt(2, messageId)
+            val query = preparedStatement.executeQuery()
+            val callbacks = arrayListOf<SQLCallback<out CallbackData>>()
+            while (query.next())
+                get(query.getLong(1))?.also { callbacks.add(it) }
+            callbacks
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("Register error ", e)
+            listOf()
+        }
+        fun dropAll(chatId: Long, messageId: Int) {
+            getAll(chatId, messageId).forEach { it.drop() }
+        }
         fun <T: CallbackData> of(
             display: String,
             type: String,
@@ -117,15 +179,16 @@ class SQLCallback<T:CallbackData> private constructor(
                 registries[type] = data.javaClass
             return Builder(display, type, data, canExecute)
         }
-        fun create(callbackId: Long, canExecute: String?, data:String?): Boolean {
+        fun create(callbackId: Long, chatId: Long, canExecute: String?, data:String?): Boolean {
             try {
                 reConnect()
                 if (!exists(callbackId)) {
                     val preparedStatement =
-                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (callback_id, can_execute, data) VALUES (?, ?, ?);")
+                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (callback_id, chat_id, can_execute, data) VALUES (?, ?, ?, ?);")
                     preparedStatement.setLong(1, callbackId)
-                    preparedStatement.setString(2, canExecute?:"{}")
-                    preparedStatement.setString(3, data?:"{\"type\": \"dummy\", \"data\": {}}")
+                    preparedStatement.setLong(2, chatId)
+                    preparedStatement.setString(3, canExecute?:"{}")
+                    preparedStatement.setString(4, data?:"{\"type\": \"dummy\", \"data\": {}}")
                     preparedStatement.executeUpdate()
                     return true
                 }
@@ -171,21 +234,21 @@ class SQLCallback<T:CallbackData> private constructor(
             var data: T,
             var canExecute: CallbackCanExecute = CallbackCanExecute(),
         ) {
-            fun pull(): Long {
+            fun pull(chatId: Long): Long {
                 val callbackId = getRandom()
-                create(callbackId, gson.toJson(canExecute), gson.toJson(TgCallback(type, data)))
+                create(callbackId, chatId, gson.toJson(canExecute), gson.toJson(TgCallback(type, data)))
                 return callbackId
             }
             fun with(mod: (T) -> T): Builder<T> =
                 Builder(display, type, mod(data))
-            fun inline() =
-                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+            fun inline(chatId: Long) =
+                ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                     text = display,
-                    callback_data = pull().toString()
+                    callback_data = pull(chatId).toString()
                 )
-            fun inlineAndId() =
-                pull().let {
-                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+            fun inlineAndId(chatId: Long) =
+                pull(chatId).let {
+                    ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                         text = display,
                         callback_data = it.toString()
                     ) to it

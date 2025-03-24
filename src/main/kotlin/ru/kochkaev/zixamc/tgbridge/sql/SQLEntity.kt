@@ -2,13 +2,14 @@ package ru.kochkaev.zixamc.tgbridge.sql
 
 import com.google.gson.Gson
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgMessage
+import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
+import ru.kochkaev.zixamc.tgbridge.sql.data.*
+import ru.kochkaev.zixamc.tgbridge.sql.util.*
 import java.sql.SQLException
 
-class SQLEntity private constructor(val userId: Long) {
+class SQLEntity private constructor(val userId: Long): SQLChat(userId) {
 
     var nickname: String?
         get() = try {
@@ -35,7 +36,7 @@ class SQLEntity private constructor(val userId: Long) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    var nicknames = SQLArray(SQLEntity, "nicknames", userId, "user_id")
+    var nicknames = StringSQLArray(SQLEntity, "nicknames", userId, "user_id")
     var accountType: AccountType
         get() = try {
             reConnect()
@@ -54,14 +55,14 @@ class SQLEntity private constructor(val userId: Long) {
                 reConnect()
                 val preparedStatement =
                     MySQLConnection!!.prepareStatement("UPDATE $tableName SET account_type = ? WHERE user_id = ?;")
-                preparedStatement.setInt(1, accountType.getId())
+                preparedStatement.setInt(1, accountType.id)
                 preparedStatement.setLong(2, userId)
                 preparedStatement.executeUpdate()
             } catch (e: SQLException) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    val tempArray = SQLArray(SQLEntity, "temp_array", userId, "user_id")
+    val tempArray = StringSQLArray(SQLEntity, "temp_array", userId, "user_id")
     var agreedWithRules: Boolean
         get() = try {
             reConnect()
@@ -112,7 +113,7 @@ class SQLEntity private constructor(val userId: Long) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    var data: AccountData?
+    var data: UserData
         get() = try {
             reConnect()
             val preparedStatement =
@@ -120,10 +121,10 @@ class SQLEntity private constructor(val userId: Long) {
             preparedStatement.setLong(1, userId)
             val query = preparedStatement.executeQuery()
             query.next()
-            gson.fromJson(query.getString(1), AccountData::class.java)
+            gson.fromJson(query.getString(1), UserData::class.java)
         } catch (e: SQLException) {
             ZixaMCTGBridge.logger.error("getUserData error", e)
-            null
+            UserData()
         }
         set(data) {
             try {
@@ -159,7 +160,6 @@ class SQLEntity private constructor(val userId: Long) {
                 config.database,
                 config.usersTable
             )
-        val gson = Gson()
 
         fun get(userId: Long) =
             if (exists(userId)) SQLEntity(userId)
@@ -201,8 +201,8 @@ class SQLEntity private constructor(val userId: Long) {
                 userId = userId,
                 nickname = null,
                 nicknames = listOf(),
-                accountType = AccountType.UNKNOWN.getId(),
-                data = gson.toJson(AccountData())
+                accountType = AccountType.UNKNOWN.id,
+                data = gson.toJson(UserData())
             )
         
         fun exists(userId: Long) = try {
@@ -289,7 +289,7 @@ class SQLEntity private constructor(val userId: Long) {
         }
 
     fun setPreferNickname(nickname: String) {
-        if ((data?.minecraftAccounts?:return).stream().anyMatch{it.nickname == nickname}) {
+        if ((data.minecraftAccounts).any { it.nickname == nickname }) {
             addNickname(nickname)
         }
     }
@@ -298,36 +298,31 @@ class SQLEntity private constructor(val userId: Long) {
         this.nickname = nickname
     }
 
-    fun createAndOrGetData(): AccountData {
-        if (data == null) data = AccountData()
-        return data!!
-    }
-
     fun addMinecraftAccount(account: MinecraftAccountData): Boolean {
-        val accounts = createAndOrGetData().minecraftAccounts
+        val accounts = data.minecraftAccounts
         if (accounts.stream().anyMatch{it.nickname == account.nickname}) return false
         else accounts.add(account)
         if (!nicknames.contains(account.nickname)) nicknames.add(account.nickname)
         if (nickname == null) nickname = account.nickname
-        data = data!!.apply { this.minecraftAccounts = accounts }
+        data = data.apply { this.minecraftAccounts = accounts }
         return true
     }
     fun editMinecraftAccount(nickname: String, newStatus: MinecraftAccountType) {
-        val accounts = (data?:return).minecraftAccounts
+        val accounts = (data).minecraftAccounts
         val matched = accounts.first { it.nickname == nickname }
         matched.accountStatus = newStatus
         accounts.removeIf { it.nickname == nickname }
         accounts.add(matched)
-        data = data!!.apply { this.minecraftAccounts = accounts }
+        data = data.apply { this.minecraftAccounts = accounts }
     }
     fun addRequest(requestData: RequestData) {
         if (accountType == AccountType.UNKNOWN) accountType = AccountType.REQUESTER
-        val requests = createAndOrGetData().requests
+        val requests = data.requests
         requests.add(requestData)
-        data = data!!.apply { this.requests = requests }
+        data = data.apply { this.requests = requests }
     }
     fun editRequest(requestData: RequestData) {
-        val requests = (data?:return).requests
+        val requests = (data).requests
         requests.removeIf {it.user_request_id == requestData.user_request_id}
         requests.add(requestData)
 //        when (requestData.request_status) {
@@ -340,23 +335,11 @@ class SQLEntity private constructor(val userId: Long) {
 //                requests.add(requestData)
 //            }
 //        }
-        data = data!!.apply { this.requests = requests }
+        data = data.apply { this.requests = requests }
     }
 
-    fun setProtectedInfoMessage(
-        message: TgMessage,
-        protectLevel: Int,
-        protectedType: String,
-        senderBotId: Long,
-    ) {
-        data = data?.apply { this.protectedMessages.add(
-            ProtectedMessageData(
-            message_id = message.messageId.toLong(),
-            chat_id = message.chat.id,
-            protect_level = protectLevel,
-            protected_type = protectedType,
-            sender_bot_id = senderBotId,
-        )
-        ) }
-    }
+    override val dataGetter: () -> ChatData = { data }
+    override val dataSetter: (ChatData) -> Unit = { data = it as UserData }
+    override suspend fun hasProtectedLevel(level: AccountType): Boolean =
+        accountType.isHigherThanOrEqual(level)
 }

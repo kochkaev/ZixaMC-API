@@ -1,30 +1,26 @@
 package ru.kochkaev.zixamc.tgbridge.config.serialize
 
 import com.google.gson.*
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgChatMember
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.TgChatMemberStatuses
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
 import java.lang.reflect.Type
 
-class TgChatMemberAdapter() : JsonDeserializer<TgChatMember>, JsonSerializer<TgChatMember> {
+class TgChatMemberAdapter() : JsonDeserializer<ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMember>, JsonSerializer<ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMember> {
 
     override fun deserialize(
         json: JsonElement,
         typeOfT: Type,
         context: JsonDeserializationContext
-    ): TgChatMember {
+    ): ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMember {
         val jsonObject = json.asJsonObject
-        val type = context.deserialize<TgChatMemberStatuses>(jsonObject.get("status"), TgChatMemberStatuses::class.java)
+        val type = context.deserialize<ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses>(jsonObject.get("status"), ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses::class.java)
 //        val data = getDeserialized(context, jsonObject, typeMap[type])
-        val data = context.deserialize<TgChatMember>(
+        val data = context.deserialize<ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMember>(
             json,
             type.model,
         )
         return data
     }
     override fun serialize(
-        src: TgChatMember,
+        src: ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMember,
         typeOfSrc: Type,
         context: JsonSerializationContext
     ): JsonElement {

@@ -11,9 +11,11 @@ import ru.kochkaev.zixamc.tgbridge.command.ReplyCommand
 import ru.kochkaev.zixamc.tgbridge.command.ZixaMCCommand
 import ru.kochkaev.zixamc.tgbridge.config.Config
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CancelCallbackData
-import ru.kochkaev.zixamc.tgbridge.serverBot.group.ConsoleFeature
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.group.ConsoleFeature
 import ru.kochkaev.zixamc.tgbridge.sql.*
+import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 
 /**
  * @author kochkaev

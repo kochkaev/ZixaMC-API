@@ -4,7 +4,8 @@ import com.mysql.cj.jdbc.exceptions.CommunicationsException
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.config.Config
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
-import ru.kochkaev.zixamc.tgbridge.sql.dataclass.*
+import ru.kochkaev.zixamc.tgbridge.config.ConfigSQL
+import ru.kochkaev.zixamc.tgbridge.sql.util.*
 import java.sql.*
 
 /**
@@ -16,7 +17,7 @@ abstract class MySQL {
         @JvmStatic
         var MySQLConnection: Connection? = null
         @JvmStatic
-        lateinit var config: Config.MySQLDataClass
+        lateinit var config: ConfigSQL
 
         @Throws(Exception::class)
         fun connect() {

@@ -2,14 +2,13 @@ package ru.kochkaev.zixamc.tgbridge.sql
 
 import com.google.gson.GsonBuilder
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
 import ru.kochkaev.zixamc.tgbridge.config.TextData
-import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.*
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup.Companion
+import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
+import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessType
 import java.sql.SQLException
-import java.util.Random
 
 class SQLProcess<T: ProcessData> private constructor(
     val chatId: Long,
@@ -86,13 +85,6 @@ class SQLProcess<T: ProcessData> private constructor(
                 config.database,
                 tableName
             )
-        val gson = GsonBuilder()
-            .setPrettyPrinting()
-            .disableHtmlEscaping()
-            .serializeNulls()
-            .enableComplexMapKeySerialization()
-            .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-            .create()
 
         fun <T: ProcessData> get(chatId: Long, type: ProcessType<T>) =
             if (exists(chatId, type))
@@ -116,7 +108,7 @@ class SQLProcess<T: ProcessData> private constructor(
             type: ProcessType<T>,
             data: T,
         ): Builder<T> = Builder(type, data)
-        fun create(chatId: Long, type: ProcessType<*>, data:ProcessData?): Boolean {
+        fun create(chatId: Long, type: ProcessType<*>, data: ProcessData?): Boolean {
             try {
                 reConnect()
                 if (!exists(chatId, type)) {

@@ -7,7 +7,7 @@ import com.mojang.brigadier.context.CommandContext
 import kotlinx.coroutines.runBlocking
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
-import ru.kochkaev.zixamc.tgbridge.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 

@@ -5,10 +5,10 @@ import net.fabricmc.loader.api.FabricLoader
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.config.serialize.TextDataAdapter
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
+import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
 
 /**
  * @author Xujiayao
@@ -18,102 +18,62 @@ object ConfigManager {
     private val LOGGER = ZixaMCTGBridge.logger
     var CONFIG: Config? = null
     private val CONFIG_FILE = File(FabricLoader.getInstance().configDir.toFile(), "ZixaMCTGBridge.json")
+
     @Throws(Exception::class)
-    fun init(throwException: Boolean) {
-        if (CONFIG_FILE.length() != 0L) {
+    fun init() {
+        init(CONFIG_FILE, Config::class.java, ::Config, ConfigManager::CONFIG) { CONFIG = it }
+    }
+    @Throws(Exception::class)
+    private fun <T> init(file: File, clazz: Class<T>, supplier: ()->T, getter: ()->T?, setter: (T?)->Unit) {
+        if (file.length() != 0L) {
             try {
-//                FileUtils.copyFile(JdkConstants.CONFIG_FILE, CONFIG_BACKUP_FILE)
-
-                load()
-
-//                try {
-//                    if (!Level.CONFIG.customMessage.formattedResponseMessage.isBlank()) {
-//                        Gson().fromJson(
-//                            Level.CONFIG.customMessage.formattedResponseMessage,
-//                            Any::class.java
-//                        )
-//                    }
-//                    if (!Level.CONFIG.customMessage.formattedChatMessage.isBlank()) {
-//                        Gson().fromJson(
-//                            Level.CONFIG.customMessage.formattedChatMessage,
-//                            Any::class.java
-//                        )
-//                    }
-//                    if (!Level.CONFIG.customMessage.formattedOtherMessage.isBlank()) {
-//                        Gson().fromJson(
-//                            Level.CONFIG.customMessage.formattedOtherMessage,
-//                            Any::class.java
-//                        )
-//                    }
-//                } catch (e: JsonSyntaxException) {
-//                    LOGGER.error(ExceptionUtils.getStackTrace(e))
-//                    LOGGER.error("Invalid JSON!")
-//                }
-
-                update()
+                setter.invoke(load(file, clazz))
+                update(file, getter.invoke())
             } catch (e: Exception) {
-                if (throwException) {
-                    throw e
-                }
-
                 LOGGER.error(ExceptionUtils.getStackTrace(e))
             }
         } else {
-            create()
-
-            LOGGER.error("-----------------------------------------")
-            LOGGER.error("Error: The ZixaMCTGBridge config file cannot be found or is empty!")
-            LOGGER.error("Stopping the server...")
-            LOGGER.error("-----------------------------------------")
-
-            System.exit(0)
+            setter.invoke(create(file, supplier))
         }
     }
 
-    private fun create() {
+    private fun <T> create(file: File, supplier: ()->T): T? {
+        val content: T = supplier.invoke()
         try {
-            FileOutputStream(CONFIG_FILE).use { outputStream ->
-                val jsonString = GsonBuilder()
-                    .setPrettyPrinting()
-                    .disableHtmlEscaping()
-                    .serializeNulls()
-                    .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-                    .create()
-                    .toJson(Config())
+            FileOutputStream(file).use { outputStream ->
+                val jsonString = gson.toJson(content)
                 IOUtils.write(jsonString, outputStream, StandardCharsets.UTF_8)
+                return content
             }
         } catch (e: Exception) {
             LOGGER.error(ExceptionUtils.getStackTrace(e))
+            return null
         }
     }
 
     fun load() {
+        CONFIG = load(CONFIG_FILE, Config::class.java)
+    }
+    private fun <T> load(file: File, clazz: Class<T>): T? {
+        var content: T? = null
         try {
-            CONFIG = GsonBuilder()
-                .setPrettyPrinting()
-                .disableHtmlEscaping()
-                .serializeNulls()
-                .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-                .create()
-                .fromJson(
-                    IOUtils.toString(CONFIG_FILE.toURI(), StandardCharsets.UTF_8),
-                    Config::class.java
-                )
+            content = gson.fromJson(
+                IOUtils.toString(file.toURI(), StandardCharsets.UTF_8),
+                clazz
+            )
         } catch (e: Exception) {
             LOGGER.error(ExceptionUtils.getStackTrace(e))
         }
+        return content
     }
 
     fun update() {
+        update(CONFIG_FILE, CONFIG)
+    }
+    private fun update(file: File, content: Any?) {
         try {
-            FileOutputStream(CONFIG_FILE).use { outputStream ->
-                val jsonString = GsonBuilder()
-                    .setPrettyPrinting()
-                    .disableHtmlEscaping()
-                    .serializeNulls()
-                    .registerTypeAdapter(TextData::class.java, TextDataAdapter())
-                    .create()
-                    .toJson(CONFIG)
+            FileOutputStream(file).use { outputStream ->
+                val jsonString = gson.toJson(content)
                 IOUtils.write(jsonString, outputStream, StandardCharsets.UTF_8)
             }
         } catch (e: Exception) {

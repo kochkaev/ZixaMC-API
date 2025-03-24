@@ -1,13 +1,12 @@
 package ru.kochkaev.zixamc.tgbridge.config.serialize
 
 import com.google.gson.*
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.dataclassTelegram.callback.TgCallback
+import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCallback
 import java.lang.reflect.Type
 
-class CallbackDataAdapter(
-    private val typeMap: HashMap<String, Class<out CallbackData>>,
-) : JsonDeserializer<TgCallback<out CallbackData>>, JsonSerializer<TgCallback<out CallbackData>> {
+class CallbackDataAdapter: JsonDeserializer<TgCallback<out CallbackData>>, JsonSerializer<TgCallback<out CallbackData>> {
 
     override fun deserialize(
         json: JsonElement,
@@ -19,7 +18,7 @@ class CallbackDataAdapter(
 //        val data = getDeserialized(context, jsonObject, typeMap[type])
         val data = context.deserialize<CallbackData>(
             jsonObject.get("data"),
-            typeMap[type],
+            SQLCallback.registries[type],
         )
         return TgCallback(type, data)
     }

@@ -6,7 +6,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import ru.kochkaev.zixamc.tgbridge.chatSync.ChatSyncCustomEvents;
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncCustomEvents;
 
 @Mixin(ServerPlayerEntity.class)
 public abstract class ServerPlayerEntityMixin {
