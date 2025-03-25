@@ -15,7 +15,7 @@ data class TgInlineKeyboardMarkup(
         val switch_inline_query_current_chat: String? = null,
         //val switch_inline_query_chosen_chat: TgSwitchInlineQueryChosenChat? = null,
         val copy_text: TgCopyTextButton? = null,
-    ) {
+    ): ITgMenuButton {
         data class TgCopyTextButton(
             val text: String,
         )

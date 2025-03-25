@@ -66,7 +66,10 @@ object ServerBotGroup {
         )),
     ))
     suspend fun newChatMembers(msg: TgMessage) {
-        val group = SQLGroup.getOrCreate(msg.chat.id) ?: return
+        if (msg.chat.type == TgChatType.CHANNEL) {
+            bot.leaveChat(msg.chat.id)
+        }
+        val group = SQLGroup.getOrCreate(msg.chat.id)
         msg.newChatMembers!!.forEach { member ->
             if (member.id == bot.me.id && msg.from != null) {
                 try {
@@ -121,6 +124,7 @@ object ServerBotGroup {
                         )
                     )
                 }
+                else sendFeatures(group)
             }
             else {
                 group.members.add(member.id)

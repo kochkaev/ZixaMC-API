@@ -11,6 +11,8 @@ import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCallback
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
+import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenuButton
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
 import java.sql.SQLException
 import java.sql.Types
 import java.util.Random
@@ -247,7 +249,7 @@ class SQLCallback<T: CallbackData> private constructor(
             var type: String,
             var data: T,
             var canExecute: CallbackCanExecute = CallbackCanExecute(),
-        ) {
+        ): ITgMenuButton {
             fun pull(chatId: Long): Long {
                 val callbackId = getRandom()
                 create(callbackId, chatId, gson.toJson(canExecute), gson.toJson(TgCallback(type, data)))

@@ -1,16 +1,27 @@
 package ru.kochkaev.zixamc.tgbridge.sql.callback
 
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
+import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenu
+import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenuButton
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
 
 class TgMenu(
-    val buttons: List<List<SQLCallback.Companion.Builder<out CallbackData>>>
-): ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenu {
-    fun inline(chatId: Long): ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup {
+    val buttons: List<List<ITgMenuButton>>
+): ITgMenu {
+    fun inline(chatId: Long): TgInlineKeyboardMarkup {
         val linked = arrayListOf<SQLCallback<out CallbackData>>()
-        val markup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup(
+        val markup = TgInlineKeyboardMarkup(
             buttons.map { list ->
-                list
-                    .map { it.inlineAndId(chatId).also { ret -> linked.add(SQLCallback.get(ret.second)!!) }.first }
+                list.mapNotNull {
+                    when (it) {
+                        is SQLCallback.Companion.Builder<out CallbackData> -> it.inlineAndId(chatId)
+                            .also { ret -> linked.add(SQLCallback.get(ret.second)!!) }.first
+
+                        is TgInlineKeyboardMarkup.TgInlineKeyboardButton -> it
+                        else -> null
+                    }
+                }
             }
         )
         if (linked.size>1) linked.forEach {
@@ -18,12 +29,19 @@ class TgMenu(
         }
         return markup
     }
-    fun inlineAndId(chatId: Long): Pair<ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup, List<Long>> {
+    fun inlineAndId(chatId: Long): Pair<TgInlineKeyboardMarkup, List<Long>> {
         val linked = arrayListOf<SQLCallback<out CallbackData>>()
-        val markup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup(
+        val markup = TgInlineKeyboardMarkup(
             buttons.map { list ->
-                list
-                    .map { it.inlineAndId(chatId).also { ret -> linked.add(SQLCallback.get(ret.second)!!) }.first }
+                list.mapNotNull {
+                    when (it) {
+                        is SQLCallback.Companion.Builder<out CallbackData> -> it.inlineAndId(chatId)
+                            .also { ret -> linked.add(SQLCallback.get(ret.second)!!) }.first
+
+                        is TgInlineKeyboardMarkup.TgInlineKeyboardButton -> it
+                        else -> null
+                    }
+                }
             }
         )
         if (linked.size>1) linked.forEach {

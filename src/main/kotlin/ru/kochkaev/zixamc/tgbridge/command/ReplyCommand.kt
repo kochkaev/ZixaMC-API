@@ -7,6 +7,7 @@ import com.mojang.brigadier.context.CommandContext
 import kotlinx.coroutines.runBlocking
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
+import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
@@ -33,6 +34,9 @@ object ReplyCommand {
     private fun sendReply(context: CommandContext<ServerCommandSource>, withReply: Boolean) = runBlocking {
         val groupName = StringArgumentType.getString(context, "group")
         val group = SQLGroup.get(groupName)
+//        if (group == null) {
+//            context.source.sendFeedback({ ServerBot.config.integration.group.groupNotFound.getMinecraft(listOf("group" to groupName)) }, false)
+//        }
         val messageId =
             if (withReply) IntegerArgumentType.getInteger(context, "message_id")
             else null
@@ -43,6 +47,12 @@ object ReplyCommand {
                 context.source.sendFeedback(
                     { ServerBot.config.chatSync.reply.chatNotFound.getMinecraft(
                         listOf("group" to groupName)
+                    ) }, false
+                )
+            SQLGroup.BroadcastMinecraftResult.MESSAGE_NOT_FOUND ->
+                context.source.sendFeedback(
+                    { ServerBot.config.chatSync.reply.messageIdNotFound.getMinecraft(
+                        listOf("group" to groupName, "messageId" to messageId.toString())
                     ) }, false
                 )
             SQLGroup.BroadcastMinecraftResult.TG_ERROR ->

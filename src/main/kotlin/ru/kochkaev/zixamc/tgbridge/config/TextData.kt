@@ -22,7 +22,7 @@ data class TextData (
         }
         return mm.deserialize(
             res,
-            *plainPlaceholders.map { Placeholder.unparsed(it.first, it.second) }.toTypedArray(),
+            *plainPlaceholders.filter { it.first.matches(Regex("[!?#]?[a-z0-9_-]*")) } .map { Placeholder.unparsed(it.first, it.second) }.toTypedArray(),
             *componentPlaceholders.map { Placeholder.component(it.first, it.second) }.toTypedArray()
         )
     }

@@ -19,13 +19,10 @@ import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.process.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
 
 object Menu {
 
-    private var process: HashMap<Long, Processes> = hashMapOf()
-    private enum class Processes {
-        AUDIO_PLAYER;
-    }
     val BACK_BUTTON = SQLCallback.of(
         display = ServerBot.config.integration.buttonBackToMenu,
         type = "menu",
@@ -46,6 +43,11 @@ object Menu {
                         display = ServerBot.config.integration.infoButton,
                         type = "menu",
                         data = MenuCallbackData("info")
+                    )) else listOf(),
+                    if (chatId == userId) listOf(TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                        text = ServerBot.config.integration.addToGroupButton,
+                        url = "https://t.me/${ServerBot.bot.me.username}?startgroup"
+//                        switch_inline_query = ""
                     )) else listOf(),
                     listOf(SQLCallback.of(
                         display = ServerBot.config.integration.audioPlayer.buttonMenu,

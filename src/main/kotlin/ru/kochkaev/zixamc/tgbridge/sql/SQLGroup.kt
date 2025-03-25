@@ -442,7 +442,9 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         replyTo: Int? = null,
     ): BroadcastMinecraftResult {
         if (!enabled || !isMember(nickname)) return BroadcastMinecraftResult.NOT_FOUND
-        val tgMessage = ChatSyncBotLogic.sendReply(message, this, nickname, replyTo)
+        val tgMessage = try {
+            ChatSyncBotLogic.sendReply(message, this, nickname, replyTo)
+        } catch (e: Exception) { return BroadcastMinecraftResult.MESSAGE_NOT_FOUND }
         if (tgMessage != null) {
             val messages = mutableListOf<Component>()
             var mcMessage = message
@@ -475,6 +477,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
     enum class BroadcastMinecraftResult {
         SUCCESS,
         NOT_FOUND,
+        MESSAGE_NOT_FOUND,
         TG_ERROR,
     }
 

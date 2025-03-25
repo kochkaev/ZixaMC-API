@@ -159,6 +159,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncTopicData>(
                     chatId = group.chatId,
                     text = getSettingsText(group),
                     replyMarkup = SETTINGS,
+                    replyParameters = TgReplyParameters(msg.messageId)
                 )
             } else bot.sendMessage(
                 chatId = group.chatId,
