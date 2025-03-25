@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature
 
 import com.google.gson.annotations.JsonAdapter
+import ru.kochkaev.zixamc.tgbridge.config.GsonManager
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.config.serialize.FeatureTypeAdapter
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
@@ -13,6 +14,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 
 @JsonAdapter(FeatureTypeAdapter::class)
@@ -74,13 +76,33 @@ open class FeatureType<R: FeatureData>(
     open suspend fun sendEditor(cbq: TgCallbackQuery, group: SQLGroup): TgCBHandlerResult {
         getEditorMarkup(cbq, group).also {
             if (it.isEmpty()) return TgCBHandlerResult.SUCCESS
-            bot.editMessageReplyMarkup(
+            try { bot.editMessageText(
+                chatId = group.chatId,
+                messageId = cbq.message.messageId,
+                text = TextParser.formatLang(
+                    text = config.integration.group.settings.featureDescription,
+                    "feature" to tgDisplayName(),
+                    "options" to getResolvedOptions(group.features.getCasted(this) as FeatureData)
+                )
+            ) } catch (_: Exception) {}
+            try { bot.editMessageReplyMarkup(
                 chatId = group.chatId,
                 messageId = cbq.message.messageId,
                 replyMarkup = TgMenu(it),
-            )
+            ) } catch (_: Exception) {}
         }
-        return TgCBHandlerResult.SUCCESS
+        return TgCBHandlerResult.DELETE_LINKED
     }
     open fun getEditorMarkup(cbq: TgCallbackQuery, group: SQLGroup): ArrayList<List<SQLCallback.Companion.Builder<out CallbackData>>> = arrayListOf()
+    open suspend fun processSetup(cbq: TgCallbackQuery, group: SQLGroup, cbd: ServerBotGroup.FeatureGroupCallback<R>): TgCBHandlerResult {
+        return  TgCBHandlerResult.SUCCESS
+    }
+    @Suppress("UNCHECKED_CAST")
+    suspend fun uncheckedProcessSetup(cbq: TgCallbackQuery, group: SQLGroup, cbd: Any) =
+        processSetup(cbq, group, cbd as ServerBotGroup.FeatureGroupCallback<R>)
+
+    fun with(data: R, mod: (R) -> R): R =
+        GsonManager.gson.let { gson ->
+            gson.fromJson(gson.toJson(data), model)
+        } .let(mod)
 }

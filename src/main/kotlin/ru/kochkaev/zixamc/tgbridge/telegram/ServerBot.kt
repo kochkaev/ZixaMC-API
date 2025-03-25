@@ -45,6 +45,7 @@ object ServerBot {
 //        bot.registerCommandHandler("new", this::onTelegramNewCommand)
 //        bot.registerCommandHandler("cancel", this::onTelegramCancelCommand)
         coroutineScope.launch {
+            bot.startPosting(coroutineScope)
             bot.startPolling(coroutineScope)
 //            ZixaMCTGBridge.isServerBotLoaded = true
             ServerBotLogic.registerTelegramHandlers()
@@ -72,7 +73,6 @@ object ServerBot {
                 bot.shutdown()
 //                ZixaMCTGBridge.isServerBotLoaded = false
 //                ZixaMCTGBridge.executeStopSQL()
-                ZixaMCTGBridge.logger.info("ServerBot job canceled")
 //                job.cancelAndJoin()
             }
         }

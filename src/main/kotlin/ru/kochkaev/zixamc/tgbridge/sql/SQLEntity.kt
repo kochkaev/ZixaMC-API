@@ -1,12 +1,15 @@
 package ru.kochkaev.zixamc.tgbridge.sql
 
 import com.google.gson.Gson
+import kotlinx.coroutines.runBlocking
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
 import ru.kochkaev.zixamc.tgbridge.sql.data.*
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import java.sql.SQLException
 
 class SQLEntity private constructor(val userId: Long): SQLChat(userId) {
@@ -57,7 +60,16 @@ class SQLEntity private constructor(val userId: Long): SQLChat(userId) {
                     MySQLConnection!!.prepareStatement("UPDATE $tableName SET account_type = ? WHERE user_id = ?;")
                 preparedStatement.setInt(1, accountType.id)
                 preparedStatement.setLong(2, userId)
-                preparedStatement.executeUpdate()
+                preparedStatement.executeUpdate().also { _ -> runBlocking {
+                    if (!accountType.isHigherThanOrEqual(AccountType.PLAYER))
+                        SQLGroup.getAllWithUser(userId).forEach {
+                            if (it.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoRemove == true)
+                                try {
+                                    ServerBot.bot.banChatMember(it.chatId, userId)
+                                } catch (_: Exception) {}
+                            else if (!it.atLeastOnePlayer()) it.onNoMorePlayers()
+                        }
+                } }
             } catch (e: SQLException) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }

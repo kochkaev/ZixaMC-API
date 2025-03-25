@@ -14,6 +14,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCallback
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessType
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMember
@@ -36,6 +37,8 @@ class ZixaMCTGBridgePreLaunch : PreLaunchEntrypoint {
                 ProcessType::class.java to ProcessTypeAdapter(),
                 TextData::class.java to TextDataAdapter(),
                 TgChatMember::class.java to TgChatMemberAdapter(),
+                ServerBotGroup.SetupFeatureCallback::class.java to SetupFeatureCallbackAdapter(),
+                ServerBotGroup.GroupCallback::class.java to GroupCallbackAdapter(),
             )
         }
     }

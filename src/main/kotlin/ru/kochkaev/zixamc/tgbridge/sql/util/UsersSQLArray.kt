@@ -29,4 +29,12 @@ class UsersSQLArray(
     fun add(entity: SQLEntity?) {
         add(entity?.userId)
     }
+    fun remove(userId: Long?) {
+        userId?.also {
+            remove(LinkedUser(it))
+        }
+    }
+    fun remove(entity: SQLEntity?) {
+        remove(entity?.userId)
+    }
 }

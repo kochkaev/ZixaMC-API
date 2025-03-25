@@ -166,6 +166,20 @@ class SQLCallback<T: CallbackData> private constructor(
             ZixaMCTGBridge.logger.error("Register error ", e)
             listOf()
         }
+        fun getAll(chatId: Long) = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT callback_id FROM $tableName WHERE chat_id = ?;")
+            preparedStatement.setLong(1, chatId)
+            val query = preparedStatement.executeQuery()
+            val callbacks = arrayListOf<SQLCallback<out CallbackData>>()
+            while (query.next())
+                get(query.getLong(1))?.also { callbacks.add(it) }
+            callbacks
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("Register error ", e)
+            listOf()
+        }
         fun dropAll(chatId: Long, messageId: Int) {
             getAll(chatId, messageId).forEach { it.drop() }
         }

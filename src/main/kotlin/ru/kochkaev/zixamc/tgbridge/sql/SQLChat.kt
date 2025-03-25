@@ -6,6 +6,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.data.ChatData
 import ru.kochkaev.zixamc.tgbridge.sql.data.NewProtectedData
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
 
 abstract class SQLChat(
     val id: Long,
@@ -36,7 +37,7 @@ abstract class SQLChat(
         dataSetter(dataGetter().apply {
             var level: AccountType? = protectLevel
             while (level!=null){
-                this.protected[level]?.forEach { data ->
+                this.protected[level]?.sortedByDescending { it.messageId } ?.forEach { data ->
                     data.senderBotId.let { id ->
                         when (id) {
                             ServerBot.bot.me.id -> ServerBot.bot
@@ -54,7 +55,7 @@ abstract class SQLChat(
                                 bot.editMessageReplyMarkup(
                                     chatId = id,
                                     messageId = data.messageId,
-                                    replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup()
+                                    replyMarkup = TgReplyMarkup()
                                 )
                         } } catch (_: Exception) {}
                     }

@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature.type
 
+import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.GroupCallback
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.Operations
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
@@ -9,21 +9,27 @@ import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.process.GroupChatSyncWaitPrefixProcessData
+import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.SETTINGS
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.getSettingsText
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.TopicFeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncTopicData
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 
 object ChatSyncFeatureType: TopicFeatureType<ChatSyncTopicData>(
     model = ChatSyncTopicData::class.java,
     serializedName = "CHAT_SYNC",
     tgDisplayName = { config.integration.group.features.chatSync.display },
-    tgDescription = { config.integration.group.features.chatSync.description },tgOnDone = {
+    tgDescription = { config.integration.group.features.chatSync.description },
+    tgOnDone = {
         if (bot.getChat(it.chatId).isForum)
             config.integration.group.features.chatSync.doneTopic
         else config.integration.group.features.chatSync.doneNoTopic
@@ -53,7 +59,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncTopicData>(
                         operation = if (isNotNew) Operations.EDIT_FEATURE_DATA else Operations.SEND_FEATURES,
                         name = if (isNotNew) serializedName else null,
                     ),
-                    result = DELETE_MARKUP,
+                    result = DELETE_LINKED,
                 )
             ).build()
         )))
@@ -101,5 +107,67 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncTopicData>(
             )
         )))
         return origin
+    }
+
+    suspend fun waitPrefixProcessor(msg: TgMessage, process: SQLProcess<*>, processData: ProcessData) {
+        val group = SQLGroup.get(msg.chat.id) ?: return
+        if (msg.replyToMessage?.from?.id == bot.me.id && msg.from != null &&
+            listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
+                bot.getChatMember(group.chatId, msg.from.id).status
+            )
+        ) {
+            val data = processData as GroupChatSyncWaitPrefixProcessData
+            if (data.messageId != msg.replyToMessage.messageId) return
+            val isNotNew = group.features.contains(FeatureTypes.CHAT_SYNC)
+            val prefix = msg.effectiveText?:return
+            val mm = TextData(prefix)
+            try {
+                mm.get()
+            } catch (e: Exception) {
+                bot.sendMessage(
+                    chatId = group.chatId,
+                    text = TextParser.formatLang(
+                        text = config.integration.group.features.chatSync.wrongPrefix,
+                        "error" to e.message.toString()
+                    )
+                )
+                return
+            }
+            group.features.set(
+                FeatureTypes.CHAT_SYNC,
+                if (!isNotNew)
+                    FeatureTypes.CHAT_SYNC.getDefault().apply {
+                        this.topicId = data.topicId
+                        this.prefix = mm
+                    }
+                else group.features.getCasted(FeatureTypes.CHAT_SYNC)!!.apply {
+                    if (data.type == GroupChatSyncWaitPrefixProcessData.PrefixTypes.DEFAULT)
+                        this.prefix = mm
+                    else if (data.type == GroupChatSyncWaitPrefixProcessData.PrefixTypes.FROM_MINECRAFT)
+                        this.fromMcPrefix = mm
+                }
+            )
+            try { bot.editMessageReplyMarkup(
+                chatId = group.chatId,
+                messageId = data.messageId,
+                replyMarkup = TgReplyMarkup()
+            ) } catch (_: Exception) {}
+            SQLCallback.dropAll(group.chatId, data.messageId)
+            process.drop()
+            if (isNotNew) {
+                bot.sendMessage(
+                    chatId = group.chatId,
+                    text = getSettingsText(group),
+                    replyMarkup = SETTINGS,
+                )
+            } else bot.sendMessage(
+                chatId = group.chatId,
+                text = if (msg.chat.isForum) config.integration.group.features.chatSync.doneTopic
+                else config.integration.group.features.chatSync.doneNoTopic,
+                replyParameters = TgReplyParameters(
+                    msg.messageId
+                )
+            )
+        }
     }
 }

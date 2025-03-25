@@ -64,7 +64,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
                             operation = Operations.SEND_FEATURES,
                             name = null,
                         ),
-                        result = DELETE_MARKUP,
+                        result = DELETE_LINKED,
                     ),
                     canExecute = ServerBotGroup.CAN_EXECUTE_ADMIN,
                 ).build())

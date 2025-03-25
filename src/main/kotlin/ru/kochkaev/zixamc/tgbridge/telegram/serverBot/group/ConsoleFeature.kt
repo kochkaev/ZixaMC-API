@@ -92,7 +92,6 @@ object ConsoleFeature {
                 } else null
             } + "\n" + config.integration.group.features.console.stopSession
             broadcast(messagesToSend)
-            ZixaMCTGBridge.logger.info("ConsoleFeature job canceled")
             job.cancel()
         }
     }

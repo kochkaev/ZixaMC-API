@@ -8,22 +8,25 @@ import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
 import ru.kochkaev.zixamc.tgbridge.sql.data.NewProtectedData
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
 
 object BotLogic {
 
     val config
         get() = CONFIG!!
     val copyIPReplyMarkup
-        get() = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+        get() = TgInlineKeyboardMarkup.TgInlineKeyboardButton(
             text = config.general.lang.buttonCopyServerIP,
-            copy_text = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton.TgCopyTextButton(config.general.serverIP),
+            copy_text = TgInlineKeyboardMarkup.TgInlineKeyboardButton.TgCopyTextButton(config.general.serverIP),
         )
 
     suspend fun sendInfoMessage(
         bot: TelegramBotZixa,
         chat: SQLChat,
-        replyParameters: ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters? = null,
-        replyMarkup: ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup? = null,
+        replyParameters: TgReplyParameters? = null,
+        replyMarkup: TgReplyMarkup? = null,
     ) : TgMessage {
         val newMessage = bot.sendMessage(
             chatId = chat.id,

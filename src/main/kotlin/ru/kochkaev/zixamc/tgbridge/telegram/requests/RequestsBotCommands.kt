@@ -13,6 +13,8 @@ import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.promoteUser
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 
 object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
@@ -70,11 +72,11 @@ object RequestsBotCommands {
             text4User = config.user.lang.event.onLeave,
             text4Target = config.target.lang.event.onLeave,
             removePreviousTgReplyMarkup = true,
-            additionalConsumer = { hasError, entity ->
-                if (!hasError) try {
-                    bot.banChatMember(msg.chat.id, entity!!.userId)
-                } catch (_: Exception) {}
-            },
+//            additionalConsumer = { hasError, entity ->
+//                if (!hasError) try {
+//                    bot.banChatMember(msg.chat.id, entity!!.userId)
+//                } catch (_: Exception) {}
+//            },
             removeProtectedContent = true,
         )
     suspend fun onTelegramReturnCommand(msg: TgMessage): Boolean =
@@ -100,9 +102,13 @@ object RequestsBotCommands {
                 )
             ),
             additionalConsumer = { hasError, entity ->
-                if (!hasError) try {
-                    bot.unbanChatMember(msg.chat.id, entity!!.userId, true)
-                } catch (_: Exception) {}
+                if (!hasError) SQLGroup.groups.forEach {
+                    try {
+                        bot.unbanChatMember(it.key, entity!!.userId, true)
+                    } catch (_: Exception) { try {
+                        ServerBot.bot.unbanChatMember(it.key, entity!!.userId, true)
+                    } catch (_: Exception) {} }
+                }
             },
             protectContentInMessage = true,
         )
@@ -118,11 +124,11 @@ object RequestsBotCommands {
             text4User = config.user.lang.event.onKick,
             text4Target = config.target.lang.event.onKick,
             removePreviousTgReplyMarkup = true,
-            additionalConsumer = { hasError, entity ->
-                if (!hasError) try {
-                    bot.banChatMember(msg.chat.id, entity!!.userId)
-                } catch (_: Exception) {}
-            },
+//            additionalConsumer = { hasError, entity ->
+//                if (!hasError) try {
+//                    bot.banChatMember(msg.chat.id, entity!!.userId)
+//                } catch (_: Exception) {}
+//            },
             removeProtectedContent = true,
         )
     suspend fun onTelegramRestrictCommand(message: TgMessage): Boolean {
@@ -174,9 +180,9 @@ object RequestsBotCommands {
                 entity.data.requests.filter { it.request_status == RequestType.ACCEPTED } .forEach {
                     entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage.messageId.toLong() })
                 }
-            try {
-                bot.banChatMember(message.chat.id, entity.userId)
-            } catch (_: Exception) {}
+//            try {
+//                bot.banChatMember(message.chat.id, entity.userId)
+//            } catch (_: Exception) {}
             entity.isRestricted = true
         }
         return errorDueExecuting

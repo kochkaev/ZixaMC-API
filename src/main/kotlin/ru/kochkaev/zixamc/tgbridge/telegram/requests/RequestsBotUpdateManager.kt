@@ -13,6 +13,8 @@ import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.sql.data.RequestType
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
@@ -416,11 +418,18 @@ object RequestsBotUpdateManager {
     }
 
     suspend fun onTelegramChatJoinRequest(request: TgChatJoinRequest) {
-        val entity = SQLEntity.get(request.from.id)?:return
-        if (entity.isRestricted) return
-        if (entity.accountType.isPlayer) {
-            bot.approveChatJoinRequest(request.chat.id, request.from.id)
-            SQLGroup.get(request.chat.id)?.members?.add(request.from.id)
+        val group = SQLGroup.get(request.chat.id)?:return
+        if (group.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoAccept == true) {
+            val user = SQLEntity.get(request.from.id)?:return
+            if (user.isRestricted) return
+            if (user.accountType.isHigherThanOrEqual(AccountType.PLAYER)) {
+                try {
+                    bot.approveChatJoinRequest(request.chat.id, request.from.id)
+                } catch (_: Exception) { try {
+                    ServerBot.bot.approveChatJoinRequest(request.chat.id, request.from.id)
+                } catch (_: Exception) {} }
+                group.members.add(request.from.id)
+            }
         }
     }
 }

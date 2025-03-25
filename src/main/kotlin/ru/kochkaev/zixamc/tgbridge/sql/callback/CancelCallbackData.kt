@@ -39,7 +39,14 @@ data class CancelCallbackData(
                 sql.data?.run {
                     this.cancelProcesses.forEach { SQLProcess.get(cbq.message.chat.id, it)?.drop() }
                     this.asCallbackSend?.also {
-                        bot.typedCallbackQueryHandlers[it.type]?.invoke(cbq, SQLCallback.of("", it.type, it.data, this.canExecute).pull(cbq.message.chat.id).let { id -> SQLCallback.get(id)!! })
+                        val fake = SQLCallback.of("", it.type, it.data, this.canExecute)
+                            .pull(cbq.message.chat.id)
+                            .let { id -> SQLCallback.get(id)!! }
+                            .apply {
+                                this.messageId = cbq.message.messageId
+                            }
+                        bot.typedCallbackQueryHandlers[it.type]?.invoke(cbq, fake)
+                        fake.drop()
                         return it.result
                     }
                 }

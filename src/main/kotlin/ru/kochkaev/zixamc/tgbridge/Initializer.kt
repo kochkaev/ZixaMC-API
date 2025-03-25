@@ -41,8 +41,10 @@ object Initializer {
         ConsoleFeature.job.join()
         RequestsBot.stopBot()
         RequestsBot.bot.pollTask?.join()
+        RequestsBot.bot.postTask?.join()
         ServerBot.stopBot()
         ServerBot.bot.pollTask?.join()
+        ServerBot.bot.postTask?.join()
         MySQL.close()
         coroutineScope.cancel()
     }

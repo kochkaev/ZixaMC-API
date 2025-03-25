@@ -25,7 +25,6 @@ object RequestsBot {
         }
         bot.registerMessageHandler(RequestsBotUpdateManager::onTelegramMessage)
         bot.registerCallbackQueryHandler(RequestsBotUpdateManager::onTelegramCallbackQuery)
-        bot.registerChatJoinRequestHandler(RequestsBotUpdateManager::onTelegramChatJoinRequest)
         bot.registerCommandHandler("accept", RequestsBotCommands::onTelegramAcceptCommand)
         bot.registerCommandHandler("reject", RequestsBotCommands::onTelegramRejectCommand)
         bot.registerCommandHandler("promote", RequestsBotCommands::onTelegramPromoteCommand)
@@ -39,6 +38,7 @@ object RequestsBot {
         bot.registerCommandHandler("new", RequestsBotCommands::onTelegramNewCommand)
         bot.registerCommandHandler("cancel", RequestsBotCommands::onTelegramCancelCommand)
         coroutineScope.launch {
+            bot.startPosting(coroutineScope)
             bot.startPolling(coroutineScope)
 //            ZixaMCTGBridge.isRequestsBotLoaded = true
         }
@@ -48,7 +48,6 @@ object RequestsBot {
         if (config.isEnabled) {
             coroutineScope.launch {
                 bot.shutdown()
-                ZixaMCTGBridge.logger.info("RequestsBot job canceled")
 //                ZixaMCTGBridge.isRequestsBotLoaded = false
 //                ZixaMCTGBridge.executeStopSQL()
 //                job.cancelAndJoin()

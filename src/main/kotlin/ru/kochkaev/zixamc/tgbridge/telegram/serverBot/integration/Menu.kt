@@ -16,6 +16,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.process.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
 
@@ -33,14 +34,15 @@ object Menu {
 
     private val isAudioPlayerLoaded = FabricLoader.getInstance().isModLoaded("audioplayer")
 
-    suspend fun sendMenu(chatId: Long) {
+    suspend fun sendMenu(chatId: Long, userId: Long?) {
         val chat = SQLChat.get(chatId)
-        if (chat != null && chat.hasProtectedLevel(AccountType.PLAYER)) {
+        val user = userId?.let { SQLEntity.get(it) }
+        if (user != null && chat != null && user.hasProtectedLevel(AccountType.PLAYER)) {
             ServerBot.bot.sendMessage(
                 chatId = chatId,
                 text = ServerBot.config.integration.messageMenu,
                 replyMarkup = TgMenu(listOf(
-                    if (chat.hasProtectedLevel(AccountType.PLAYER)) listOf(SQLCallback.of(
+                    if (chatId == userId) listOf(SQLCallback.of(
                         display = ServerBot.config.integration.infoButton,
                         type = "menu",
                         data = MenuCallbackData("info")
@@ -72,7 +74,7 @@ object Menu {
             return DELETE_MARKUP
         }
         when (sql.data!!.operation /*cbq.data*/) {
-            "back" -> sendMenu(cbq.message.chat.id)
+            "back" -> sendMenu(cbq.message.chat.id, cbq.from.id)
             "info" -> ServerBotLogic.sendInfoMessage(entity)
             "audioPlayer" -> {
                 val message = ServerBot.bot.sendMessage(
@@ -113,81 +115,82 @@ object Menu {
         }
         return DELETE_MARKUP
     }
-    suspend fun onMessage(msg: TgMessage) {
-        runBlocking {
-            val chat = SQLChat.get(msg.chat.id)
-            if (chat != null && chat.hasProtectedLevel(AccountType.PLAYER))
-                SQLProcess.get(chat.id, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD)?.also {
-                    val data = it.data ?: return@runBlocking
-                    if (msg.replyToMessage==null || msg.replyToMessage.messageId != data.messageId) return@runBlocking
-                    var done = false
-                    val message = ServerBot.bot.sendMessage(
-                        chatId = msg.chat.id,
-                        text = ServerBot.config.integration.audioPlayer.messagePreparing,
-                        replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(msg.messageId)
+//    suspend fun onMessage(msg: TgMessage) {
+//        runBlocking {
+//            val chat = SQLChat.get(msg.chat.id)
+//            if (chat != null && chat.hasProtectedLevel(AccountType.PLAYER))
+//                SQLProcess.get(chat.id, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD)?.also {
+//
+//        }
+//    }
+    suspend fun audioPlayerProcessor(msg: TgMessage, process: SQLProcess<*>, data: ProcessData) = runBlocking {
+        if (msg.replyToMessage==null || msg.replyToMessage.messageId != data.messageId) return@runBlocking
+        var done = false
+        val message = ServerBot.bot.sendMessage(
+            chatId = msg.chat.id,
+            text = ServerBot.config.integration.audioPlayer.messagePreparing,
+            replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(msg.messageId)
+        )
+        var filename: String? = null
+        if (msg.audio != null || msg.document != null) {
+            val tgFilename =
+                if (msg.audio != null)
+                    msg.audio.file_name ?: "${msg.audio.performer}_-_${msg.audio.title}.mp3"
+                else msg.document!!.file_name?:""
+            val extension = tgFilename.substring(tgFilename.lastIndexOf('.')+1).lowercase()
+            if (extension == "mp3" || extension == "wav")
+                filename =
+                    saveAudioPlayerFile(
+                        msg.audio?.file_id ?: msg.document!!.file_id, tgFilename
                     )
-                    var filename: String? = null
-                    if (msg.audio != null || msg.document != null) {
-                        val tgFilename =
-                            if (msg.audio != null)
-                                msg.audio.file_name ?: "${msg.audio.performer}_-_${msg.audio.title}.mp3"
-                            else msg.document!!.file_name?:""
-                        val extension = tgFilename.substring(tgFilename.lastIndexOf('.')+1).lowercase()
-                        if (extension == "mp3" || extension == "wav")
-                            filename =
-                                saveAudioPlayerFile(
-                                    msg.audio?.file_id ?: msg.document!!.file_id, tgFilename
-                                )
-                        else {
-                            ServerBot.bot.editMessageText(
-                                chatId = message.chat.id,
-                                messageId = message.messageId,
-                                text = ServerBot.config.integration.audioPlayer.messageIncorrectExtension,
-                            )
-                            done = true
-                        }
-                    } else {
-                        ServerBot.bot.editMessageText(
-                            chatId = message.chat.id,
-                            messageId = message.messageId,
-                            text = ServerBot.config.integration.audioPlayer.messageIncorrectExtension,
-                        )
-                        done = true
-                    }
-                    if (filename.isNullOrEmpty() && !done) {
-                        ServerBot.bot.editMessageText(
-                            chatId = message.chat.id,
-                            messageId = message.messageId,
-                            text = ServerBot.config.integration.audioPlayer.messageErrorUpload,
-                        )
-                    } else if (!done) {
-                        ServerBot.bot.editMessageText(
-                            chatId = message.chat.id,
-                            messageId = message.messageId,
-                            text = ServerBot.config.integration.audioPlayer.messageDone.replace(
-                                "{filename}",
-                                filename!!
-                            ),
-                        )
-                        try {
-                            ServerBot.bot.editMessageReplyMarkup(
-                                chatId = message.chat.id,
-                                messageId = data.messageId,
-                                replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup(),
-                            )
-                            SQLCallback.dropAll(message.chat.id, data.messageId)
-                        } catch (_: Exception) {}
-                        it.drop()
-                    }
-                    ServerBot.bot.editMessageReplyMarkup(
-                        chatId = message.chat.id,
-                        messageId = message.messageId,
-                        replyMarkup = TgMenu(listOf(listOf(
-                            BACK_BUTTON
-                        )))
-                    )
-                }
+            else {
+                ServerBot.bot.editMessageText(
+                    chatId = message.chat.id,
+                    messageId = message.messageId,
+                    text = ServerBot.config.integration.audioPlayer.messageIncorrectExtension,
+                )
+                done = true
+            }
+        } else {
+            ServerBot.bot.editMessageText(
+                chatId = message.chat.id,
+                messageId = message.messageId,
+                text = ServerBot.config.integration.audioPlayer.messageIncorrectExtension,
+            )
+            done = true
         }
+        if (filename.isNullOrEmpty() && !done) {
+            ServerBot.bot.editMessageText(
+                chatId = message.chat.id,
+                messageId = message.messageId,
+                text = ServerBot.config.integration.audioPlayer.messageErrorUpload,
+            )
+        } else if (!done) {
+            ServerBot.bot.editMessageText(
+                chatId = message.chat.id,
+                messageId = message.messageId,
+                text = ServerBot.config.integration.audioPlayer.messageDone.replace(
+                    "{filename}",
+                    filename!!
+                ),
+            )
+            try {
+                ServerBot.bot.editMessageReplyMarkup(
+                    chatId = message.chat.id,
+                    messageId = data.messageId,
+                    replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup(),
+                )
+                SQLCallback.dropAll(message.chat.id, data.messageId)
+            } catch (_: Exception) {}
+            process.drop()
+        }
+        ServerBot.bot.editMessageReplyMarkup(
+            chatId = message.chat.id,
+            messageId = message.messageId,
+            replyMarkup = TgMenu(listOf(listOf(
+                BACK_BUTTON
+            )))
+        )
     }
 
     private suspend fun saveAudioPlayerFile(fileId: String, filename: String): String {

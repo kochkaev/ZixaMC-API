@@ -15,20 +15,23 @@ import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
 import ru.kochkaev.zixamc.tgbridge.sql.callback.*
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.process.*
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
-import ru.kochkaev.zixamc.tgbridge.sql.process.GroupChatSyncWaitPrefixProcessData
-import ru.kochkaev.zixamc.tgbridge.sql.process.GroupSelectTopicProcessData
-import ru.kochkaev.zixamc.tgbridge.sql.process.GroupWaitingNameProcessData
-import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.TopicFeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.TopicFeatureType
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 
 object ServerBotGroup {
 
     val CAN_EXECUTE_ADMIN = CallbackCanExecute(
         statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
         display = config.integration.group.memberStatus.administrators,
+    )
+    val CAN_EXECUTE_OWNER = CallbackCanExecute(
+        statuses = listOf(TgChatMemberStatuses.CREATOR),
+        display = config.integration.group.memberStatus.creator,
     )
     val SETTINGS = TgMenu(listOf(
         listOf(SQLCallback.of(
@@ -49,11 +52,36 @@ object ServerBotGroup {
             data = GroupCallback(Operations.GET_ALIASES),
             canExecute = CAN_EXECUTE_ADMIN,
         )),
+        listOf(SQLCallback.of(
+            display = config.integration.group.removeAgreeWithRules,
+            type = "group",
+            data = GroupCallback(Operations.REMOVE_AGREE_WITH_RULES),
+            canExecute = CAN_EXECUTE_ADMIN,
+        )),
+        listOf(SQLCallback.of(
+            display = config.integration.group.success,
+            type = "group",
+            data = GroupCallback(Operations.SUCCESS),
+            canExecute = CAN_EXECUTE_ADMIN,
+        )),
     ))
     suspend fun newChatMembers(msg: TgMessage) {
         val group = SQLGroup.getOrCreate(msg.chat.id) ?: return
         msg.newChatMembers!!.forEach { member ->
             if (member.id == bot.me.id && msg.from != null) {
+                try {
+                    group.deleteProtected(AccountType.UNKNOWN)
+                } catch (_: Exception) {}
+                SQLCallback.getAll(group.chatId).sortedByDescending { it.messageId }.forEach {
+                    it.messageId?.also { messageId -> try {
+                        bot.editMessageReplyMarkup(
+                            chatId = group.chatId,
+                            messageId = messageId,
+                            replyMarkup = TgReplyMarkup()
+                        )
+                    } catch (_: Exception) { } }
+                    it.drop()
+                }
                 val user = SQLEntity.get(msg.from.id)
                 if (user == null || !user.hasProtectedLevel(AccountType.PLAYER)) {
                     bot.sendMessage(
@@ -86,10 +114,7 @@ object ServerBotGroup {
                                         display = config.integration.group.agreeWithRules,
                                         type = "group",
                                         data = GroupCallback(Operations.AGREE_WITH_RULES),
-                                        canExecute = CallbackCanExecute(
-                                            statuses = listOf(TgChatMemberStatuses.CREATOR),
-                                            display = config.integration.group.memberStatus.creator
-                                        ),
+                                        canExecute = CAN_EXECUTE_OWNER,
                                     )
                                 )
                             )
@@ -97,13 +122,16 @@ object ServerBotGroup {
                     )
                 }
             }
-            else if (!member.isBot) {
-                val user = SQLEntity.getOrCreate(member.id)
-                group.cleanUpProtected(user.accountType)
-                bot.sendMessage(
-                    chatId = group.chatId,
-                    text = config.integration.group.protectedWasDeleted
-                )
+            else {
+                group.members.add(member.id)
+                if (!member.isBot) {
+                    val user = SQLEntity.getOrCreate(member.id)
+                    group.cleanUpProtected(user.accountType)
+                    if (group.data.greetingEnable) bot.sendMessage(
+                        chatId = group.chatId,
+                        text = config.integration.group.protectedWasDeleted
+                    )
+                }
             }
         }
     }
@@ -114,13 +142,10 @@ object ServerBotGroup {
             group.features.setAll(hashMapOf())
             group.members.set(listOf())
             group.agreedWithRules = false
-            try {
-                group.deleteProtected(AccountType.UNKNOWN)
-            } catch (_: Exception) {}
         }
-        else if (!member.isBot) {
-            val user = SQLEntity.get(member.id) ?: return
-            group.members.remove(LinkedUser(user.userId))
+        else {
+            group.members.remove(member.id)
+            if (!group.atLeastOnePlayer()) group.onNoMorePlayers()
         }
     }
 
@@ -182,7 +207,7 @@ object ServerBotGroup {
                     )
                     ).pull(group.chatId)
                 }
-                else sendFeatures(group, cbq.message.messageId, true)
+                else sendFeatures(group, cbq.message.messageId, true, null)
 //                } else {
 //                    bot.answerCallbackQuery(
 //                        callbackQueryId = cbq.id,
@@ -204,7 +229,7 @@ object ServerBotGroup {
                         SQLCallback.dropAll(group.chatId, it)
                     } catch (_: Exception) {} }
                 } ?.drop()
-                sendFeatures(group, cbq.message.messageId, true)
+                sendFeatures(group, cbq.message.messageId, true, null)
             }
             Operations.UPDATE_NAME -> {
                 SQLProcess.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
@@ -359,13 +384,13 @@ object ServerBotGroup {
                 )
                 return DELETE_LINKED
             }
-            Operations.TOPIC_FEATURE -> {
+            Operations.SELECT_FEATURE -> {
                 val feature = FeatureTypes.entries[sql.data!!.name] ?: return DELETE_MARKUP
                 return feature.setUp(cbq, group)
             }
             Operations.SEND_FEATURES -> {
-                sendFeatures(group, cbq.message.messageId, false)
-                return DELETE_MARKUP
+                sendFeatures(group, null, false, cbq.message.messageId)
+                return DELETE_LINKED
             }
             Operations.EDIT_FEATURES -> {
                 bot.editMessageText(
@@ -538,7 +563,7 @@ object ServerBotGroup {
                                     operation = Operations.EDIT_FEATURE_DATA,
                                     name = type.serializedName,
                                 ),
-                                result = DELETE_MARKUP,
+                                result = DELETE_LINKED,
                             ),
                             canExecute = CAN_EXECUTE_ADMIN,
                         ).build())
@@ -556,118 +581,127 @@ object ServerBotGroup {
                     prefixType = GroupChatSyncWaitPrefixProcessData.PrefixTypes.valueOf(sql.data!!.name!!)
                 )
             }
+            Operations.REMOVE_AGREE_WITH_RULES -> {
+                bot.sendMessage(
+                    chatId = group.chatId,
+                    text = config.integration.group.removeAgreeWithRulesAreYouSure,
+                    replyParameters = TgReplyParameters(cbq.message.messageId),
+                    replyMarkup = TgMenu(listOf(
+                        listOf(SQLCallback.of(
+                            display = config.integration.group.confirm,
+                            type = "group",
+                            data = GroupCallback(Operations.CONFIRM_REMOVE_AGREE_WITH_RULES),
+                            canExecute = CAN_EXECUTE_OWNER
+                        )),
+                        listOf(SQLCallback.of(
+                            display = config.integration.group.cancelConfirm,
+                            type = "group",
+                            data = GroupCallback(Operations.CANCEL_REMOVE_AGREE_WITH_RULES),
+                            canExecute = CAN_EXECUTE_OWNER
+                        )),
+                    ))
+                )
+                return SUCCESS
+            }
+            Operations.CONFIRM_REMOVE_AGREE_WITH_RULES -> {
+                bot.sendMessage(
+                    chatId = group.chatId,
+                    text = config.integration.group.wait,
+                    replyParameters = TgReplyParameters(cbq.message.messageId)
+                )
+                bot.editMessageReplyMarkup(
+                    chatId = group.chatId,
+                    messageId = cbq.message.messageId,
+                    replyMarkup = TgReplyMarkup()
+                )
+                val sanitized = arrayListOf<Int>()
+                SQLCallback.getAll(group.chatId).sortedByDescending { it.messageId } .forEach {
+                    it.messageId?.also { messageId -> if (!sanitized.contains(messageId)) try {
+                        bot.editMessageReplyMarkup(
+                            chatId = group.chatId,
+                            messageId = messageId,
+                            replyMarkup = TgReplyMarkup()
+                        )
+                        sanitized.add(messageId)
+                    } catch (_: Exception) { } }
+                    it.drop()
+                }
+                try {
+                    group.deleteProtected(AccountType.UNKNOWN)
+                } catch (_: Exception) {}
+                group.members.set(listOf())
+                group.features.setAll(mapOf())
+                group.agreedWithRules = false
+                bot.leaveChat(group.chatId)
+                return SUCCESS
+            }
+            Operations.CANCEL_REMOVE_AGREE_WITH_RULES -> {
+                bot.deleteMessage(
+                    chatId = group.chatId,
+                    messageId = cbq.message.messageId,
+                )
+            }
+            Operations.SETUP_FEATURE -> {
+                val data = sql.data!!
+                if (data is FeatureGroupCallback<out FeatureData>) {
+                    return data.data.feature.uncheckedProcessSetup(cbq, group, data)
+                } else return SUCCESS
+            }
+            Operations.SUCCESS -> {
+                bot.deleteMessage(
+                    chatId = group.chatId,
+                    messageId = cbq.message.messageId,
+                )
+                return DELETE_LINKED
+            }
         }
         return DELETE_MARKUP
     }
 
-    suspend fun onMessage(msg: TgMessage) {
+    suspend fun waitNameProcessor(msg: TgMessage, process: SQLProcess<*>, processData: ProcessData) {
         val group = SQLGroup.get(msg.chat.id) ?: return
-        val processes = SQLProcess.getAll(group.chatId)
-        processes.forEach { process ->
-            when (process.type) {
-                ProcessTypes.GROUP_WAITING_NAME ->
-                    if (msg.replyToMessage?.from?.id == bot.me.id && msg.from != null &&
-                        listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
-                            bot.getChatMember(group.chatId, msg.from.id).status
-                        )
-                    ) {
-                        val inFirstTime = group.name == null
-                        val data = process.data as GroupWaitingNameProcessData
-                        if (data.messageId != msg.replyToMessage.messageId) return
-                        val name = msg.effectiveText ?: return
-                        if (name.length !in 1..16 || !name.matches(Regex("[а-яa-z0-9_\\-]+", RegexOption.IGNORE_CASE))) {
-                            bot.sendMessage(
-                                chatId = group.chatId,
-                                text = config.integration.group.incorrectName,
-                                replyParameters = TgReplyParameters(
-                                    msg.messageId
-                                )
-                            )
-                        } else if (!group.canTakeName(name)) {
-                            bot.sendMessage(
-                                chatId = group.chatId,
-                                text = config.integration.group.nameIsTaken,
-                                replyParameters = TgReplyParameters(
-                                    msg.messageId
-                                )
-                            )
-                        } else {
-                            if (data.nameType == GroupWaitingNameProcessData.NameType.NAME)
-                                group.name = name
-                            else if (data.nameType == GroupWaitingNameProcessData.NameType.ALIAS && !group.aliases.contains(name))
-                                group.aliases.add(name)
-                            bot.editMessageReplyMarkup(
-                                chatId = group.chatId,
-                                messageId = data.messageId,
-                                replyMarkup = TgReplyMarkup(),
-                            )
-                            SQLCallback.dropAll(group.chatId, data.messageId)
-                            process.drop()
-                            if (inFirstTime) sendFeatures(group, msg.messageId, true)
-                            else settingsCommand(msg)
-                        }
-                    }
-                ProcessTypes.GROUP_CHATSYNC_WAITING_PREFIX ->
-                    if (msg.replyToMessage?.from?.id == bot.me.id && msg.from != null &&
-                        listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
-                            bot.getChatMember(group.chatId, msg.from.id).status
-                        )
-                    ) {
-                        val data = process.data as GroupChatSyncWaitPrefixProcessData
-                        if (data.messageId != msg.replyToMessage.messageId) return
-                        val isNotNew = group.features.contains(FeatureTypes.CHAT_SYNC)
-                        val prefix = msg.effectiveText?:return
-                        val mm = TextData(prefix)
-                        try {
-                            mm.get()
-                        } catch (e: Exception) {
-                            bot.sendMessage(
-                                chatId = group.chatId,
-                                text = TextParser.formatLang(
-                                    text = config.integration.group.features.chatSync.wrongPrefix,
-                                    "error" to e.message.toString()
-                                )
-                            )
-                            return
-                        }
-                        group.features.set(
-                            FeatureTypes.CHAT_SYNC,
-                            if (!isNotNew)
-                                FeatureTypes.CHAT_SYNC.getDefault().apply {
-                                    this.topicId = data.topicId
-                                    this.prefix = mm
-                                }
-                            else group.features.getCasted(FeatureTypes.CHAT_SYNC)!!.apply {
-                                if (data.type == GroupChatSyncWaitPrefixProcessData.PrefixTypes.DEFAULT)
-                                    this.prefix = mm
-                                else if (data.type == GroupChatSyncWaitPrefixProcessData.PrefixTypes.FROM_MINECRAFT)
-                                    this.fromMcPrefix = mm
-                            }
-                        )
-                        try { bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
-                            messageId = data.messageId,
-                            replyMarkup = TgReplyMarkup()
-                        ) } catch (_: Exception) {}
-                        SQLCallback.dropAll(group.chatId, data.messageId)
-                        process.drop()
-                        if (isNotNew) {
-                            bot.sendMessage(
-                                chatId = group.chatId,
-                                text = getSettingsText(group),
-                                replyMarkup = SETTINGS,
-                            )
-                        } else bot.sendMessage(
-                            chatId = group.chatId,
-                            text = if (msg.chat.isForum) config.integration.group.features.chatSync.doneTopic
-                                else config.integration.group.features.chatSync.doneNoTopic,
-                            replyParameters = TgReplyParameters(
-                                msg.messageId
-                            )
-                        )
-                    }
+        if (msg.replyToMessage?.from?.id == bot.me.id && msg.from != null &&
+            listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
+                bot.getChatMember(group.chatId, msg.from.id).status
+            )
+        ) {
+            val inFirstTime = group.name == null
+            val data = processData as GroupWaitingNameProcessData
+            if (data.messageId != msg.replyToMessage.messageId) return
+            val name = msg.effectiveText ?: return
+            if (name.length !in 1..16 || !name.matches(Regex("[а-яa-z0-9_\\-]+", RegexOption.IGNORE_CASE))) {
+                bot.sendMessage(
+                    chatId = group.chatId,
+                    text = config.integration.group.incorrectName,
+                    replyParameters = TgReplyParameters(
+                        msg.messageId
+                    )
+                )
+            } else if (!group.canTakeName(name)) {
+                bot.sendMessage(
+                    chatId = group.chatId,
+                    text = config.integration.group.nameIsTaken,
+                    replyParameters = TgReplyParameters(
+                        msg.messageId
+                    )
+                )
+            } else {
+                if (data.nameType == GroupWaitingNameProcessData.NameType.NAME)
+                    group.name = name
+                else if (data.nameType == GroupWaitingNameProcessData.NameType.ALIAS && !group.aliases.contains(name))
+                    group.aliases.add(name)
+                bot.editMessageReplyMarkup(
+                    chatId = group.chatId,
+                    messageId = data.messageId,
+                    replyMarkup = TgReplyMarkup(),
+                )
+                SQLCallback.dropAll(group.chatId, data.messageId)
+                process.drop()
+                if (inFirstTime) sendFeatures(group, msg.messageId, true, null)
+                else settingsCommand(msg)
             }
         }
+
     }
 
     suspend fun answerHaventRights(id: String, display: String): TgCBHandlerResult {
@@ -713,11 +747,14 @@ object ServerBotGroup {
                         )
                     }
                     else feature.finishSetUp(group, topicId, topicId)
-                    try { bot.editMessageReplyMarkup(
-                        chatId = group.chatId,
-                        messageId = data.messageId,
-                        replyMarkup = TgReplyMarkup(),
-                    ) } catch (_: Exception) {}
+                    try {
+                        SQLCallback.getAll(group.chatId, data.messageId).forEach { it.drop() }
+                        bot.editMessageReplyMarkup(
+                            chatId = group.chatId,
+                            messageId = data.messageId,
+                            replyMarkup = TgReplyMarkup(),
+                        )
+                    } catch (_: Exception) {}
                     process.drop()
                 }
             }
@@ -738,29 +775,42 @@ object ServerBotGroup {
         )
     }
 
-    suspend fun sendFeatures(group: SQLGroup, replyTo: Int? = null, withDone: Boolean = false) {
+    suspend fun sendFeatures(group: SQLGroup, replyTo: Int? = null, withDone: Boolean = false, edit: Int? = null) {
         val message = (if (withDone) config.integration.group.done + "\n" else "") + resolveFeaturesSettingsMessage(group)
         val menu = TgMenu(
             FeatureTypes.entries
                 .map { it.value }
                 .filter { it.checkAvailable(group) }
+                .filter { !group.features.contains(it) }
                 .map { SQLCallback.of(
                     display = it.tgDisplayName(),
                     type = "group",
                     data = GroupCallback(
-                        operation = Operations.TOPIC_FEATURE,
+                        operation = Operations.SELECT_FEATURE,
                         name = it.serializedName
                     ),
                     canExecute = CAN_EXECUTE_ADMIN,
                 ) }
                 .map { listOf(it) }
         )
-        bot.sendMessage(
+        if (edit == null) bot.sendMessage(
             chatId = group.chatId,
             text = message,
             replyParameters = replyTo?.let { TgReplyParameters(it) },
             replyMarkup = menu
         )
+        else {
+            bot.editMessageText(
+                chatId = group.chatId,
+                messageId = edit,
+                text = message,
+            )
+            bot.editMessageReplyMarkup(
+                chatId = group.chatId,
+                messageId = edit,
+                replyMarkup = menu
+            )
+        }
     }
     fun getSettingsText(group: SQLGroup) =
         TextParser.formatLang(
@@ -774,7 +824,7 @@ object ServerBotGroup {
         config.integration.group.groupHasNoOnlyPlayers.let { if (!group.hasProtectedLevel(AccountType.PLAYER)) it else "" } +
         "\n" + config.integration.group.selectFeature
 
-    data class GroupCallback(
+    open class GroupCallback(
         var operation: Operations,
         var name: String? = null,
     ): CallbackData
@@ -792,7 +842,7 @@ object ServerBotGroup {
         @SerializedName("add_alias")
         ADD_ALIAS,
         @SerializedName("topic_feature")
-        TOPIC_FEATURE,
+        SELECT_FEATURE,
         @SerializedName("send_features")
         SEND_FEATURES,
         @SerializedName("edit_features")
@@ -811,5 +861,25 @@ object ServerBotGroup {
         EDIT_PREFIX,
         @SerializedName("confirm_setup_feature")
         CONFIRM_SETUP_FEATURE,
+        @SerializedName("remove_agree_with_rules")
+        REMOVE_AGREE_WITH_RULES,
+        @SerializedName("confirm_remove_agree_with_rules")
+        CONFIRM_REMOVE_AGREE_WITH_RULES,
+        @SerializedName("cancel_remove_agree_with_rules")
+        CANCEL_REMOVE_AGREE_WITH_RULES,
+        @SerializedName("setup_feature")
+        SETUP_FEATURE,
+        @SerializedName("success")
+        SUCCESS,
     }
+    data class SetupFeatureCallback<T: FeatureData>(
+        val feature: FeatureType<T>,
+        val temp: T,
+        val field: String,
+        val arg: String,
+    )
+    class FeatureGroupCallback<T: FeatureData>(
+        val data: SetupFeatureCallback<T>,
+        name: String? = null,
+    ): GroupCallback(Operations.SETUP_FEATURE, name)
 }

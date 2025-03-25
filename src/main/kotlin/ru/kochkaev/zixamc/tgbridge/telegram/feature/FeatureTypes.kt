@@ -7,6 +7,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.TopicFeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.type.ChatSyncFeatureType
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.type.PlayersGroupFeatureType
 
 object FeatureTypes {
     val CHAT_SYNC = ChatSyncFeatureType
@@ -29,10 +30,12 @@ object FeatureTypes {
             )
         },
     )
+    val PLAYERS_GROUP = PlayersGroupFeatureType
 
     val entries = hashMapOf<String, FeatureType<out FeatureData>>(
         CHAT_SYNC.serializedName to CHAT_SYNC,
         CONSOLE.serializedName to CONSOLE,
+        PLAYERS_GROUP.serializedName to PLAYERS_GROUP,
     )
     fun registerType(type: FeatureType<*>) {
         entries[type.serializedName] = type

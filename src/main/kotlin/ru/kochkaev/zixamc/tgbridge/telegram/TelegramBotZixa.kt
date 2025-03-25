@@ -1,6 +1,8 @@
 package ru.kochkaev.zixamc.tgbridge.telegram
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import org.slf4j.Logger
@@ -8,16 +10,22 @@ import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.tgbridge.config.GsonManager
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
+import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessorType
 import ru.kochkaev.zixamc.tgbridge.sql.util.LinkedUser
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.time.Duration
+import java.util.LinkedList
+import java.util.PriorityQueue
+import java.util.Queue
 
 /**
  * @author vanutp
@@ -34,6 +42,9 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
         .build()
         .create(TgApi::class.java)
     var pollTask: Job? = null
+    var postTask: Job? = null
+    val postQueue: Queue<Pair<suspend () -> TgResponse<*>, CompletableDeferred<TgResponse<*>>>> = LinkedList()
+    val postLock = Mutex()
     private val commandHandlers: MutableList<suspend (TgMessage) -> Boolean> = mutableListOf()
     private val messageHandlers: MutableList<suspend (TgMessage) -> Unit> = mutableListOf()
     private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()
@@ -88,8 +99,8 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
     }
 
     suspend fun init() {
-        call { client.deleteWebhook() }
-        me = call { client.getMe() }
+        callWithoutDelay { client.deleteWebhook() }
+        me = callWithoutDelay { client.getMe() }
     }
 
     suspend fun startPolling(scope: CoroutineScope) {
@@ -100,7 +111,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
             var offset = -1
             while (true) {
                 try {
-                    val updates = call {
+                    val updates = callWithoutDelay {
                         client.getUpdates(
                             offset,
                             timeout = POLL_TIMEOUT_SECONDS,
@@ -112,9 +123,10 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                     offset = updates.last().updateId + 1
                     updates.forEach { update ->
                         update.message?.run {
-                            SQLGroup.collectData(this.chat, this.from?.id)
+                            SQLGroup.collectData(this.chat, this.from)
                             var itCommand = false
                             var itSystem = false
+                            var itProcess = false
                             if (this.migrateToChatId!=null && this.migrateFromChatId!=null){
                                 itSystem = true
                                 SQLGroup.get(this.migrateFromChatId)?.updateChatId(this.migrateToChatId)
@@ -122,7 +134,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                             else if (this.newChatMembers != null) {
 //                                this.newChatMembers.forEach { new -> SQLGroup.collectData(this.chat.id, new.id) }
                                 if (this.from?.let { from -> this.newChatMembers.contains(from) } == false)
-                                    SQLGroup.collectData(this.chat, this.from.id)
+                                    SQLGroup.collectData(this.chat, this.from)
                                 newChatMembersHandlers.forEach { handler -> handler(this) }
                                 itSystem = true
                             }
@@ -134,30 +146,40 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                             if (!itSystem) for (handler in commandHandlers) {
                                 itCommand = itCommand || handler.invoke(this)
                             }
-                            if (!itCommand && !itSystem) messageHandlers.forEach {
+                            if (!itSystem && !itCommand) {
+                                SQLProcess.getAll(this.chat.id).forEach { process ->
+                                    when (process.type.processorType) {
+                                        ProcessorType.REPLY_MESSAGE -> process.data?.also {
+                                            if (it.messageId == this.replyToMessage?.messageId) {
+                                                process.type.processor?.invoke(this, process, it)
+                                                itProcess = true
+                                            }
+                                        }
+                                        else -> {}
+                                    }
+                                }
+                            }
+                            if (!itProcess && !itCommand && !itSystem) messageHandlers.forEach {
                                 it.invoke(this)
                             }
                         }
                         update.callbackQuery?.run {
-                            SQLGroup.collectData(this.message.chat, this.from.id)
+                            SQLGroup.collectData(this.message.chat, this.from)
                             val sql = this.data?.toLongOrNull()?.let {
                                 SQLCallback.get(it)
                             }
                             if (sql != null) {
                                 typedCallbackQueryHandlers[sql.type]?.invoke(this, sql)?.also { result ->
-                                    if (result.deleteCallback) {
-                                        if (result.deleteAllLinked) {
-                                            if (result.deleteMarkup) try {
-                                                editMessageReplyMarkup(
-                                                    chatId = this.message.chat.id,
-                                                    messageId = this.message.messageId,
-                                                    replyMarkup = TgReplyMarkup()
-                                                )
-                                            } catch (_: Exception) {}
-                                            sql.linked.get()?.forEach { linked -> linked.getSQL()?.drop() }
-                                        }
-                                        sql.drop()
-                                    }
+                                    if (result.deleteMarkup) try {
+                                        editMessageReplyMarkup(
+                                            chatId = this.message.chat.id,
+                                            messageId = this.message.messageId,
+                                            replyMarkup = TgReplyMarkup()
+                                        )
+                                    } catch (_: Exception) {}
+                                    if (result.deleteAllLinked)
+                                        sql.linked.get()?.forEach { linked -> linked.getSQL()?.drop() }
+                                    if (result.deleteCallback) sql.drop()
                                 }
                             }
                             else callbackQueryHandlers.forEach {
@@ -165,14 +187,14 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                             }
                         }
                         update.chatJoinRequest?.run {
-                            SQLGroup.collectData(this.chat, this.from.id)
+                            SQLGroup.collectData(this.chat, this.from)
                             chatJoinRequestHandlers.forEach {
                                 it.invoke(this)
                             }
                         }
                         update.chatMember?.run {
                             if (this.from.id != this.newChatMember.user.id)
-                                SQLGroup.collectData(this.chat, this.from.id)
+                                SQLGroup.collectData(this.chat, this.from)
                             if (!(this.newChatMember.status == TgChatMemberStatuses.BANNED && (this.newChatMember as TgChatMemberBanned).untilDate == 0 || this.newChatMember.status == TgChatMemberStatuses.LEFT))
                                 SQLGroup.get(this.chat.id)?.members?.remove(LinkedUser(this.newChatMember.user.id))
                             chatMemberUpdatedHandlers.forEach {
@@ -180,7 +202,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                             }
                         }
                         update.myChatMember?.run {
-                            SQLGroup.collectData(this.chat, this.from.id)
+                            SQLGroup.collectData(this.chat, this.from)
                             botChatMemberUpdatedHandlers.forEach {
                                 it.invoke(this)
                             }
@@ -199,6 +221,39 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
             logger.info("pollTask finished")
         }
     }
+    suspend fun startPosting(scope: CoroutineScope) {
+        if (postTask != null) {
+            throw IllegalStateException("posting already started")
+        }
+        postTask = scope.launch {
+            while(true) {
+                try {
+                    var post: (Pair<suspend () -> TgResponse<*>, CompletableDeferred<TgResponse<*>>>)? = null
+                    postLock.withLock {
+                        if (postQueue.isNotEmpty())
+                            post = postQueue.poll()
+                    }
+                    post?.also { scope.launch {
+                        try {
+                            it.second.complete(it.first.invoke())
+                        } catch (e: Exception) {
+                            it.second.completeExceptionally(e)
+                        }
+                    } }
+                    delay(60)
+                } catch (e: Exception) {
+                    when (e) {
+                        is CancellationException -> break
+                        else -> {
+                            logger.error(e.message.toString(), e)
+                            delay(1000)
+                        }
+                    }
+                }
+            }
+            logger.info("postTask finished")
+        }
+    }
 
     suspend fun recoverPolling(scope: CoroutineScope) {
         val task = pollTask
@@ -213,16 +268,42 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
 
     suspend fun shutdown() {
         pollTask?.cancelAndJoin()
+        postTask?.cancelAndJoin()
         okhttpClient.dispatcher.executorService.shutdown()
         okhttpClient.connectionPool.evictAll()
     }
 
+
+    @Suppress("UNCHECKED_CAST")
     private suspend fun <T> call(f: suspend () -> TgResponse<T>): T {
+        val deferred = CompletableDeferred<TgResponse<T>>()
+        postLock.withLock {
+            postQueue.add((f to deferred) as Pair<suspend () -> TgResponse<*>, CompletableDeferred<TgResponse<*>>>)
+        }
+        try {
+            if (postTask == null) throw IllegalStateException("Post task is not started!")
+            return deferred.await().result!!
+        } catch (e: HttpException) {
+            val resp = e.response() ?: throw e
+            val body = GsonManager.gson.fromJson<TgResponse<T>>(resp.errorBody()?.string(), TgResponse::class.java)
+            if (body.errorCode == 429) {
+                delay((body.parameters?.retryAfter?:3L) * 1000L)
+                return call(f)
+            }
+            else throw Exception("Telegram exception: ${resp.errorBody()?.string() ?: "no response body"}")
+        }
+    }
+    private suspend fun <T> callWithoutDelay(f: suspend () -> TgResponse<T>): T {
         try {
             return f().result!!
         } catch (e: HttpException) {
             val resp = e.response() ?: throw e
-            throw Exception("Telegram exception: ${resp.errorBody()?.string() ?: "no response body"}")
+            val body = GsonManager.gson.fromJson<TgResponse<T>>(resp.errorBody()?.string(), TgResponse::class.java)
+            if (body.errorCode == 429) {
+                delay((body.parameters?.retryAfter?:3L) * 1000L)
+                return call(f)
+            }
+            else throw Exception("Telegram exception: ${resp.errorBody()?.string() ?: "no response body"}")
         }
     }
 

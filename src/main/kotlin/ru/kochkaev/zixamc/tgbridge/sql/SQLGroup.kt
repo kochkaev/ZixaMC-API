@@ -24,17 +24,23 @@ import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntity
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
+import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback.Companion
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.data.ChatData
 import ru.kochkaev.zixamc.tgbridge.sql.data.GroupData
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
+import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncTopicData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import java.sql.SQLException
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes.CHAT_SYNC
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.PlayersGroupFeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChat
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgUser
 
 class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 
@@ -180,9 +186,16 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 //                        aliases = ArrayList(config.defaultGroup.aliases),
                         prefix = config.defaultGroup.prefix,
                         fromMcPrefix = config.defaultGroup.fromMcPrefix
+                    ),
+                    FeatureTypes.PLAYERS_GROUP to PlayersGroupFeatureData(
+                        autoAccept = true,
+                        autoRemove = true,
                     )
                 ),
-                data = gson.toJson(ChatData())
+                data = gson.toJson(GroupData(
+                    isPrivate = true,
+                    greetingEnable = false
+                ))
             )
         }
 
@@ -196,6 +209,20 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
             if (!exists(chatId))
                 create(chatId, null, listOf(), listOf(), false, false, mapOf(), gson.toJson(ChatData()))
             return SQLGroup(chatId)
+        }
+        fun getAllWithUser(userId: Long) = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE JSON_CONTAINS(members, JSON_QUOTE(?), '$');")
+            preparedStatement.setString(1, userId.toString())
+            val query = preparedStatement.executeQuery()
+            val groups = arrayListOf<SQLGroup>()
+            while (query.next())
+                get(query.getLong(1))?.also { groups.add(it) }
+            groups
+        } catch (e: SQLException) {
+            ZixaMCTGBridge.logger.error("Register error ", e)
+            listOf()
         }
         fun create(chatId: Long, name:String?, aliases: List<String>?, members: List<String>?, agreedWithRules: Boolean, isRestricted: Boolean, features: Map<FeatureType<out FeatureData>, FeatureData>, data:String?): Boolean {
             try {
@@ -281,10 +308,11 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 return groups
             }
 
-        suspend fun collectData(chat: TgChat, userId: Long?) {
-            if (chat.id>0 || userId == null) return
+        suspend fun collectData(chat: TgChat, user: TgUser?) {
+            if (chat.id>0 || user == null) return
+            val userId = user.id
             val group = get(chat.id)?:return
-            if (!SQLEntity.exists(userId))
+            if (!SQLEntity.exists(userId) && !user.isBot)
                 SQLEntity.createDefault(userId)
             if (!group.members.contains(userId))
                 group.members.add(userId)
@@ -469,10 +497,36 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
     override suspend fun hasProtectedLevel(level: AccountType): Boolean =
         getNoBotsMembers().fold(true) { acc, it -> acc && it.getSQL()?.hasProtectedLevel(level) == true }
         && (!level.requireGroupPrivate || bot.getChat(chatId).username == null)
+        && bot.getChatMemberCount(chatId) == (members.get()?.size?:0)+1
     suspend fun cleanUpProtected(protectLevel: AccountType) {
         protectLevel.levelHigh?.also { deleteProtected(it) }
         features.getAll()?.keys?.forEach { key ->
             if (!key.checkAvailable(this)) features.remove(key)
         }
     }
+    suspend fun atLeastOnePlayer() =
+        members.get()?.fold(false) { acc, it -> acc || it.getSQL()?.hasProtectedLevel(AccountType.PLAYER) == true } == true
+    suspend fun onNoMorePlayers() {
+        try {
+            deleteProtected(AccountType.UNKNOWN)
+        } catch (_: Exception) {}
+        try {
+            bot.sendMessage(
+                chatId = chatId,
+                text = ServerBot.config.integration.group.hasNoMorePlayers,
+            )
+            bot.leaveChat(chatId)
+        } catch (_: Exception) {}
+    }
+
+//    suspend fun sendRulesUpdated(capital: Boolean = false) {
+//        val message = if (capital) RequestsBot.config.target.lang.event.onRulesUpdated
+//        try {
+//
+//        } catch (_: Exception) {
+//            try {
+//
+//            } catch (_: Exception) {}
+//        }
+//    }
 }

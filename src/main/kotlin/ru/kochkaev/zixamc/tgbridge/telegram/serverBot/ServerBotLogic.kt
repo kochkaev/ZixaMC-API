@@ -10,6 +10,8 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
+import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
+import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
 
 object ServerBotLogic {
 
@@ -34,7 +36,8 @@ object ServerBotLogic {
         ChatSyncBotLogic.registerMinecraftHandlers()
 
         bot.registerCallbackQueryHandler(ServerBotUpdateManager::onTelegramCallbackQuery)
-        bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id) }
+        bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id, it.from?.id) }
+        bot.registerCommandHandler("menu") { Menu.sendMenu(it.chat.id, it.from?.id) }
         bot.registerCommandHandler("mentionAll") { SQLGroup.get(it.chat.id)?.also { group ->
             bot.sendMessage(
                 chatId = it.chat.id,
@@ -45,16 +48,17 @@ object ServerBotLogic {
             )
             try { bot.deleteMessage(it.chat.id, it.messageId) } catch (_: Exception) {}
         } }
-        bot.registerMessageHandler(Menu::onMessage)
+//        bot.registerMessageHandler(Menu::onMessage)
 
         bot.registerCallbackQueryHandler(/*"easyauth", EasyAuthIntegration.EasyAuthCallbackData::class.java,*/ EasyAuthIntegration::onTelegramCallbackQuery)
         bot.registerCallbackQueryHandler("menu", Menu.MenuCallbackData::class.java, Menu::onCallback)
 
 //        bot.registerBotChatMemberUpdatedHandler(ServerBotGroup::addedToGroup)
+        bot.registerChatJoinRequestHandler(RequestsBotUpdateManager::onTelegramChatJoinRequest)
         bot.registerNewChatMembersHandler(ServerBotGroup::newChatMembers)
         bot.registerLeftChatMemberHandler(ServerBotGroup::leftChatMember)
         bot.registerCallbackQueryHandler("group", ServerBotGroup.GroupCallback::class.java, ServerBotGroup::onCallback)
-        bot.registerMessageHandler(ServerBotGroup::onMessage)
+//        bot.registerMessageHandler(ServerBotGroup::onMessage)
         bot.registerCommandHandler("selectTopic", ServerBotGroup::selectTopicCommand)
         bot.registerCommandHandler("settings", ServerBotGroup::settingsCommand)
 
