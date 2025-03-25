@@ -26,12 +26,15 @@ import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback.Companion
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.data.ChatData
 import ru.kochkaev.zixamc.tgbridge.sql.data.GroupData
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
+import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncTopicData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
@@ -41,6 +44,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes.CHAT_SYNC
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.PlayersGroupFeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChat
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgUser
+import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
 
 class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 
@@ -519,14 +523,51 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         } catch (_: Exception) {}
     }
 
-//    suspend fun sendRulesUpdated(capital: Boolean = false) {
-//        val message = if (capital) RequestsBot.config.target.lang.event.onRulesUpdated
-//        try {
-//
-//        } catch (_: Exception) {
-//            try {
-//
-//            } catch (_: Exception) {}
-//        }
-//    }
+    suspend fun sendRulesUpdated(capital: Boolean = false) {
+        val isMain = ChatSyncBotLogic.DEFAULT_GROUP.chatId == chatId
+        val message = BotLogic.escapePlaceholders(
+            if (isMain)
+                RequestsBot.config.target.lang.event.onRulesUpdated
+            else ServerBot.config.integration.group.rulesUpdated)
+        val menu = TgMenu(listOf(listOf(
+            ServerBot.config.integration.group
+                .let { if (capital) it.needAgreeWithRules else it.removeAgreeWithRules }
+                .let {
+                    if (isMain) SQLCallback.of(
+                        display = it,
+                        type = "requests",
+                        data = RequestsBotUpdateManager.RequestCallback(
+                            if (capital) RequestsBotUpdateManager.Operations.AGREE_WITH_RULES
+                            else RequestsBotUpdateManager.Operations.REVOKE_AGREE_WITH_RULES
+                        ),
+                        canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
+                    )
+                    else SQLCallback.of(
+                        display = it,
+                        type = "group",
+                        data = ServerBotGroup.GroupCallback(
+                            if (capital) ServerBotGroup.Operations.AGREE_WITH_RULES
+                            else ServerBotGroup.Operations.REMOVE_AGREE_WITH_RULES
+                        ),
+                        canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
+                    )
+                }
+        )))
+        try {
+            RequestsBot.bot.sendMessage(
+                chatId = chatId,
+                text = message,
+                replyMarkup = menu,
+            )
+        } catch (_: Exception) {
+            try {
+                bot.sendMessage(
+                    chatId = chatId,
+                    text = message,
+                    replyMarkup = menu,
+                )
+            } catch (_: Exception) {}
+        }
+        if (capital) agreedWithRules = false
+    }
 }

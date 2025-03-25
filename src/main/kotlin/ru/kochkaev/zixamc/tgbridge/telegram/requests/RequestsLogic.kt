@@ -1,12 +1,17 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
+import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
+import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.data.*
+import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager.Operations
+import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager.RequestCallback
 
 object RequestsLogic {
 
@@ -16,16 +21,13 @@ object RequestsLogic {
         bot.sendMessage(
             chatId = entity.userId,
             text = BotLogic.escapePlaceholders(config.user.lang.event.onCanceled, entity.nickname),
-            replyMarkup = TgInlineKeyboardMarkup(
-                inline_keyboard = listOf(
-                    listOf(
-                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.user.lang.button.createRequest,
-                            callback_data = "create_request",
-                        )
-                    )
+            replyMarkup = TgMenu(listOf(listOf(
+                SQLCallback.of(
+                    display = config.user.lang.button.createRequest,
+                    type = "requests",
+                    data = RequestCallback(Operations.CREATE_REQUEST),
                 )
-            )
+            )))
         )
         if (request.message_id_in_target_chat != null) bot.sendMessage(
             chatId = config.target.chatId,
@@ -50,6 +52,7 @@ object RequestsLogic {
                 messageId = request.message_id_in_moderators_chat!!.toInt(),
                 text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onCancel, request.request_nickname)
             )
+            SQLCallback.getAll(config.forModerator.chatId, request.message_id_in_moderators_chat!!.toInt()).forEach { it.drop() }
         }
         entity.tempArray.set(listOf())
         return true
@@ -61,16 +64,13 @@ object RequestsLogic {
         bot.sendMessage(
             chatId = entity.userId,
             text = config.user.lang.event.onCanceled,
-            replyMarkup = TgInlineKeyboardMarkup(
-                inline_keyboard = listOf(
-                    listOf(
-                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = BotLogic.escapePlaceholders(config.user.lang.button.createRequest),
-                            callback_data = "create_request",
-                        )
-                    )
+            replyMarkup = TgMenu(listOf(listOf(
+                SQLCallback.of(
+                    display = BotLogic.escapePlaceholders(config.user.lang.button.createRequest),
+                    type = "requests",
+                    data = RequestCallback(Operations.CREATE_REQUEST),
                 )
-            )
+            )))
         )
         return true
     }
@@ -80,16 +80,13 @@ object RequestsLogic {
                 bot.sendMessage(
                     chatId = entity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.creating.youAreNowCreatingRequest),
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        inline_keyboard = listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    text = config.user.lang.button.redrawRequest,
-                                    callback_data = "redraw_request",
-                                )
-                            )
+                    replyMarkup = TgMenu(listOf(listOf(
+                        SQLCallback.of(
+                            display = config.user.lang.button.redrawRequest,
+                            type = "requests",
+                            data = RequestCallback(Operations.REDRAW_REQUEST),
                         )
-                    )
+                    )))
                 )
                 return false
             }
@@ -97,16 +94,13 @@ object RequestsLogic {
                 bot.sendMessage(
                     chatId = entity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.creating.youHavePendingRequest, entity.nickname),
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        inline_keyboard = listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    text = config.user.lang.button.cancelRequest,
-                                    callback_data = "cancel_request",
-                                )
-                            )
+                    replyMarkup = TgMenu(listOf(listOf(
+                        SQLCallback.of(
+                            display = config.user.lang.button.cancelRequest,
+                            type = "requests",
+                            data = RequestCallback(Operations.CANCEL_REQUEST),
                         )
-                    )
+                    )))
                 )
                 return false
             }
@@ -130,16 +124,13 @@ object RequestsLogic {
         else bot.sendMessage(
             chatId = entity.userId,
             text = BotLogic.escapePlaceholders(config.user.lang.creating.needAgreeWithRules),
-            replyMarkup = TgInlineKeyboardMarkup(
-                listOf(
-                    listOf(
-                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.user.lang.button.agreeWithRules,
-                            callback_data = "agree_with_rules",
-                        )
-                    )
-                ),
-            )
+            replyMarkup = TgMenu(listOf(listOf(
+                SQLCallback.of(
+                    display = config.user.lang.button.agreeWithRules,
+                    type = "requests",
+                    data = RequestCallback(Operations.AGREE_WITH_RULES),
+                )
+            )))
         )
         entity.addRequest(
             RequestData(
@@ -339,51 +330,48 @@ object RequestsLogic {
         if (!checkPermissionToExecute(
                 null, entity, listOf(AccountType.ADMIN), false
             )) return true
-        bot.sendMessage(
-            chatId = config.target.chatId,
-            text = BotLogic.escapePlaceholders(config.target.lang.event.onRulesUpdated),
-            replyMarkup = TgInlineKeyboardMarkup(
-                listOf(
-                    listOf(
-                        if (revokeAccepts)
-                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                text = config.user.lang.button.agreeWithRules,
-                                callback_data = "agree_with_rules",
-                            )
-                        else
-                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                text = config.user.lang.button.revokeAgreeWithRules,
-                                callback_data = "revoke_agree_with_rules",
-                            )
-                    )
-                ),
-            ),
-            replyParameters = if (toReplyMessageId!=null) TgReplyParameters(
-                toReplyMessageId
-            ) else null,
-        )
+//        bot.sendMessage(
+//            chatId = config.target.chatId,
+//            text = BotLogic.escapePlaceholders(config.target.lang.event.onRulesUpdated),
+//            replyMarkup = TgMenu(listOf(listOf(
+//                if (revokeAccepts)
+//                    SQLCallback.of(
+//                        display = config.user.lang.button.agreeWithRules,
+//                        type = "requests",
+//                        data = RequestCallback(Operations.AGREE_WITH_RULES),
+//                    )
+//                else
+//                    SQLCallback.of(
+//                        display = config.user.lang.button.revokeAgreeWithRules,
+//                        type = "requests",
+//                        data = RequestCallback(Operations.REVOKE_AGREE_WITH_RULES),
+//                    )
+//            ))),
+//            replyParameters = if (toReplyMessageId!=null) TgReplyParameters(
+//                toReplyMessageId
+//            ) else null,
+//        )
+        SQLGroup.groups.forEach { it.getSQLAssert().sendRulesUpdated(revokeAccepts) }
         SQLEntity.users.map {it.getSQLAssert()} .filter { it.agreedWithRules } .forEach {
             if (revokeAccepts) it.agreedWithRules = false
             try {
                 bot.sendMessage(
                     chatId = it.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.event.onRulesUpdated),
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        listOf(
-                            listOf(
-                                if (revokeAccepts)
-                                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                        text = config.user.lang.button.agreeWithRules,
-                                        callback_data = "agree_with_rules",
-                                    )
-                                else
-                                    TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                        text = config.user.lang.button.revokeAgreeWithRules,
-                                        callback_data = "revoke_agree_with_rules",
-                                    )
+                    replyMarkup = TgMenu(listOf(listOf(
+                        if (revokeAccepts)
+                            SQLCallback.of(
+                                display = config.user.lang.button.agreeWithRules,
+                                type = "requests",
+                                data = RequestCallback(Operations.AGREE_WITH_RULES),
                             )
-                        ),
-                    )
+                        else
+                            SQLCallback.of(
+                                display = config.user.lang.button.revokeAgreeWithRules,
+                                type = "requests",
+                                data = RequestCallback(Operations.REVOKE_AGREE_WITH_RULES),
+                            )
+                    ))),
                 )
             } catch (_: Exception) {}
         }

@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
+import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
@@ -14,7 +15,11 @@ import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
 
 object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
@@ -40,14 +45,14 @@ object RequestsBotCommands {
             bot.sendMessage(
                 chatId = msg.chat.id,
                 text = BotLogic.escapePlaceholders(config.commonLang.command.promoteHelp),
-                replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(msg.messageId),
+                replyParameters = TgReplyParameters(msg.messageId),
             )
             return false
         } else {
             bot.sendMessage(
                 chatId = msg.chat.id,
                 text = BotLogic.escapePlaceholders(config.target.lang.event.onPromote, entity.nickname?:entity.userId.toString()),
-                replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(msg.messageId),
+                replyParameters = TgReplyParameters(msg.messageId),
             )
             return true
         }
@@ -91,10 +96,10 @@ object RequestsBotCommands {
             text4User = config.user.lang.event.onReturn,
             text4Target = config.target.lang.event.onReturn,
             removePreviousTgReplyMarkup = true,
-            replyMarkup4Message = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup(
+            replyMarkup4Message = TgInlineKeyboardMarkup(
                 listOf(
                     listOf(
-                        ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                        TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                             text = config.user.lang.button.joinToPlayersGroup,
                             url = config.playersGroupInviteLink
                         )
@@ -150,7 +155,7 @@ object RequestsBotCommands {
             if (text4Target.isNotEmpty()) bot.sendMessage(
                 chatId = message.chat.id,
                 text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
-                replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(message.messageId),
+                replyParameters = TgReplyParameters(message.messageId),
             )
             var newMessage: TgMessage? = null
             try {
@@ -168,7 +173,7 @@ object RequestsBotCommands {
                     bot.editMessageReplyMarkup(
                         chatId = entity.userId,
                         messageId = it.message_id_in_chat_with_user.toInt(),
-                        replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup()
+                        replyMarkup = TgReplyMarkup()
                     )
                 }
             } catch (_: Exception) {}
@@ -194,16 +199,13 @@ object RequestsBotCommands {
         bot.sendMessage(
             chatId = msg.chat.id,
             text = config.user.lang.event.onStart,
-            replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup(
-                listOf(
-                    listOf(
-                        ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                            text = config.user.lang.button.createRequest,
-                            callback_data = "create_request",
-                        )
-                    )
+            replyMarkup = TgMenu(listOf(listOf(
+                SQLCallback.of(
+                    display = config.user.lang.button.createRequest,
+                    type = "requests",
+                    data = RequestsBotUpdateManager.RequestCallback(RequestsBotUpdateManager.Operations.CREATE_REQUEST),
                 )
-            )
+            )))
         )
         return true
     }

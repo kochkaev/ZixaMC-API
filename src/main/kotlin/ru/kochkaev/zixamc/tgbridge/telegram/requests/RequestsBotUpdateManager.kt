@@ -1,5 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
+import com.google.gson.annotations.SerializedName
+import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
@@ -9,12 +11,16 @@ import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.sql.data.RequestType
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
 
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
@@ -22,7 +28,7 @@ object RequestsBotUpdateManager {
             val entity = SQLEntity.get(msg.from!!.id)?:return
             if (entity.isRestricted) return
             if (entity.accountType == AccountType.REQUESTER) {
-                val requesterData = entity.data?:return
+                val requesterData = entity.data
                 if (!entity.agreedWithRules) {
                     bot.sendMessage(
                         msg.chat.id,
@@ -83,20 +89,18 @@ object RequestsBotUpdateManager {
                                 replyParameters = TgReplyParameters(
                                     msg.messageId
                                 ),
-                                replyMarkup = TgInlineKeyboardMarkup(
-                                    listOf(
-                                        listOf(
-                                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                                text = config.user.lang.button.confirmSending,
-                                                callback_data = "send_request"
-                                            ),
-                                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                                text = config.user.lang.button.cancelRequest,
-                                                callback_data = "cancel_sending_request"
-                                            ),
-                                        )
-                                    )
-                                )
+                                replyMarkup = TgMenu(listOf(listOf(
+                                    SQLCallback.of(
+                                        display = config.user.lang.button.confirmSending,
+                                        type = "requests",
+                                        data = RequestCallback(Operations.SEND_REQUEST),
+                                    ),
+                                    SQLCallback.of(
+                                        display = config.user.lang.button.cancelRequest,
+                                        type = "requests",
+                                        data = RequestCallback(Operations.CANCEL_SENDING_REQUEST),
+                                    ),
+                                )))
                             )
                             it.message_id_in_chat_with_user = msg.messageId.toLong()
                         }
@@ -133,7 +137,7 @@ object RequestsBotUpdateManager {
         else {
             val replied = msg.replyToMessage?:return
             val entity = SQLEntity.getByTempArray(replied.messageId.toString())?:return
-            if (!entity.tempArray.contains(replied.messageId.toString()) || !entity.data!!.requests.any { RequestType.getAllPending().contains(it.request_status)}) return
+            if (!entity.tempArray.contains(replied.messageId.toString()) || !entity.data.requests.any { RequestType.getAllPending().contains(it.request_status)}) return
             bot.forwardMessage(
                 chatId = entity.userId,
                 fromChatId = msg.chat.id,
@@ -142,13 +146,13 @@ object RequestsBotUpdateManager {
             entity.tempArray.add(msg.messageId.toString())
         }
     }
-    suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery) {
-        val entity = SQLEntity.get(cbq.from.id)?:return
-        if (entity.isRestricted) return
-        when (cbq.data) {
-            "agree_with_rules" -> {
+    suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery, sql: SQLCallback<RequestCallback>): TgCBHandlerResult {
+        val entity = SQLEntity.get(cbq.from.id)?:return TgCBHandlerResult.SUCCESS
+        if (entity.isRestricted) return TgCBHandlerResult.DELETE_MARKUP
+        when (sql.data?.operation) {
+            Operations.AGREE_WITH_RULES -> {
                 entity.agreedWithRules = true
-                val requests = entity.data?.requests?:return
+                val requests = entity.data.requests
                 if (requests.any {it.request_status == RequestType.CREATING}) {
                     val editedRequest = requests.first{it.request_status == RequestType.CREATING}
                     val newMessage = bot.sendMessage(
@@ -163,7 +167,37 @@ object RequestsBotUpdateManager {
                     entity.editRequest(editedRequest)
                 }
             }
-            "revoke_agree_with_rules" -> {
+            Operations.REVOKE_AGREE_WITH_RULES -> {
+                bot.sendMessage(
+                    chatId = cbq.message.chat.id,
+                    text = TextParser.formatLang(config.commonLang.areYouSureRevokeAgreeWithRules, "nickname" to (entity.nickname?:cbq.from.firstName)),
+                    replyMarkup = TgMenu(listOf(
+                        listOf(SQLCallback.of(
+                            display = ServerBot.config.integration.group.confirm,
+                            type = "requests",
+                            data = RequestCallback(Operations.CONFIRM_REVOKE_AGREE_WITH_RULES, entity.userId)
+                        )),
+                        listOf(SQLCallback.of(
+                            display = ServerBot.config.integration.group.cancelConfirm,
+                            type = "requests",
+                            data = RequestCallback(Operations.SUCCESS, entity.userId)
+                        )),
+                    ))
+                )
+                return TgCBHandlerResult.SUCCESS
+            }
+            Operations.CONFIRM_REVOKE_AGREE_WITH_RULES -> {
+                if (sql.data?.userId != entity.userId) {
+                    bot.answerCallbackQuery(
+                        callbackQueryId = cbq.id,
+                        text = TextParser.formatLang(
+                            text = config.commonLang.thatButtonFor,
+                            "nickname" to (sql.data?.userId?.let { SQLEntity.get(it)?.nickname ?: it.toString() } ?:"")
+                        ),
+                        showAlert = true,
+                    )
+                    return TgCBHandlerResult.SUCCESS
+                }
                 entity.agreedWithRules = false
                 RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(
                     message = null,
@@ -181,16 +215,17 @@ object RequestsBotUpdateManager {
                     entityExecutor = entity,
                     messageForReplyId = cbq.message.messageId,
                 )
+                return TgCBHandlerResult.DELETE_MARKUP
             }
-            "redraw_request" -> {
-                entity.data = entity.data.let { it!!.requests = ArrayList(it.requests.filter { it1 -> it1.request_status != RequestType.CREATING }); it }
+            Operations.REDRAW_REQUEST -> {
+                entity.data = entity.data.let { it.requests = ArrayList(it.requests.filter { it1 -> it1.request_status != RequestType.CREATING }); it }
                 newRequest(entity)
             }
-            "cancel_request" -> cancelRequest(entity)
-            "cancel_sending_request" -> cancelSendingRequest(entity)
-            "create_request" -> newRequest(entity)
-            "send_request" -> {
-                val request = entity.data!!.requests.first {it.request_status == RequestType.CREATING}
+            Operations.CANCEL_REQUEST -> cancelRequest(entity)
+            Operations.CANCEL_SENDING_REQUEST -> cancelSendingRequest(entity)
+            Operations.CREATE_REQUEST -> newRequest(entity)
+            Operations.SEND_REQUEST -> {
+                val request = entity.data.requests.first {it.request_status == RequestType.CREATING}
                 val forwarded = bot.forwardMessage(
                     chatId = config.forModerator.chatId,
                     messageThreadId = config.forModerator.topicId,
@@ -201,41 +236,37 @@ object RequestsBotUpdateManager {
                     chatId = entity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.event.onSend, request.request_nickname),
                     replyParameters = TgReplyParameters(cbq.message.messageId),
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    text = config.user.lang.button.cancelRequest,
-                                    callback_data = "cancel_request"
-                                )
-                            )
+                    replyMarkup = TgMenu(listOf(listOf(
+                        SQLCallback.of(
+                            display = config.user.lang.button.cancelRequest,
+                            type = "requests",
+                            data = RequestCallback(Operations.CANCEL_REQUEST),
                         )
-                    )
+                    )))
                 )
                 val moderatorsControl = bot.sendMessage(
                     chatId = config.forModerator.chatId,
                     messageThreadId = config.forModerator.topicId,
                     text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onNew, request.request_nickname),
-                    replyMarkup = TgInlineKeyboardMarkup(
+                    replyMarkup = TgMenu(listOf(
                         listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    config.forModerator.lang.button.approveSending,
-                                    callback_data = "approve_request"
-                                ),
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    config.forModerator.lang.button.denySending,
-                                    callback_data = "deny_request"
-                                ),
+                            SQLCallback.of(
+                                display = config.forModerator.lang.button.approveSending,
+                                type = "requests",
+                                data = RequestCallback(Operations.APPROVE_REQUEST),
                             ),
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    config.forModerator.lang.button.restrictSender,
-                                    callback_data = "restrict_user"
-                                )
+                            SQLCallback.of(
+                                display = config.forModerator.lang.button.denySending,
+                                type = "requests",
+                                data = RequestCallback(Operations.DENY_REQUEST),
                             ),
-                        )
-                    ),
+                        ),
+                        listOf(SQLCallback.of(
+                            display = config.forModerator.lang.button.restrictSender,
+                            type = "requests",
+                            data = RequestCallback(Operations.RESTRICT_USER),
+                        )),
+                    )),
                     replyParameters = TgReplyParameters(forwarded.messageId),
                     protectContent = true,
                 )
@@ -246,16 +277,16 @@ object RequestsBotUpdateManager {
                 entity.editRequest(request)
                 entity.addNickname(request.request_nickname!!)
             }
-            "approve_request" -> {
+            Operations.APPROVE_REQUEST -> {
                 val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
-                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                    it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
-                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
+                val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
                 val forwardedMessage = bot.forwardMessage(
                     chatId = config.target.chatId,
                     messageThreadId = config.target.topicId,
                     fromChatId = cbq.message.chat.id,
-                    messageId = cbq.message.replyToMessage?.messageId?:return
+                    messageId = cbq.message.replyToMessage?.messageId?:return TgCBHandlerResult.SUCCESS
                 )
                 val newMessage = bot.sendMessage(
                     chatId = config.target.chatId,
@@ -284,45 +315,40 @@ object RequestsBotUpdateManager {
                     messageId = request.message_id_in_chat_with_user.toInt(),
                     replyMarkup = TgReplyMarkup()
                 )
+                SQLCallback.getAll(userEntity.userId, request.message_id_in_chat_with_user.toInt()).forEach { it.drop() }
                 val messageInChatWithUser = bot.sendMessage(
                     chatId = userEntity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.event.onApprove, request.request_nickname),
                     replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    text = config.user.lang.button.cancelRequest,
-                                    callback_data = "cancel_request"
-                                )
-                            )
+                    replyMarkup = TgMenu(listOf(listOf(
+                        SQLCallback.of(
+                            display = config.user.lang.button.cancelRequest,
+                            type = "requests",
+                            data = RequestCallback(Operations.CANCEL_REQUEST),
                         )
-                    )
+                    )))
                 )
                 val moderatorsControl = bot.editMessageText(
                     chatId = cbq.message.chat.id,
                     messageId = cbq.message.messageId,
                     text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onApprove, request.request_nickname),
                 )
+                SQLCallback.getAll(moderatorsControl.chat.id, moderatorsControl.messageId).forEach { it.drop() }
                 bot.editMessageReplyMarkup(
                     chatId = moderatorsControl.chat.id,
                     messageId = moderatorsControl.messageId,
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    config.forModerator.lang.button.closeRequestVote,
-                                    callback_data = "close_poll"
-                                )
-                            ),
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    config.forModerator.lang.button.restrictSender,
-                                    callback_data = "restrict_user"
-                                )
-                            ),
-                        )
-                    )
+                    replyMarkup = TgMenu(listOf(
+                        listOf(SQLCallback.of(
+                            display = config.forModerator.lang.button.closeRequestVote,
+                            type = "requests",
+                            data = RequestCallback(Operations.CLOSE_POLL)
+                        )),
+                        listOf(SQLCallback.of(
+                            display = config.forModerator.lang.button.restrictSender,
+                            type = "requests",
+                            data = RequestCallback(Operations.RESTRICT_USER)
+                        )),
+                    ))
                 )
                 request.message_id_in_chat_with_user = messageInChatWithUser.messageId.toLong()
                 request.message_id_in_target_chat = forwardedMessage.messageId.toLong()
@@ -332,30 +358,28 @@ object RequestsBotUpdateManager {
                 request.request_status = RequestType.PENDING
                 userEntity.editRequest(request)
             }
-            "deny_request" -> {
+            Operations.DENY_REQUEST -> {
                 val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
-                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                    it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
-                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
+                val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
                 bot.editMessageReplyMarkup(
                     chatId = userEntity.userId,
                     messageId = request.message_id_in_chat_with_user.toInt(),
                     replyMarkup = TgReplyMarkup()
                 )
+                SQLCallback.getAll(userEntity.userId, request.message_id_in_chat_with_user.toInt()).forEach { it.drop() }
                 val messageInChatWithUser = bot.sendMessage(
                     chatId = userEntity.userId,
                     text = BotLogic.escapePlaceholders(config.user.lang.event.onDeny, request.request_nickname),
                     replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
-                    replyMarkup = TgInlineKeyboardMarkup(
-                        inline_keyboard = listOf(
-                            listOf(
-                                TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                    text = config.user.lang.button.redrawRequest,
-                                    callback_data = "redraw_request",
-                                )
-                            )
+                    replyMarkup = TgMenu(listOf(listOf(
+                        SQLCallback.of(
+                            display = config.user.lang.button.redrawRequest,
+                            type = "requests",
+                            data = RequestCallback(Operations.REDRAW_REQUEST),
                         )
-                    )
+                    )))
                 )
                 bot.editMessageText(
                     chatId = cbq.message.chat.id,
@@ -366,11 +390,11 @@ object RequestsBotUpdateManager {
                 request.request_status = RequestType.DENIED
                 userEntity.editRequest(request)
             }
-            "restrict_user" -> {
+            Operations.RESTRICT_USER -> {
                 val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
-                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                    it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
-                val request = userEntity.data!!.requests.first { it.request_status == RequestType.MODERATING }
+                val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
                 bot.editMessageText(
                     chatId = cbq.message.chat.id,
                     messageId = cbq.message.messageId,
@@ -390,15 +414,17 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
                 userEntity.isRestricted = true
             }
-            "close_poll" -> {
-                if (entity.accountType != AccountType.ADMIN) return
+            Operations.CLOSE_POLL -> {
+                if (entity.accountType != AccountType.ADMIN) return TgCBHandlerResult.SUCCESS
+                SQLCallback.getAll(cbq.message.chat.id, cbq.message.messageId).forEach { it.drop() }
                 val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
-                    it.data!!.requests.any { it1 -> it1.request_status == RequestType.PENDING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
+                    it.data.requests.any { it1 -> it1.request_status == RequestType.PENDING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
-                val request = userEntity.data!!.requests.first { it.request_status == RequestType.PENDING }
+                val request = userEntity.data.requests.first { it.request_status == RequestType.PENDING }
+                SQLCallback.getAll(userEntity.userId, request.message_id_in_chat_with_user.toInt()).forEach { it.drop() }
                 val isAccepted = bot.stopPoll(
                     chatId = config.target.chatId,
-                    messageId = request.poll_message_id?.toInt()?:return
+                    messageId = request.poll_message_id?.toInt()?:return TgCBHandlerResult.SUCCESS
                 ).options
                     ?.filter { it.text != config.target.lang.poll.answerNull }
                     ?.maxBy { it.voter_count } ?.text?.equals(config.target.lang.poll.answerTrue) ?: false
@@ -409,12 +435,26 @@ object RequestsBotUpdateManager {
                     text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onVoteClosed, request.request_nickname),
                 )
             }
+            Operations.SUCCESS -> {
+                if (sql.data?.userId != entity.userId) {
+                    bot.answerCallbackQuery(
+                        callbackQueryId = cbq.id,
+                        text = TextParser.formatLang(
+                            text = config.commonLang.thatButtonFor,
+                            "nickname" to (sql.data?.userId?.let { SQLEntity.get(it)?.nickname ?: it.toString() } ?:"")
+                        ),
+                        showAlert = true,
+                    )
+                    return TgCBHandlerResult.SUCCESS
+                }
+                bot.deleteMessage(
+                    chatId = cbq.message.chat.id,
+                    messageId = cbq.message.messageId,
+                )
+            }
+            else -> {}
         }
-        if (cbq.message.chat.id > 0) bot.editMessageReplyMarkup(
-            chatId = cbq.message.chat.id,
-            messageId = cbq.message.messageId,
-            replyMarkup = TgReplyMarkup()
-        )
+        return if (cbq.message.chat.id>0) TgCBHandlerResult.DELETE_MARKUP else TgCBHandlerResult.SUCCESS
     }
 
     suspend fun onTelegramChatJoinRequest(request: TgChatJoinRequest) {
@@ -431,5 +471,37 @@ object RequestsBotUpdateManager {
                 group.members.add(request.from.id)
             }
         }
+    }
+    open class RequestCallback(
+        var operation: Operations,
+        var userId: Long? = null,
+    ): CallbackData
+    enum class Operations {
+        @SerializedName("agree_with_rules")
+        AGREE_WITH_RULES,
+        @SerializedName("revoke_agree_with_rules")
+        REVOKE_AGREE_WITH_RULES,
+        @SerializedName("confirm_revoke_agree_with_rules")
+        CONFIRM_REVOKE_AGREE_WITH_RULES,
+        @SerializedName("redraw_request")
+        REDRAW_REQUEST,
+        @SerializedName("cancel_request")
+        CANCEL_REQUEST,
+        @SerializedName("cancel_sending_request")
+        CANCEL_SENDING_REQUEST,
+        @SerializedName("create_request")
+        CREATE_REQUEST,
+        @SerializedName("send_request")
+        SEND_REQUEST,
+        @SerializedName("approve_request")
+        APPROVE_REQUEST,
+        @SerializedName("deny_request")
+        DENY_REQUEST,
+        @SerializedName("restrict_user")
+        RESTRICT_USER,
+        @SerializedName("close_poll")
+        CLOSE_POLL,
+        @SerializedName("success")
+        SUCCESS,
     }
 }

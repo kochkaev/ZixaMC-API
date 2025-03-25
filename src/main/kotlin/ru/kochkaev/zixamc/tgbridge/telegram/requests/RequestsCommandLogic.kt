@@ -8,6 +8,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.checkPermissionToExecute
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
 import ru.kochkaev.zixamc.tgbridge.sql.data.*
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
 
 object RequestsCommandLogic {
 
@@ -72,7 +73,7 @@ object RequestsCommandLogic {
                         bot.editMessageReplyMarkup(
                             chatId = entity.userId,
                             messageId = it.message_id_in_chat_with_user.toInt(),
-                            replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup()
+                            replyMarkup = TgReplyMarkup()
                         )
                     }
             } catch (_: Exception) {}
@@ -122,7 +123,7 @@ object RequestsCommandLogic {
         bot.editMessageReplyMarkup(
             chatId = entity.userId,
             messageId = request.message_id_in_chat_with_user.toInt(),
-            replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup()
+            replyMarkup = TgReplyMarkup()
         )
         request.request_status = if (isAccepted) RequestType.ACCEPTED else RequestType.REJECTED
         request.message_id_in_chat_with_user = newMessage.messageId.toLong()
