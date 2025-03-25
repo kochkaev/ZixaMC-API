@@ -7,7 +7,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.kyori.adventure.text.Component
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.coroutineScope
+import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.config

@@ -13,6 +13,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.telegram.easyAuth.EasyAuthIntegration
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.ServerBotLogic
+import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
 
 /**
  * @author kochkaev
@@ -24,7 +25,6 @@ object ServerBot {
     lateinit var bot: TelegramBotZixa
     val config
         get() = ConfigManager.CONFIG!!.serverBot
-    val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
     var isInitialized = false
     private val lastMessageLock = Mutex()
 
@@ -46,7 +46,7 @@ object ServerBot {
 //        bot.registerCommandHandler("cancel", this::onTelegramCancelCommand)
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
-            ZixaMCTGBridge.isServerBotLoaded = true
+//            ZixaMCTGBridge.isServerBotLoaded = true
             ServerBotLogic.registerTelegramHandlers()
             if (EasyAuthIntegration.isEnabled) {
 //                ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
@@ -70,9 +70,10 @@ object ServerBot {
             coroutineScope.launch {
                 if (config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
                 bot.shutdown()
-                ZixaMCTGBridge.isServerBotLoaded = false
-                ZixaMCTGBridge.executeStopSQL()
-                coroutineScope.cancel()
+//                ZixaMCTGBridge.isServerBotLoaded = false
+//                ZixaMCTGBridge.executeStopSQL()
+                ZixaMCTGBridge.logger.info("ServerBot job canceled")
+//                job.cancelAndJoin()
             }
         }
         isInitialized = false

@@ -34,16 +34,18 @@ class ZixaMCTGBridge : ModInitializer {
             dispatcher.execute(parseResults)
         }
 
-        var isRequestsBotLoaded = false
-        var isServerBotLoaded = false
-        fun executeStopSQL() {
-            if (!isServerBotLoaded && !isRequestsBotLoaded)
-                MySQL.close()
-        }
+//        var isRequestsBotLoaded = false
+//        var isServerBotLoaded = false
+//        fun executeStopSQL() {
+//            if (!isServerBotLoaded && !isRequestsBotLoaded)
+//                MySQL.close()
+//        }
     }
     override fun onInitialize() {
-        RequestsBot.startBot()
-        ServerBot.startBot()
+//        RequestsBot.startBot()
+//        ServerBot.startBot()
+        Initializer.startRequestsBot()
+        Initializer.startServerBot()
         RequestsBot.bot.registerCallbackQueryHandler("cancel", CancelCallbackData::class.java, CancelCallbackData.ON_REQUESTS_CALLBACK)
         ServerBot.bot.registerCallbackQueryHandler("cancel", CancelCallbackData::class.java, CancelCallbackData.ON_SERVER_CALLBACK)
 
@@ -53,11 +55,12 @@ class ZixaMCTGBridge : ModInitializer {
             ReplyCommand.registerCommand(dispatcher)
         }
 
-        ConsoleFeature.startPeriodicBroadcast()
+//        ConsoleFeature.startPeriodicBroadcast()
+        Initializer.startConsoleSync()
     }
     fun onServerStopped(server: MinecraftServer) {
-        ServerBot.stopBot()
-        RequestsBot.stopBot()
-        ConsoleFeature.stopBroadcast()
+//        ServerBot.stopBot()
+//        RequestsBot.stopBot()
+        Initializer.stop()
     }
 }

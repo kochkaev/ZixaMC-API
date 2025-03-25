@@ -14,6 +14,8 @@ import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.sql.data.NewProtectedData
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
+import kotlin.coroutines.CoroutineContext
+import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
 
 object ConsoleFeature {
     private val groups: HashMap<Long, Int?>
@@ -29,7 +31,7 @@ object ConsoleFeature {
     private var lastMessage: String? = null
     private val lastedMessage: HashMap<Long, Int?> = hashMapOf()
     private val broadcastLock = Mutex()
-    private val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
+    lateinit var job: Job
     private suspend fun broadcast(message: String) {
         groups.forEach { (chatId, topicId) ->
             if (listOf(true, null).contains(lastedMessage[chatId]?.let { lastMessage!=null && lastMessage!!.length + message.length > 4096 })) {
@@ -37,12 +39,13 @@ object ConsoleFeature {
                     lastedMessage[chatId] = bot.sendMessage(
                         chatId = chatId,
                         text = message,
-                        messageThreadId = topicId
+                        messageThreadId = topicId,
+                        protectContent = true,
                     ).also { SQLChat.get(chatId)?.setProtectedInfoMessage(
                         message = it,
                         protectLevel = AccountType.ADMIN,
                         protectedType = NewProtectedData.ProtectedType.TEXT,
-                        bot.me.id,
+                        senderBotId = bot.me.id,
                     ) } .messageId
                     lastMessage = message
                 } catch (_: Exception) {}
@@ -64,7 +67,7 @@ object ConsoleFeature {
         accumulatedMessages.append("\n" + message)
     }
     fun startPeriodicBroadcast() {
-        coroutineScope.launch {
+        job = coroutineScope.launch {
             broadcast(config.integration.group.features.console.newSession)
             while (isActive) {
                 delay(10_000L) // ожидание 10 секунд
@@ -89,7 +92,8 @@ object ConsoleFeature {
                 } else null
             } + "\n" + config.integration.group.features.console.stopSession
             broadcast(messagesToSend)
-            coroutineScope.cancel()
+            ZixaMCTGBridge.logger.info("ConsoleFeature job canceled")
+            job.cancel()
         }
     }
     fun executeCommand(msg: TgMessage) = withScopeAndLock {
@@ -107,7 +111,8 @@ object ConsoleFeature {
                     chatId = group.chatId,
                     text = TextParser.escapeHTML(it),
                     messageThreadId = data.topicId,
-                    replyParameters = TgReplyParameters(msg.messageId)
+                    replyParameters = TgReplyParameters(msg.messageId),
+                    protectContent = true,
                 ).also { msg ->
                     group.setProtectedInfoMessage(
                         message = msg,

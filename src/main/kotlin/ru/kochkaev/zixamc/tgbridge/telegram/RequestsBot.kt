@@ -6,6 +6,7 @@ import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge.Companion.logger
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotCommands
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
+import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
 
 /**
  * @author kochkaev
@@ -14,7 +15,6 @@ object RequestsBot {
     lateinit var bot: TelegramBotZixa
     val config
         get() = ConfigManager.CONFIG!!.requestsBot
-    private val coroutineScope = CoroutineScope(Dispatchers.IO).plus(SupervisorJob())
     var isInitialized = false
 
     fun startBot() {
@@ -40,7 +40,7 @@ object RequestsBot {
         bot.registerCommandHandler("cancel", RequestsBotCommands::onTelegramCancelCommand)
         coroutineScope.launch {
             bot.startPolling(coroutineScope)
-            ZixaMCTGBridge.isRequestsBotLoaded = true
+//            ZixaMCTGBridge.isRequestsBotLoaded = true
         }
         isInitialized = true
     }
@@ -48,9 +48,10 @@ object RequestsBot {
         if (config.isEnabled) {
             coroutineScope.launch {
                 bot.shutdown()
-                ZixaMCTGBridge.isRequestsBotLoaded = false
-                ZixaMCTGBridge.executeStopSQL()
-                coroutineScope.cancel()
+                ZixaMCTGBridge.logger.info("RequestsBot job canceled")
+//                ZixaMCTGBridge.isRequestsBotLoaded = false
+//                ZixaMCTGBridge.executeStopSQL()
+//                job.cancelAndJoin()
             }
         }
         isInitialized = false

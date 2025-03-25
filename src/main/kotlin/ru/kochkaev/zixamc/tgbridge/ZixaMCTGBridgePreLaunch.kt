@@ -43,17 +43,11 @@ class ZixaMCTGBridgePreLaunch : PreLaunchEntrypoint {
         registerTypeAdapters()
         ConfigManager.init()
 
-        MySQL.connect()
-        SQLCallback.connectTable()
-        SQLProcess.connectTable()
-        SQLEntity.connectTable()
-        SQLGroup.connectTable()
-
-        val context = LogManager.getContext(false) as LoggerContext
-        val rootLogger = context.configuration.rootLogger
-        val customAppender = ConsoleLogAppender.createAppender("ZIXA_consoleFeature", null, null)
-        customAppender.start()
-        rootLogger.addAppender(customAppender, Level.INFO, null)
-        context.updateLoggers()
+//        MySQL.connect()
+//        SQLCallback.connectTable()
+//        SQLProcess.connectTable()
+//        SQLEntity.connectTable()
+//        SQLGroup.connectTable()
+        Initializer.startSQL()
     }
 }

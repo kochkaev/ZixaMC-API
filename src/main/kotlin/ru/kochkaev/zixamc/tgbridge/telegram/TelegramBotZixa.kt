@@ -33,7 +33,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(TgApi::class.java)
-    private var pollTask: Job? = null
+    var pollTask: Job? = null
     private val commandHandlers: MutableList<suspend (TgMessage) -> Boolean> = mutableListOf()
     private val messageHandlers: MutableList<suspend (TgMessage) -> Unit> = mutableListOf()
     private val callbackQueryHandlers: MutableList<suspend (TgCallbackQuery) -> Unit> = mutableListOf()

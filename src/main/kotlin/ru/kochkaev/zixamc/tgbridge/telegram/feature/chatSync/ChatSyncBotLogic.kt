@@ -11,7 +11,7 @@ import java.time.temporal.ChronoUnit
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.coroutineScope
+import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.Markdown2HTMLParser
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
