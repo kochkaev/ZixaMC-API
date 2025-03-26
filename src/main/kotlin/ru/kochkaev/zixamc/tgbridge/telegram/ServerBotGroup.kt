@@ -139,6 +139,11 @@ object ServerBotGroup {
             }
         }
     }
+    suspend fun newChatMembersRequests(msg: TgMessage) {
+        val user = msg.from?.let { SQLEntity.get(it.id) } ?: return
+        if (msg.newChatMembers?.map { it.id } ?.contains(RequestsBot.bot.me.id) == true && !user.hasProtectedLevel(AccountType.ADMIN))
+            RequestsBot.bot.leaveChat(msg.chat.id)
+    }
     suspend fun leftChatMember(msg: TgMessage) {
         val group = SQLGroup.get(msg.chat.id) ?: return
         val member = msg.leftChatMember!!

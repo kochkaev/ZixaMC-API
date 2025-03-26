@@ -7,7 +7,10 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.server
 import xyz.nikitacartes.easyauth.EasyAuth.config as easyAuthConfig
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
+import ru.kochkaev.zixamc.tgbridge.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
 import xyz.nikitacartes.easyauth.EasyAuth
 import xyz.nikitacartes.easyauth.utils.PlayerAuth
 
@@ -63,17 +66,20 @@ object AuthManager {
         val cache = EasyAuth.playerCacheMap[uuid]
         if (!easyAuthConfig.enableGlobalPassword && (cache == null || cache.password.isEmpty())) return
         val nickname = player.nameForScoreboard
-        val entity = SQLEntity.get(nickname)?:return kickYouAreNotPlayer(player)
+        val entity = SQLEntity.get(nickname)
+        if (entity == null || !entity.hasProtectedLevel(AccountType.PLAYER) || !entity.data.minecraftAccounts.fold(false) {
+                acc, it -> acc || MinecraftAccountType.getAllActiveNow().contains(it.accountStatus) && it.nickname == nickname
+            }) return kickYouAreNotPlayer(player)
         if ((player as PlayerAuth).`easyAuth$canSkipAuth`() || (player as PlayerAuth).`easyAuth$isAuthenticated`()) return
         player.sendMessage(config.easyAuth.langMinecraft.onJoinTip.getMinecraft())
         try {
             val message = bot.sendMessage(
                 chatId = entity.userId,
                 text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onJoinTip, nickname),
-                replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup(
+                replyMarkup = TgInlineKeyboardMarkup(
                     listOf(
                         listOf(
-                            ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                                 text = BotLogic.escapePlaceholders(
                                     config.easyAuth.langTelegram.buttonApprove,
                                     nickname
@@ -81,7 +87,7 @@ object AuthManager {
 //                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "approve")).serialize()
                                 callback_data = "easyauth\$approve/$nickname"
                             ),
-                            ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                            TgInlineKeyboardMarkup.TgInlineKeyboardButton(
                                 text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonDeny, nickname),
 //                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "deny")).serialize()
                                 callback_data = "easyauth\$deny/$nickname"

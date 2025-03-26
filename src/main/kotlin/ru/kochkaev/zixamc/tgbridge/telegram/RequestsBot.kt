@@ -24,6 +24,7 @@ object RequestsBot {
             bot.init()
         }
         bot.registerMessageHandler(RequestsBotUpdateManager::onTelegramMessage)
+        bot.registerNewChatMembersHandler(ServerBotGroup::newChatMembersRequests)
         bot.registerCallbackQueryHandler("requests", RequestsBotUpdateManager.RequestCallback::class.java, RequestsBotUpdateManager::onTelegramCallbackQuery)
         bot.registerCommandHandler("accept", RequestsBotCommands::onTelegramAcceptCommand)
         bot.registerCommandHandler("reject", RequestsBotCommands::onTelegramRejectCommand)
