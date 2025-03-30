@@ -228,6 +228,7 @@ data class Config (
                     val code: TextData = TextData("<color:gray><hover:show_text:'Копировать в буфер обмена'><click:copy_to_clipboard:'{text}'><title></click></hover></color:gray>"),
                     val spoiler: TextData = TextData("<color:gray><obfuscated><hover:show_text:<text>>{placeholder}</hover></obfuscated></color:gray>"),
                     val spoilerReplaceWithChar: String? = "▌",
+//                    val topic: TextData = TextData("<color:dark_aqua><hover:show_text:'Написать в топик'><click:suggest_command:'/r {group} {topicId} '>{topicName} »</click></hover></color:dark_aqua>"),
                 )
             }
             data class ServerBotChatSyncMessageDataClass (
@@ -288,7 +289,7 @@ data class Config (
                 val nameIsTaken: String = "Ошибка! Это имя уже занято.",
                 val done: String = "<b>Замечательно! Давайте перейдём к настройке моих функций.</b> 🛠️",
                 val selectFeature: String = "<b>Вот список всех функций, доступных в вашей группе.</b> 🔮",
-                val selectTopicForFeature: String = "<b>Выберите топик группы, для которого вы хотите применить эту функцию.</b> 🔮\nДля этого отправьте команду /selectTopic в нужный вам топик в этой группе.\n<i><u>Функции с главным топиком работают нестабильно!</u></i>",
+                val selectTopicForFeature: String = "<b>Выберите топик группы, для которого вы хотите применить эту функцию.</b> 🔮\nДля этого отправьте команду /selectTopic в нужный вам топик в этой группе.\n<i><u>Выбирая главный топик, вы синхронизируете с сервером всю группу!</u></i>",
                 val rulesUpdated: String = "Правила сервера были обновлены!\n» <a href=\"https://teletype.in/@zixamc/rules-bot\">Ознакомиться</a>\n\n<blockquote>Бот может работать в группе только до тех пор, пока подтверждено согласие с правилами и среди членов группы есть хотя-бы один игрок.</blockquote>",
                 val removeAgreeWithRulesAreYouSure: String = "<b>Вы уверены, что хотите отозвать своё согласие?</b> 🤔\nЭтот бот может работать в вашей группе только до тех пор, пока вы согласны с правилами сервера и придерживаетесь их.",
                 val removeAgreeWithRules: String = "Отозвать согласие ❌",
@@ -352,7 +353,7 @@ data class Config (
                     val aliasDeleted: String = "Псевдоним <u>{alias}</u> был удалён.",
                     val addAlias: String = "➕ Добавить псевдоним",
                     val nullPlaceholder: String = "Не установлено",
-                    val nullTopicPlaceholder: String = "Главный топик",
+                    val nullTopicPlaceholder: String = "Вся группа",
                     val truePlaceholder: String = "Включено",
                     val falsePlaceholder: String = "Выключено",
                     val turnOn: String = "Включить ✅",

@@ -17,6 +17,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.Markdown2HTM
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 
 
 object ChatSyncBotLogic {
@@ -47,7 +48,7 @@ object ChatSyncBotLogic {
         if (onlinePlayerNames.isNotEmpty()) {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(msg.messageId),
+                replyParameters = TgReplyParameters(msg.messageId),
                 text = TextParser.formatLang(
                     lang.telegram.playerList,
                     "count" to onlinePlayerNames.size.toString(),
@@ -57,7 +58,7 @@ object ChatSyncBotLogic {
         } else {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(msg.messageId),
+                replyParameters = TgReplyParameters(msg.messageId),
                 text = lang.telegram.playerListZeroOnline,
             )
         }
@@ -65,7 +66,7 @@ object ChatSyncBotLogic {
 
     private suspend fun onTelegramMessage(msg: TgMessage) {
         val group = (SQLGroup.get(msg.chat.id) ?: return).also {
-            if (!it.checkValidMsg(msg)) return
+            if (it.features.getCasted(FeatureTypes.CHAT_SYNC)?.checkValidMsg(msg) == false) return
         }
         group.lastMessageLock.withLock {
             group.lastMessage = null
@@ -109,7 +110,7 @@ object ChatSyncBotLogic {
         }
         else {
             runBlocking {
-                group.broadcastMinecraft(e.username, (e.text as TextComponent).content())
+                group.features.getCasted(FeatureTypes.CHAT_SYNC)?.broadcastMinecraft(e.username, (e.text as TextComponent).content())
             }
             false
         }
@@ -192,7 +193,7 @@ object ChatSyncBotLogic {
         } else {
             val newMsg = group.sendMessage(
                 text = currText,
-                reply = replyTo?.toInt()
+                reply = replyTo
             )
             group.lastMessage = if (shouldKeepAsLast) LastMessage(
                 LastMessageType.TEXT,

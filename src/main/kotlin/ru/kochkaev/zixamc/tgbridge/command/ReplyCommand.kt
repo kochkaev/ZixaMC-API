@@ -7,9 +7,10 @@ import com.mojang.brigadier.context.CommandContext
 import kotlinx.coroutines.runBlocking
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncFeatureData
 
 
 object ReplyCommand {
@@ -41,21 +42,21 @@ object ReplyCommand {
             if (withReply) IntegerArgumentType.getInteger(context, "message_id")
             else null
         val message = StringArgumentType.getString(context, "message")
-        val result = group?.broadcastMinecraft(context.source.name, message, messageId) ?: SQLGroup.BroadcastMinecraftResult.NOT_FOUND
+        val result = group?.features?.getCasted(FeatureTypes.CHAT_SYNC)?.broadcastMinecraft(context.source.name, message, messageId) ?: ChatSyncFeatureData.BroadcastMinecraftResult.NOT_FOUND
         when (result) {
-            SQLGroup.BroadcastMinecraftResult.NOT_FOUND ->
+            ChatSyncFeatureData.BroadcastMinecraftResult.NOT_FOUND ->
                 context.source.sendFeedback(
                     { ServerBot.config.chatSync.reply.chatNotFound.getMinecraft(
                         listOf("group" to groupName)
                     ) }, false
                 )
-            SQLGroup.BroadcastMinecraftResult.MESSAGE_NOT_FOUND ->
+            ChatSyncFeatureData.BroadcastMinecraftResult.MESSAGE_NOT_FOUND ->
                 context.source.sendFeedback(
                     { ServerBot.config.chatSync.reply.messageIdNotFound.getMinecraft(
                         listOf("group" to groupName, "messageId" to messageId.toString())
                     ) }, false
                 )
-            SQLGroup.BroadcastMinecraftResult.TG_ERROR ->
+            ChatSyncFeatureData.BroadcastMinecraftResult.TG_ERROR ->
                 context.source.sendFeedback(
                     { ServerBot.config.chatSync.reply.errorDueSending.getMinecraft() },
                     false

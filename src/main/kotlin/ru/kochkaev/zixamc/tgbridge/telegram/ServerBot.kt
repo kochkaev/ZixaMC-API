@@ -69,7 +69,7 @@ object ServerBot {
     fun stopBot() {
         if (config.isEnabled) {
             coroutineScope.launch {
-                if (config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
+//                if (config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
                 bot.shutdown()
 //                ZixaMCTGBridge.isServerBotLoaded = false
 //                ZixaMCTGBridge.executeStopSQL()

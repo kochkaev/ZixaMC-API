@@ -25,7 +25,7 @@ open class FeatureType<R: FeatureData>(
     val tgDescription: () -> String = { "" },
     val tgOnDone: suspend (SQLGroup) -> String = { "" },
     val checkAvailable: suspend (SQLGroup) -> Boolean = { true },
-    val getDefault: () -> R = { model.getDeclaredConstructor().newInstance() },
+    val getDefault: (SQLGroup) -> R = { model.getDeclaredConstructor().newInstance(it) },
     val optionsResolver: (R) -> String = { "" }
 ) {
     open suspend fun setUp(cbq: TgCallbackQuery, group: SQLGroup): TgCBHandlerResult {
@@ -61,7 +61,7 @@ open class FeatureType<R: FeatureData>(
     }
     open suspend fun finishSetUp(group: SQLGroup, replyTo: Int?): TgCBHandlerResult {
         if (!group.features.contains(this)) {
-            group.features.set(this, getDefault())
+            group.features.set(this, getDefault(group))
             bot.sendMessage(
                 chatId = group.chatId,
                 text = tgOnDone(group),

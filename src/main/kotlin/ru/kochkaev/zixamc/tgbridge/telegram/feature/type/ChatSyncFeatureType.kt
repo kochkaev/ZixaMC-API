@@ -10,7 +10,6 @@ import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.process.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
@@ -21,11 +20,11 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.SETTINGS
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.getSettingsText
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.TopicFeatureType
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncTopicData
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncFeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 
-object ChatSyncFeatureType: TopicFeatureType<ChatSyncTopicData>(
-    model = ChatSyncTopicData::class.java,
+object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
+    model = ChatSyncFeatureData::class.java,
     serializedName = "CHAT_SYNC",
     tgDisplayName = { config.integration.group.features.chatSync.display },
     tgDescription = { config.integration.group.features.chatSync.description },
@@ -35,7 +34,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncTopicData>(
         else config.integration.group.features.chatSync.doneNoTopic
     },
     checkAvailable = { true },
-    getDefault = { ChatSyncTopicData() },
+    getDefault = { ChatSyncFeatureData() },
     optionsResolver = {
         TextParser.formatLang(
             text = config.integration.group.features.chatSync.options,
@@ -136,7 +135,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncTopicData>(
             group.features.set(
                 FeatureTypes.CHAT_SYNC,
                 if (!isNotNew)
-                    FeatureTypes.CHAT_SYNC.getDefault().apply {
+                    FeatureTypes.CHAT_SYNC.getDefault(group).apply {
                         this.topicId = data.topicId
                         this.prefix = mm
                     }

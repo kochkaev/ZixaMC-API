@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge
 
 import com.mojang.brigadier.StringReader
+import kotlinx.coroutines.runBlocking
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
@@ -16,6 +17,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.group.ConsoleFeature
 import ru.kochkaev.zixamc.tgbridge.sql.*
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotLogic
 
 /**
  * @author kochkaev
@@ -61,6 +63,9 @@ class ZixaMCTGBridge : ModInitializer {
     fun onServerStopped(server: MinecraftServer) {
 //        ServerBot.stopBot()
 //        RequestsBot.stopBot()
+        runBlocking {
+            if (ServerBot.config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
+        }
         Initializer.stop()
     }
 }

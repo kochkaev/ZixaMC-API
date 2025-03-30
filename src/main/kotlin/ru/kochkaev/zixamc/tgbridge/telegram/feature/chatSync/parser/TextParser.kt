@@ -10,6 +10,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.con
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 
 object TextParser {
@@ -78,6 +79,8 @@ object TextParser {
         val messages = mutableListOf<Component>()
         val components = mutableListOf<Component>()
 
+//        topicToText(message)?.also { components.add(it) }
+
         message.pinnedMessage?.also { pinnedMsg ->
             val pinnedMessageText = mutableListOf<Component>()
             forwardFromToText(pinnedMsg)?.also { pinnedMessageText.add(it) }
@@ -100,6 +103,7 @@ object TextParser {
                 )
             )
         }
+
         forwardFromToText(message)?.also { components.add(it) }
         replyToText(message, group.features.getCasted(FeatureTypes.CHAT_SYNC)!!.topicId, resolveMessageLink(message), botId)?.also {
             if (!config.messages.replyInDifferentLine) components.add(it)
@@ -124,7 +128,7 @@ object TextParser {
                 "sender" to (senderNickname?:message.senderName),
             ),
             componentPlaceholders = listOf(
-                "prefix" to group.getResolvedPrefix(message.messageId),
+                "prefix" to (group.features.getCasted(FeatureTypes.CHAT_SYNC)?.getResolvedPrefix(message.messageId) ?: Component.text() as Component),
                 "text" to components
                     .flatMap { component -> listOf(component, Component.text(" ")) }
                     .fold(Component.text()) { acc, component -> acc.append(component) }
@@ -163,7 +167,7 @@ object TextParser {
     fun replyToText(message: TgMessage, topicId: Int?, messageURL: String, botId: Long): Component? {
         var info: ReplyInfo? = null
         message.replyToMessage?.also { reply ->
-            if (message.pinnedMessage != null || reply.messageId == topicId)
+            if (message.pinnedMessage != null || reply.messageId == topicId || reply.forumTopicCreated != null)
                 return@also
             info = ReplyInfo(
                 isReplyToMinecraft = reply.from?.id == botId,
@@ -199,13 +203,21 @@ object TextParser {
         }
     }
     private fun forwardFromToText(message: TgMessage) =
-        if (message.forwardFrom!=null) (
-            message.forwardFrom.let {
-                SQLEntity.get(it.id)?.nickname ?: message.senderUserName
-            }
-        ).let {
-            lang.minecraft.forward.get(listOf("from" to it, "url" to resolveMessageLink(message)))
-        } else null
+        message.forwardFrom?.let {
+            lang.minecraft.forward.get(listOf("from" to (SQLEntity.get(it.id)?.nickname ?: message.senderUserName), "url" to resolveMessageLink(message)))
+        }
+//    fun topicToText(message: TgMessage) =
+//        SQLGroup.get(message.chat.id)?.features?.getCasted(FeatureTypes.CHAT_SYNC)?.let {
+//            if (it.topicId != message.messageThreadId && message.replyToMessage?.forumTopicCreated != null)
+//                config.lang.minecraft.topic.get(
+//                    plainPlaceholders = listOf(
+//                        "group" to it.group!!.name!!,
+//                        "topicId" to message.messageThreadId.toString(),
+//                        "topicName" to message.replyToMessage.forumTopicCreated.name
+//                    )
+//                )
+//            else null
+//        }
 
     fun resolveMessageLink(message: TgMessage): String =
         "https://t.me/c/${-message.chat.id-1000000000000}/" + (if (message.messageThreadId!=null) "${message.messageThreadId}/" else "") + "${message.messageId}"

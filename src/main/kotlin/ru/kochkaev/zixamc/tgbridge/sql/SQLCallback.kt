@@ -10,6 +10,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCallback
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
+import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess.Companion
 import ru.kochkaev.zixamc.tgbridge.sql.util.*
 import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenuButton
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
@@ -269,6 +270,18 @@ class SQLCallback<T: CallbackData> private constructor(
                         callback_data = it.toString()
                     ) to it
                 }
+        }
+        fun migrateChatId(oldChatId: Long, newChatId: Long) {
+            try {
+                reConnect()
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("UPDATE ${SQLProcess.tableName} SET chat_id = ? WHERE chat_id = ?;")
+                preparedStatement.setLong(1, newChatId)
+                preparedStatement.setLong(2, oldChatId)
+                preparedStatement.executeUpdate()
+            } catch (e: SQLException) {
+                ZixaMCTGBridge.logger.error("Register error ", e)
+            }
         }
     }
 

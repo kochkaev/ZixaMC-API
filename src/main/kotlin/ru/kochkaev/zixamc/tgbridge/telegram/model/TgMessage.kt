@@ -50,6 +50,8 @@ data class TgMessage(
     val newChatMembers: List<TgUser>? = null,
     @SerializedName("left_chat_member")
     val leftChatMember: TgUser? = null,
+    @SerializedName("forum_topic_created")
+    val forumTopicCreated: TgTopicCreated? = null,
 ) : TgMessageMedia {
     val senderName
         get() = authorSignature

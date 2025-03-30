@@ -27,7 +27,7 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
     tgDescription = { config.integration.group.features.playersGroup.description },
     tgOnDone = { config.integration.group.features.playersGroup.done },
     checkAvailable = { true },
-    getDefault = { PlayersGroupFeatureData() },
+    getDefault = { PlayersGroupFeatureData(group = it) },
     optionsResolver = {
         TextParser.formatLang(
             text = config.integration.group.features.playersGroup.options,
@@ -44,7 +44,7 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
             data = FeatureGroupCallback(
                 data = SetupFeatureCallback(
                     feature = this,
-                    temp = group.features.getCasted(this)?:getDefault(),
+                    temp = group.features.getCasted(this)?:getDefault(group),
                     field = "autoAccept",
                     arg = ""
                 ),
@@ -57,7 +57,7 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
                 data = FeatureGroupCallback(
                     data = SetupFeatureCallback(
                         feature = this,
-                        temp = group.features.getCasted(this)?:getDefault(),
+                        temp = group.features.getCasted(this)?:getDefault(group),
                         field = "autoRemove",
                         arg = ""
                     ),

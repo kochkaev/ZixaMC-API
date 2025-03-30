@@ -1,31 +1,19 @@
 package ru.kochkaev.zixamc.tgbridge.sql
 
-import com.google.gson.GsonBuilder
-import eu.pb4.placeholders.api.parsers.MarkdownLiteParserV1
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import net.kyori.adventure.text.Component
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.LastMessage
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.MinecraftAdventureConverter
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser.replyToText
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager.CONFIG
 import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
-import ru.kochkaev.zixamc.tgbridge.config.TextData
-import ru.kochkaev.zixamc.tgbridge.config.serialize.FeatureTypeAdapter
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntity
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.MySQLConnection
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL.Companion.reConnect
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback.Companion
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.data.ChatData
@@ -35,7 +23,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncTopicData
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncFeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
@@ -125,7 +113,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    val features = FeaturesSQLMap(SQLGroup, "features", chatId, "chat_id")
+    val features = FeaturesSQLMap(SQLGroup, "features", chatId, "chat_id", this)
     var data: GroupData
         get() = try {
             reConnect()
@@ -183,17 +171,19 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 agreedWithRules = true,
                 isRestricted = false,
                 features = mapOf(
-                    CHAT_SYNC to ChatSyncTopicData(
+                    CHAT_SYNC to ChatSyncFeatureData(
                         enabled = true,
                         topicId = config.defaultGroup.topicId,
 //                        name = config.defaultGroup.name,
 //                        aliases = ArrayList(config.defaultGroup.aliases),
                         prefix = config.defaultGroup.prefix,
-                        fromMcPrefix = config.defaultGroup.fromMcPrefix
+                        fromMcPrefix = config.defaultGroup.fromMcPrefix,
+                        group = null
                     ),
                     FeatureTypes.PLAYERS_GROUP to PlayersGroupFeatureData(
                         autoAccept = true,
                         autoRemove = true,
+                        group = null,
                     )
                 ),
                 data = gson.toJson(GroupData(
@@ -368,6 +358,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 preparedStatement.setLong(2, old)
                 preparedStatement.executeUpdate()
                 SQLProcess.migrateChatId(old, newChatId)
+                SQLCallback.migrateChatId(old, newChatId)
                 SQLGroup(newChatId)
             } else this
         } catch (e: SQLException) {
@@ -375,40 +366,8 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
             this
         }
 
-    fun getResolvedPrefix(messageId: Int): Component =
-        config.lang.minecraft.prefixAppend.get(
-            plainPlaceholders = listOf(
-                "group" to name.toString(),
-                "message_id" to messageId.toString()
-            ),
-            componentPlaceholders = listOf(
-                "prefix" to features.getCasted(CHAT_SYNC).let {
-                    it?.prefix?.get() ?: Component.text(name.toString())
-                }
-            )
-        )
-    fun getResolvedFromMcPrefix(messageId: Int): Component =
-        config.lang.minecraft.prefixAppend.get(
-            plainPlaceholders = listOf(
-                "group" to name.toString(),
-                "message_id" to messageId.toString()
-            ),
-            componentPlaceholders = listOf(
-                "prefix" to (features.getCasted(CHAT_SYNC).let {
-                    it?.fromMcPrefix?.get() ?: it?.prefix?.get() ?: Component.text(name.toString())
-                } )
-            )
-        )
-
-    fun checkValidMsg(msg: TgMessage) = msg.let {
-        enabled &&
-        enabledChatSync &&
-        it.messageThreadId == features.getCasted(CHAT_SYNC)?.topicId
-    }
     val enabled: Boolean
         get() = agreedWithRules
-    val enabledChatSync: Boolean
-        get() = features.contains(CHAT_SYNC) && features.getCasted(CHAT_SYNC)!!.enabled
     fun isMember(nickname: String) =
         members.contains(SQLEntity.get(nickname))
     suspend fun getNoBotsMembers(): List<LinkedUser> =
@@ -434,51 +393,6 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
     }
     suspend fun deleteMessage(messageId: Int) {
         bot.deleteMessage(chatId, messageId)
-    }
-
-    suspend fun broadcastMinecraft(
-        nickname: String,
-        message: String,
-        replyTo: Int? = null,
-    ): BroadcastMinecraftResult {
-        if (!enabled || !isMember(nickname)) return BroadcastMinecraftResult.NOT_FOUND
-        val tgMessage = try {
-            ChatSyncBotLogic.sendReply(message, this, nickname, replyTo)
-        } catch (e: Exception) { return BroadcastMinecraftResult.MESSAGE_NOT_FOUND }
-        if (tgMessage != null) {
-            val messages = mutableListOf<Component>()
-            var mcMessage = message
-            replyToText(tgMessage, features.getCasted(CHAT_SYNC)!!.topicId, TextParser.resolveMessageLink(tgMessage), bot.me.id)?.also {
-                if (!config.messages.replyInDifferentLine) mcMessage = "$it $mcMessage"
-                else messages.add(it).also { messages.add(Component.text("\n")) }
-            }
-            messages.add(
-                config.lang.minecraft.messageMCFormat.get(
-                    plainPlaceholders = listOf(
-                        "nickname" to nickname,
-                    ),
-                    componentPlaceholders = listOf(
-                        "text" to MinecraftAdventureConverter.minecraftToAdventure(
-                            MarkdownLiteParserV1.ALL.parseNode(mcMessage).toText()
-                        ),
-                        "prefix" to getResolvedFromMcPrefix(tgMessage.messageId),
-                    )
-                )
-            )
-            ChatSyncBotCore.broadcastMessage(
-                messages
-                    .fold(Component.text()) { acc, component -> acc.append(component) }
-                    .build(),
-                this
-            )
-            return BroadcastMinecraftResult.SUCCESS
-        } else return BroadcastMinecraftResult.TG_ERROR
-    }
-    enum class BroadcastMinecraftResult {
-        SUCCESS,
-        NOT_FOUND,
-        MESSAGE_NOT_FOUND,
-        TG_ERROR,
     }
 
     fun withScopeAndLock(fn: suspend () -> Unit) {

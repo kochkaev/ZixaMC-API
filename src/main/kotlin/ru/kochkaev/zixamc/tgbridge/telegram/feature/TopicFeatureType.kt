@@ -29,7 +29,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
     tgDescription: () -> String = { "" },
     tgOnDone: suspend (SQLGroup) -> String = { "" },
     checkAvailable: suspend (SQLGroup) -> Boolean = { true },
-    getDefault: () -> R = { model.getDeclaredConstructor().newInstance() },
+    getDefault: (SQLGroup) -> R = { model.getDeclaredConstructor().newInstance(null, it) },
     optionsResolver: (R) -> String = { "" }
 ): FeatureType<R>(model, serializedName, tgDisplayName, tgDescription, tgOnDone, checkAvailable, getDefault, optionsResolver) {
     override suspend fun setUp(cbq: TgCallbackQuery, group: SQLGroup): TgCBHandlerResult {
@@ -75,7 +75,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
 
     open suspend fun finishSetUp(group: SQLGroup, replyTo: Int? = null, topicId: Int? = null) {
         if (!group.features.contains(this)) {
-            group.features.set(this, getDefault().apply {
+            group.features.set(this, getDefault(group).apply {
                 this.topicId = topicId
             })
             bot.sendMessage(
