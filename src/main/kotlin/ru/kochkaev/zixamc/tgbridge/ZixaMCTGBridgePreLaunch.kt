@@ -19,6 +19,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMember
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.group.ConsoleLogAppender
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
 
 /**
  * @author kochkaev
@@ -29,6 +30,7 @@ class ZixaMCTGBridgePreLaunch : PreLaunchEntrypoint {
             GsonManager.registerAdapters(
 //                AccountType::class.java to AccountTypeAdapter(),
                 TgCallback::class.java to CallbackDataAdapter(),
+                Menu.MenuCallbackData::class.java to MenuCallbackDataAdapter(),
                 object : TypeToken<Map<FeatureType<out FeatureData>, FeatureData>>() {}.type to FeatureMapDeserializer(),
                 FeatureType::class.java to FeatureTypeAdapter(),
                 LinkedCallback::class.java to LinkedCallbackAdapter(),

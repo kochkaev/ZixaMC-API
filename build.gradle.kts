@@ -68,6 +68,9 @@ repositories {
             includeGroup("maven.modrinth")
         }
     }
+    maven("https://jitpack.io")
+    maven("https://masa.dy.fi/maven")
+    maven("https://oss.sonatype.org/content/repositories/snapshots")
 //    maven ("https://dl.bintray.com/palantir/releases")
     mavenCentral()
 }
@@ -155,6 +158,10 @@ dependencies {
     modImplementation("eu.pb4:placeholder-api:2.4.1+1.21")
 
     modImplementation("maven.modrinth:audioplayer:fabric-1.21.1-1.13.2")
+
+    compileOnly("maven.modrinth:fabrictailor:2.5.0")
+//    modImplementation("com.github.samolego:Config2Brigadier:2.0.1")
+//    modImplementation("me.lucko:fabric-permissions-api:0.3.3")
 
     // Markdown
 //    include(implementation("org.commonmark:commonmark:0.18.2")!!)

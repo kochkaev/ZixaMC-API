@@ -13,7 +13,9 @@ import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 
 object TgEntities2TextComponentParser {
 
-    fun parse(message: TgMessage, text: String, entities: List<TgEntity>?): TextComponent {
+    fun parse(message: TgMessage, text: String, entities: List<TgEntity>?) =
+        parse(resolveMessageLink(message), text, entities)
+    fun parse(messageLink: String?, text: String, entities: List<TgEntity>?): TextComponent {
         if (entities == null) return Component.text(text)
         val components = mutableListOf<TextComponent>()
         val currentEntities = ArrayList<TgEntity>()
@@ -61,7 +63,7 @@ object TgEntities2TextComponentParser {
                             componentPlaceholders = listOf("title" to tempComponent.build())
                         ).toBuilder()
                         TgEntityType.HASHTAG, TgEntityType.CASHTAG -> tempComponent = lang.minecraft.hashtag.getTextComponent(
-                            plainPlaceholders = listOf("url" to resolveMessageLink(message)),
+                            plainPlaceholders = listOf("url" to (messageLink?:"")),
                             componentPlaceholders = listOf("title" to tempComponent.build())
                         ).toBuilder()
                         TgEntityType.SPOILER -> isSpoiler = true

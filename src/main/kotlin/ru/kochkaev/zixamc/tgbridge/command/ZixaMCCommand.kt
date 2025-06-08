@@ -13,7 +13,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 
 
 object ZixaMCCommand {
-    fun     registerCommand(dispatcher: CommandDispatcher<ServerCommandSource?>) {
+    fun registerCommand(dispatcher: CommandDispatcher<ServerCommandSource?>) {
         dispatcher.register(
             CommandManager.literal("zixamc")
                 .requires { it.hasPermissionLevel(2) }

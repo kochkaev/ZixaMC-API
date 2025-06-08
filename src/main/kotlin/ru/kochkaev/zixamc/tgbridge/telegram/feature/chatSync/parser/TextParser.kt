@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser
 
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.ComponentIteratorType
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
 import net.minecraft.util.Language
@@ -12,6 +13,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntity
 
 object TextParser {
 
@@ -73,6 +75,21 @@ object TextParser {
         } else {
             lines[0]
         }
+    }
+    fun trimReplyMessageText(text: Component): Component {
+        val iterator = text.iterable(ComponentIteratorType.BREADTH_FIRST)
+        val folded = arrayListOf<Component>()
+        var countKeys = 0
+        iterator.forEach {
+            val translated = translateComponent(it)
+            val keys = translated.length
+            if (countKeys == 0 || (countKeys + keys <=50 && folded.last() != it)) {
+                countKeys += keys
+                folded.add(it)
+            }
+        }
+        if (countKeys>50) folded.add(Component.text("..."))
+        return folded.fold(Component.text("")) { aac, it -> aac.append(it) }
     }
 
     fun toMinecraft(message: TgMessage, group: SQLGroup, botId: Long): Component {
@@ -163,6 +180,8 @@ object TextParser {
         var senderName: String,
         var media: Component?,
         var text: String?,
+        var entities: List<TgEntity>?,
+        var messageLink: String?,
     )
     fun replyToText(message: TgMessage, topicId: Int?, messageURL: String, botId: Long): Component? {
         var info: ReplyInfo? = null
@@ -173,7 +192,9 @@ object TextParser {
                 isReplyToMinecraft = reply.from?.id == botId,
                 senderName = SQLEntity.get(reply.from?.id?:0)?.nickname ?: reply.senderName,
                 media = mediaToText(reply, resolveMessageLink(message)),
-                text = reply.effectiveText
+                text = reply.effectiveText,
+                entities = reply.entities,
+                resolveMessageLink(reply)
             )
         }
         message.externalReply?.also { reply ->
@@ -182,20 +203,50 @@ object TextParser {
                 senderName = reply.senderName,
                 media = mediaToText(reply, resolveMessageLink(message)),
                 text = null,
+                entities = null,
+                messageLink = resolveMessageLink(message),
             )
         }
         message.quote?.also {
             info?.text = it.text
+            info?.entities = it.entities
         }
         return info?.let {
-            val fullText = "${it.media ?: ""} ${trimReplyMessageText(it.text ?: "")}".trim()
+            val components = arrayListOf(
+                it.media,
+//                it.text?.let { txt -> trimReplyMessageText(
+//                    if (config.messages.styledTelegramMessagesInMinecraft)
+//                        TgEntities2TextComponentParser.parse(
+//                            messageLink = it.messageLink,
+//                            text = txt,
+//                            entities = it.entities
+//                        )
+//                    else Component.text(txt)
+//                ) },
+                it.text?.let { txt ->
+                    if (config.messages.styledTelegramMessagesInMinecraft)
+                        TgEntities2TextComponentParser.parse(
+                            messageLink = it.messageLink,
+                            text = txt,
+                            entities = it.entities
+                        )
+                    else Component.text(txt)
+                }
+            )
+            val fullText = components.filterNotNull()
+                .flatMap { component -> listOf(component, Component.text(" ")) }
+                .fold(Component.text("")) { aac, component ->
+                    aac.append(component)
+                }
             if (it.isReplyToMinecraft) {
-                lang.minecraft.replyToMinecraft.get(listOf("text" to fullText))
+                lang.minecraft.replyToMinecraft.get(listOf(), listOf("text" to fullText))
             } else {
                 lang.minecraft.reply.get(
                     listOf(
                         "url" to messageURL,
                         "sender" to it.senderName,
+                    ),
+                    listOf(
                         "text" to fullText
                     )
                 )
@@ -238,7 +289,7 @@ object TextParser {
                 val z = Integer.parseInt(it.groupValues[4])
                 val worldName = it.groupValues[5]
 
-                return """<a href="${config.messages.bluemapUrl}#$worldName:$x:$y:$z:50:0:0:0:0:perspective">$waypointName</a>"""
+                return """<a href="${config.messages.bluemapUrl}#$worldName:$x:$y:$z:50:0:0:0:0:perspective">$waypointName [$x, $y, $z]</a>"""
             } catch (_: NumberFormatException) {
             }
         }

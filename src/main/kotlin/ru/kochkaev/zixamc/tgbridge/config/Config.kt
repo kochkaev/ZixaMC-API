@@ -202,15 +202,15 @@ data class Config (
                     val meMessage: String = "<b><tg-emoji emoji-id=\"5226928895189598791\">⭐️</tg-emoji> {username} {text}</b>",
                     val advancements: LangAdvancements = LangAdvancements(),
                     val playerList: String = "<b><tg-emoji emoji-id=\"5463412289883353404\">🤟</tg-emoji> Онлайн {count} игроков:</b>\n<i>{usernames}</i>",
-                    val playerListZeroOnline: String = "<b><tg-emoji emoji-id=\"5463137996091962323\">😭</tg-emoji> Нигого нет онлайн.</b>",
+                    val playerListZeroOnline: String = "<b><tg-emoji emoji-id=\"5463137996091962323\">😭</tg-emoji> Никого нет онлайн.</b>",
                 )
 
                 data class LangMinecraft(
                     val messageTGFormat: TextData = TextData("[<prefix><reset>] <hover:show_text:'Упомянуть его/её (Shift + клик)'><insert:'@{sender}'>{sender}</insert></hover> » <text>"),
                     val messageMCFormat: TextData = TextData("[<prefix><reset>] <hover:show_text:'Написать личное сообщение'><click:suggest_command:'/tell {nickname} '>{nickname}</click></hover> » <text>"),
                     val prefixAppend: TextData = TextData("<hover:show_text:'Нажмите, что бы ответить'><click:suggest_command:'/r {group} {message_id} '><prefix></click></hover>"),
-                    val reply: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── {sender} » {text}</click></hover></color:gray>"),
-                    val replyToMinecraft: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── {text}</click></hover></color:gray>"),
+                    val reply: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── {sender} » <text></click></hover></color:gray>"),
+                    val replyToMinecraft: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>    ┌──── <text></click></hover></color:gray>"),
                     val forward: TextData = TextData("<color:gray><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>{from} »</click></hover></color:gray>"),
                     val gif: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[GIF]</click></hover></color:yellow>"),
                     val document: TextData = TextData("<color:yellow><hover:show_text:'Открыть в Telegram'><click:open_url:'{url}'>[Документ]</click></hover></color:yellow>"),
@@ -268,6 +268,7 @@ data class Config (
             val infoButton: String = "Информация о сервере 📌",
             val addToGroupButton: String = "Добавить бота в группу 🎊",
             val audioPlayer: ServerBotAudioPlayer = ServerBotAudioPlayer(),
+            val fabricTailor: ServerBotFabricTailor = ServerBotFabricTailor(),
             val group: ServerBotGroupConfig = ServerBotGroupConfig(),
         ) {
             data class ServerBotGroupConfig(
@@ -373,6 +374,17 @@ data class Config (
                 val messageErrorUpload: String = "Ошибка! Размер аудио не должен превышать 20МБ.",
                 val messageIncorrectExtension: String = "Ошибка! Аудио должно иметь расширение \".mp3\" или \".wav\". Вы можете воспользоваться онлайн-конвертером для изменения формата.",
                 val messageDone: String = "<b>Аудио успешно загружено на сервер!</b>\nТеперь вы можете использовать его в AudioPlayer.\n\n<b>UUID аудио »</b>\n<code>{filename}</code>\n\n<i>Что бы записать аудио на предмет, возьмите его в руку и выполните команду</i> ->\n<code>/audioplayer apply {filename}</code>",
+                val messagePreparing: String = "<b>Пожалуйста, подождите...</b>"
+            )
+            data class ServerBotFabricTailor(
+                val buttonMenu: String = "Загрузить скин на сервер 👘",
+                val messageUploadPlayer: String = "Выберите аккаунт, для которого вы хотите загрузить скин.",
+                val messageUploadFile: String = "Отправьте файл скина в этот чат.\nОбратите внимание, вы должны <u>отправить изображение как файл</u> (без сжатия).",
+                val messageUploadModel: String = "Выберите модель загруженного скина:\n- Classic — обычный скин,\n- Slim — скин с тонкими руками.",
+                val messageErrorUpload: String = "Ошибка загрузки изображения скина! Обратитесь за помощью к администратору.",
+                val messageErrorNotAnImage: String = "Ошибка! Вы должны <u>отправить изображение как файл</u> (без сжатия).",
+                val messageErrorWrongResolution: String = "Ошибка! Вы должны отправить изображение с разрешением 64x64 (стандартный скин) или 64x32 (устаревший скин).",
+                val messageDone: String = "Скин успешно установлен!",
                 val messagePreparing: String = "<b>Пожалуйста, подождите...</b>"
             )
         }

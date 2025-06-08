@@ -14,6 +14,8 @@ import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.telegram.easyAuth.EasyAuthIntegration
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.ServerBotLogic
 import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.AudioPlayerIntegration
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
 
 /**
  * @author kochkaev

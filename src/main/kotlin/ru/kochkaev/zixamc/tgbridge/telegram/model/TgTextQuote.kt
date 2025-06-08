@@ -5,4 +5,5 @@ package ru.kochkaev.zixamc.tgbridge.telegram.model
  */
 data class TgTextQuote(
     val text: String,
+    val entities: List<TgEntity>?
 )

@@ -9,6 +9,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.util.LinkedGroup
 import ru.kochkaev.zixamc.tgbridge.sql.util.LinkedUser
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
 
 class LinkedUserAdapter: SimpleAdapter<LinkedUser>(
     reader = { LinkedUser(it.nextString().toLong()) },

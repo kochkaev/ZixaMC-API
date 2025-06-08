@@ -10,8 +10,16 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.AudioPlayerIntegration
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.AudioPlayerIntegration.callbackProcessor
+import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.FabricTailorIntegration
 
 object ServerBotLogic {
 
@@ -36,8 +44,8 @@ object ServerBotLogic {
         ChatSyncBotLogic.registerMinecraftHandlers()
 
         bot.registerCallbackQueryHandler(ServerBotUpdateManager::onTelegramCallbackQuery)
-        bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id, it.from?.id) }
-        bot.registerCommandHandler("menu") { Menu.sendMenu(it.chat.id, it.from?.id) }
+        bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id, it.from?.id, it.messageThreadId) }
+        bot.registerCommandHandler("menu") { Menu.sendMenu(it.chat.id, it.from?.id, it.messageThreadId) }
         bot.registerCommandHandler("mentionAll") { SQLGroup.get(it.chat.id)?.also { group ->
             bot.sendMessage(
                 chatId = it.chat.id,
@@ -52,6 +60,35 @@ object ServerBotLogic {
 
         bot.registerCallbackQueryHandler(/*"easyauth", EasyAuthIntegration.EasyAuthCallbackData::class.java,*/ EasyAuthIntegration::onTelegramCallbackQuery)
         bot.registerCallbackQueryHandler("menu", Menu.MenuCallbackData::class.java, Menu::onCallback)
+
+        Menu.addIntegration(Menu.Integration.of(
+            callbackName = "info",
+            menuDisplay = config.integration.infoButton,
+            processor = { cbq, sql -> SQLEntity.get(cbq.from.id)?.let{
+                if (it.hasProtectedLevel(AccountType.PLAYER))
+                    sendInfoMessage(it)
+            } },
+            filter = { chatId, userId -> chatId == userId },
+        ))
+        Menu.addIntegration(Menu.Integration.of(
+            menuButton = TgInlineKeyboardMarkup.TgInlineKeyboardButton(
+                text = config.integration.addToGroupButton,
+                url = "https://t.me/${bot.me.username}?startgroup"
+            ),
+            filter = { chatId, userId -> chatId == userId },
+        ))
+        if (AudioPlayerIntegration.isModLoaded)
+            Menu.addIntegration(Menu.Integration.of(
+                callbackName = "audioPlayer",
+                menuDisplay = config.integration.audioPlayer.buttonMenu,
+                processor = AudioPlayerIntegration::callbackProcessor,
+            ))
+//        if (FabricTailorIntegration.isModLoaded)
+//            Menu.addIntegration(Menu.Integration.of(
+//                callbackName = "fabricTailor",
+//                menuDisplay = config.integration.audioPlayer.buttonMenu,
+//                processor = AudioPlayerIntegration::callbackProcessor,
+//            ))
 
 //        bot.registerBotChatMemberUpdatedHandler(ServerBotGroup::addedToGroup)
         bot.registerChatJoinRequestHandler(RequestsBotUpdateManager::onTelegramChatJoinRequest)
