@@ -83,12 +83,15 @@ object ServerBotLogic {
                 menuDisplay = config.integration.audioPlayer.buttonMenu,
                 processor = AudioPlayerIntegration::callbackProcessor,
             ))
-//        if (FabricTailorIntegration.isModLoaded)
-//            Menu.addIntegration(Menu.Integration.of(
-//                callbackName = "fabricTailor",
-//                menuDisplay = config.integration.audioPlayer.buttonMenu,
-//                processor = AudioPlayerIntegration::callbackProcessor,
-//            ))
+        if (FabricTailorIntegration.isModLoaded)
+            Menu.addIntegration(Menu.Integration.of(
+                callbackName = "fabricTailor",
+                menuDisplay = config.integration.fabricTailor.buttonMenu,
+                processor = FabricTailorIntegration::callbackProcessor,
+                customDataType = FabricTailorIntegration.AdditionalData::class.java,
+                customDataInitial = FabricTailorIntegration.AdditionalData(),
+                filter = { chatId, userId -> chatId == userId },
+            ))
 
 //        bot.registerBotChatMemberUpdatedHandler(ServerBotGroup::addedToGroup)
         bot.registerChatJoinRequestHandler(RequestsBotUpdateManager::onTelegramChatJoinRequest)

@@ -75,6 +75,13 @@ repositories {
     mavenCentral()
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("net.fabricmc:fabric-loader:${project.property("loader_version")}")
+        force("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+    }
+}
+
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
@@ -84,6 +91,7 @@ dependencies {
 
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
+    compileOnly(project(":stubs"))
 //    implementation("jdbc:jdbc:2.0")
 
     // Storage
@@ -158,10 +166,19 @@ dependencies {
     modImplementation("eu.pb4:placeholder-api:2.4.1+1.21")
 
     modImplementation("maven.modrinth:audioplayer:fabric-1.21.1-1.13.2")
-
-    compileOnly("maven.modrinth:fabrictailor:2.5.0")
-//    modImplementation("com.github.samolego:Config2Brigadier:2.0.1")
-//    modImplementation("me.lucko:fabric-permissions-api:0.3.3")
+//
+//    modImplementation("maven.modrinth:fabrictailor:2.5.0") {
+//        exclude(group = "net.fabricmc.fabric-loader")
+//        exclude(group = "net.fabricmc.fabric-api")
+//    }
+//    modImplementation("com.github.samolego.Config2Brigadier:config2brigadier-common:1.2.3") {
+//        exclude(group = "net.fabricmc.fabric-loader")
+//        exclude(group = "net.fabricmc.fabric-api")
+//    }
+//    modImplementation("me.lucko:fabric-permissions-api:0.3.3") {
+//        exclude(group = "net.fabricmc.fabric-loader")
+//        exclude(group = "net.fabricmc.fabric-api")
+//    }
 
     // Markdown
 //    include(implementation("org.commonmark:commonmark:0.18.2")!!)

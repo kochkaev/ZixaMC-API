@@ -108,14 +108,14 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
         return origin
     }
 
-    suspend fun waitPrefixProcessor(msg: TgMessage, process: SQLProcess<*>, processData: ProcessData) {
+    suspend fun waitPrefixProcessor(msg: TgMessage, process: SQLProcess<GroupChatSyncWaitPrefixProcessData>, data: GroupChatSyncWaitPrefixProcessData) {
         val group = SQLGroup.get(msg.chat.id) ?: return
         if (msg.replyToMessage?.from?.id == bot.me.id && msg.from != null &&
             listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
                 bot.getChatMember(group.chatId, msg.from.id).status
             )
         ) {
-            val data = processData as GroupChatSyncWaitPrefixProcessData
+//            val data = processData as GroupChatSyncWaitPrefixProcessData
             if (data.messageId != msg.replyToMessage.messageId) return
             val isNotNew = group.features.contains(FeatureTypes.CHAT_SYNC)
             val prefix = msg.effectiveText?:return

@@ -161,7 +161,9 @@ object ServerBotGroup {
     suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<GroupCallback>): TgCBHandlerResult {
         if (sql.data == null) return SUCCESS
         val group = SQLGroup.get(cbq.message.chat.id) ?: return SUCCESS
-        if (sql.canExecute?.statuses?.contains(bot.getChatMember(group.chatId, cbq.from.id).status) != true) return answerHaventRights(cbq.id, sql.canExecute?.display?:"")
+        if (sql.canExecute?.let {
+                !(it.statuses?.contains(bot.getChatMember(group.chatId, cbq.from.id).status) == true || it.users?.contains(cbq.from.id) == true)
+        } != false) return answerHaventRights(cbq.id, sql.canExecute?.display?:"")
         when (sql.data!!.operation) {
             Operations.AGREE_WITH_RULES -> {
                 group.agreedWithRules = true
@@ -667,7 +669,7 @@ object ServerBotGroup {
         return DELETE_MARKUP
     }
 
-    suspend fun waitNameProcessor(msg: TgMessage, process: SQLProcess<*>, processData: ProcessData) {
+    suspend fun waitNameProcessor(msg: TgMessage, process: SQLProcess<GroupWaitingNameProcessData>, data: GroupWaitingNameProcessData) {
         val group = SQLGroup.get(msg.chat.id) ?: return
         if (msg.replyToMessage?.from?.id == bot.me.id && msg.from != null &&
             listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
@@ -675,7 +677,7 @@ object ServerBotGroup {
             )
         ) {
             val inFirstTime = group.name == null
-            val data = processData as GroupWaitingNameProcessData
+//            val data = processData as GroupWaitingNameProcessData
             if (data.messageId != msg.replyToMessage.messageId) return
             val name = msg.effectiveText ?: return
             if (name.length !in 1..16 || !name.matches(Regex("[а-яa-z0-9_\\-]+", RegexOption.IGNORE_CASE))) {

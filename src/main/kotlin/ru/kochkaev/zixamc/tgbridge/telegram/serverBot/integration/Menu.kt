@@ -12,6 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
 import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackCanExecute
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
@@ -19,7 +20,10 @@ import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.process.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.tgbridge.sql.util.LinkedUser
+import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.answerHaventRights
 import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenuButton
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
 
 object Menu {
@@ -29,31 +33,44 @@ object Menu {
         type = "menu",
         data = MenuCallbackData.of("back")
     )
+    fun getBackButtonExecuteOnly(user: SQLEntity) = SQLCallback.of(
+        display = ServerBot.config.integration.buttonBackToMenu,
+        type = "menu",
+        data = MenuCallbackData.of("back"),
+        canExecute = CallbackCanExecute(
+            statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
+            users = listOf(user.userId),
+            display = user.nickname ?: "",
+        )
+    )
 
     private val integrations = arrayListOf<Integration>()
-    fun addIntegration(integration: Integration) {
+    fun addIntegration(integration: Integration, additionalType: Class<*> = MenuCallbackData.DummyAdditional::class.java) {
         integrations.add(integration)
+        val type = additionalType.name
+        if (!integrationTypes.contains(type))
+            integrationTypes[type] = additionalType
     }
     data class Integration(
         val menuButton: List<ITgMenuButton>,
-        val menuCallbackProcessor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<*>>) -> Unit,
+        val menuCallbackProcessor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<*>>) -> TgCBHandlerResult,
         val filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
     ) {
         companion object {
             fun of(
                 menuButton: ITgMenuButton,
                 filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
-            ): Integration = Integration(listOf(menuButton), { _, _ -> }, filter)
+            ): Integration = Integration(listOf(menuButton), { _, _ -> SUCCESS }, filter)
             fun of(
                 callbackName: String,
                 menuDisplay: String,
                 processor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<*>>) -> Unit,
                 filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
-            ): Integration = of(callbackName, menuDisplay, processor, MenuCallbackData.DummyAdditional::class.java, MenuCallbackData.DummyAdditional(), filter)
+            ): Integration = of(callbackName, menuDisplay, processor as suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<MenuCallbackData.DummyAdditional>>) -> TgCBHandlerResult, MenuCallbackData.DummyAdditional::class.java, MenuCallbackData.DummyAdditional(), filter)
             fun <T> of(
                 callbackName: String,
                 menuDisplay: String,
-                processor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<*>>) -> Unit,
+                processor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<T>>) -> TgCBHandlerResult,
                 customDataType: Class<T>,
                 customDataInitial: T,
                 filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
@@ -66,7 +83,8 @@ object Menu {
                     )),
                     menuCallbackProcessor = { cbq, sql ->
                         if (sql.data?.operation == callbackName)
-                            processor.invoke(cbq, sql)
+                            processor(cbq, sql as SQLCallback<MenuCallbackData<T>>)
+                        else SUCCESS
                     },
                     filter = filter,
                 )
@@ -97,7 +115,7 @@ object Menu {
     suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<MenuCallbackData<*>>): TgCBHandlerResult {
 //        if (cbq.data == null || !cbq.data.startsWith("menu")) return
         val entity = SQLEntity.get(cbq.from.id)?:return SUCCESS
-        if (!entity.accountType.isPlayer) {
+        if (!entity.hasProtectedLevel(AccountType.PLAYER)) {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,
                 messageId = cbq.message.messageId,
@@ -105,11 +123,14 @@ object Menu {
             )
             return DELETE_MARKUP
         }
+        if (cbq.message.chat.id != cbq.from.id &&  sql.canExecute?.let {
+                !(it.statuses?.contains(ServerBot.bot.getChatMember(cbq.message.chat.id, cbq.from.id).status) == true || it.users?.contains(cbq.from.id) == true)
+            } != false) return answerHaventRights(cbq.id, sql.canExecute?.display?:"")
         when (sql.data!!.operation /*cbq.data*/) {
             "back" -> sendMenu(cbq.message.chat.id, cbq.from.id, cbq.message.messageThreadId)
             "info" -> ServerBotLogic.sendInfoMessage(entity)
             else -> {
-                integrations.map { it.menuCallbackProcessor }.forEach { it(cbq, sql) }
+                integrations.map { it.menuCallbackProcessor }.forEach { it(cbq, sql).let { it1 -> if (it1 != SUCCESS) return it1 } }
             }
         }
         return DELETE_MARKUP

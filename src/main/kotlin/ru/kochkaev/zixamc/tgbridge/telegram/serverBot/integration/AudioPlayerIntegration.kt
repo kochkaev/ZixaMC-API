@@ -7,13 +7,21 @@ import kotlinx.coroutines.runBlocking
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
+import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
 import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackCanExecute
+import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.tgbridge.sql.util.LinkedUser
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu.BACK_BUTTON
 import java.nio.file.Path
 import java.util.UUID
@@ -55,7 +63,8 @@ object AudioPlayerIntegration {
         return sanitizedBase + extension
     }
 
-    suspend fun callbackProcessor(cbq: TgCallbackQuery, sql: SQLCallback<Menu.MenuCallbackData<*>>) {
+    suspend fun callbackProcessor(cbq: TgCallbackQuery, sql: SQLCallback<Menu.MenuCallbackData<*>>): TgCBHandlerResult {
+        val user = cbq.from.id.let {SQLEntity.get(it) } ?: return TgCBHandlerResult.SUCCESS
         val message = ServerBot.bot.sendMessage(
             chatId = cbq.message.chat.id,
             text = if (isModLoaded) ServerBot.config.integration.audioPlayer.messageUpload else ServerBot.config.integration.audioPlayer.modIsNodInstalled,
@@ -71,7 +80,19 @@ object AudioPlayerIntegration {
 //                        )
 //                    )
             replyMarkup = TgMenu(listOf(listOf(
-                BACK_BUTTON
+                if (isModLoaded) BACK_BUTTON else CancelCallbackData(
+                    cancelProcesses = listOf(ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD),
+                    asCallbackSend = CancelCallbackData.CallbackSend(
+                        type = "menu",
+                        data = Menu.MenuCallbackData.of("back"),
+                        result = TgCBHandlerResult.DELETE_MARKUP,
+                    ),
+                    canExecute = CallbackCanExecute(
+                        statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
+                        users = listOf(user.userId),
+                        display = user.nickname ?: "",
+                    )
+                ).build(),
             )))
         )
         if (isModLoaded) {
@@ -80,7 +101,7 @@ object AudioPlayerIntegration {
                     try { ServerBot.bot.editMessageReplyMarkup(
                         chatId = cbq.message.chat.id,
                         messageId = this.messageId,
-                        replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup()
+                        replyMarkup = TgReplyMarkup()
                     ) } catch (_: Exception) {}
                     SQLCallback.dropAll(cbq.message.chat.id, this.messageId)
                 }
@@ -90,15 +111,17 @@ object AudioPlayerIntegration {
                 data = ProcessData(message.messageId)
             ).pull(cbq.message.chat.id)
         }
+        return TgCBHandlerResult.DELETE_MARKUP
     }
 
     suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<*>, data: ProcessData) = runBlocking {
         if (msg.replyToMessage==null || msg.replyToMessage.messageId != data.messageId) return@runBlocking
         var done = false
+        val user = msg.from?.id?.let {SQLEntity.get(it) } ?: return@runBlocking
         val message = ServerBot.bot.sendMessage(
             chatId = msg.chat.id,
             text = ServerBot.config.integration.audioPlayer.messagePreparing,
-            replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(msg.messageId)
+            replyParameters = TgReplyParameters(msg.messageId)
         )
         var filename: String? = null
         if (msg.audio != null || msg.document != null) {
@@ -147,19 +170,29 @@ object AudioPlayerIntegration {
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = message.chat.id,
                     messageId = data.messageId,
-                    replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup(),
+                    replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON))),
                 )
                 SQLCallback.dropAll(message.chat.id, data.messageId)
             } catch (_: Exception) {}
             process.drop()
         }
-        ServerBot.bot.editMessageReplyMarkup(
-            chatId = message.chat.id,
-            messageId = message.messageId,
-            replyMarkup = TgMenu(listOf(listOf(
-                BACK_BUTTON
-            )))
-        )
+//        ServerBot.bot.editMessageReplyMarkup(
+//            chatId = message.chat.id,
+//            messageId = message.messageId,
+//            replyMarkup = if () TgMenu(listOf(listOf(CancelCallbackData(
+//                cancelProcesses = listOf(ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD),
+//                asCallbackSend = CancelCallbackData.CallbackSend(
+//                    type = "menu",
+//                    data = Menu.MenuCallbackData.of("back"),
+//                    result = TgCBHandlerResult.DELETE_MARKUP,
+//                ),
+//                canExecute = CallbackCanExecute(
+//                    statuses = null,
+//                    user = LinkedUser(user.id),
+//                    display = user.nickname ?: "",
+//                )
+//            ).build()))),
+//        )
     }
 
     private suspend fun saveAudioPlayerFile(fileId: String, filename: String): String {

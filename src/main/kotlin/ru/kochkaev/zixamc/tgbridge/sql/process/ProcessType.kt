@@ -10,5 +10,5 @@ data class ProcessType<R: ProcessData>(
     val model: Class<R>,
     val serializedName: String,
     val processorType: ProcessorType = ProcessorType.NONE,
-    val processor: (suspend (TgMessage, SQLProcess<*>, ProcessData) -> Unit)? = null,
+    val processor: (suspend (TgMessage, SQLProcess<R>, R) -> Unit)? = null,
 )
