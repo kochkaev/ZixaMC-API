@@ -223,11 +223,11 @@ object FabricTailorIntegration {
                 messageId = message.messageId,
                 text = result.message,
             )
-            ServerBot.bot.editMessageReplyMarkup(
-                chatId = process.chatId,
-                messageId = message.messageId,
-                replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON)))
-            )
+//            ServerBot.bot.editMessageReplyMarkup(
+//                chatId = process.chatId,
+//                messageId = message.messageId,
+//                replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON)))
+//            )
             if (result == SkinUploadResult.SUCCESS) {
                 process.data?.run {
                     try { ServerBot.bot.editMessageReplyMarkup(
@@ -238,6 +238,11 @@ object FabricTailorIntegration {
                     SQLCallback.dropAll(process.chatId, this.messageId)
                 }
                 process.drop()
+                ServerBot.bot.editMessageReplyMarkup(
+                    chatId = process.chatId,
+                    messageId = message.messageId,
+                    replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON)))
+                )
             }
             return@let
         } ?: run {
@@ -290,8 +295,9 @@ object FabricTailorIntegration {
             if (player != null) {
                 SkinCommand.setSkin(player) { it }
             } else {
-                val profile = server.userCache?.findByName(nickname)?.getOrNull()
-                return profile?.let { _ -> setSkin(profile) { it } } ?: SkinUploadResult.SET_ERROR
+//                val profile = server.userCache?.findByName(nickname)?.getOrNull()
+//                return profile?.let { _ -> setSkin(profile) { it } } ?: SkinUploadResult.SET_ERROR
+                return SkinUploadResult.NOT_ONLINE
             }
         }
         return SkinUploadResult.SUCCESS
@@ -313,6 +319,10 @@ object FabricTailorIntegration {
         SET_ERROR {
             override val message: String
                 get() = ServerBot.config.integration.fabricTailor.messageErrorSet
+        },
+        NOT_ONLINE {
+            override val message: String
+                get() = ServerBot.config.integration.fabricTailor.messageErrorNotOnline
         },
         OTHER_ERROR {
             override val message: String

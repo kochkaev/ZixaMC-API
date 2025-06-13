@@ -25,6 +25,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.answerHaventRights
 import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenuButton
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
 
 object Menu {
 
@@ -95,6 +96,23 @@ object Menu {
     suspend fun sendMenu(chatId: Long, userId: Long?, threadId: Int? = null) {
         val chat = SQLChat.get(chatId)
         val user = userId?.let { SQLEntity.get(it) }
+        listOfNotNull(
+            SQLProcess.get(chatId, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD),
+            SQLProcess.get(chatId, ProcessTypes.MENU_FABRIC_TAILOR_UPLOAD),
+        ).forEach { process ->
+            process.data?.run {
+                try {
+                    ServerBot.bot.editMessageReplyMarkup(
+                        chatId = process.chatId,
+                        messageId = this.messageId,
+                        replyMarkup = TgReplyMarkup()
+                    )
+                } catch (_: Exception) {
+                }
+                SQLCallback.dropAll(process.chatId, this.messageId)
+            }
+            process.drop()
+        }
         if (user != null && chat != null && user.hasProtectedLevel(AccountType.PLAYER)) {
             ServerBot.bot.sendMessage(
                 chatId = chatId,
