@@ -66,7 +66,7 @@ object ChatSyncBotLogic {
 
     private suspend fun onTelegramMessage(msg: TgMessage) {
         val group = (SQLGroup.get(msg.chat.id) ?: return).also {
-            if (it.features.getCasted(FeatureTypes.CHAT_SYNC)?.checkValidMsg(msg) == false) return
+            if (it.features.getCasted(FeatureTypes.CHAT_SYNC)?.checkValidMsg(msg) != true) return
         }
         group.lastMessageLock.withLock {
             group.lastMessage = null

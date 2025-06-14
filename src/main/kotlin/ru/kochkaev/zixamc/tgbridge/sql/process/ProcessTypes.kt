@@ -10,8 +10,8 @@ object ProcessTypes {
     val GROUP_WAITING_NAME = ProcessType(GroupWaitingNameProcessData::class.java, "GROUP_WAITING_NAME", ProcessorType.REPLY_MESSAGE, ServerBotGroup::waitNameProcessor)
     val GROUP_SELECT_TOPIC_FEATURE = ProcessType(GroupSelectTopicProcessData::class.java, "GROUP_SELECT_TOPIC_FEATURE")
     val GROUP_CHATSYNC_WAITING_PREFIX = ProcessType(GroupChatSyncWaitPrefixProcessData::class.java, "GROUP_CHATSYNC_WAITING_PREFIX", ProcessorType.REPLY_MESSAGE, ChatSyncFeatureType::waitPrefixProcessor)
-    val MENU_AUDIO_PLAYER_UPLOAD: ProcessType<ProcessData> = ProcessType(ProcessData::class.java, "MENU_AUDIO_PLAYER_UPLOAD", ProcessorType.REPLY_MESSAGE, AudioPlayerIntegration::messageProcessor)
-    val MENU_FABRIC_TAILOR_UPLOAD: ProcessType<FabricTailorIntegration.FTProcessData> = ProcessType(FabricTailorIntegration.FTProcessData::class.java, "MENU_FABRIC_TAILOR_UPLOAD", ProcessorType.ANY_TEXT_MESSAGE, FabricTailorIntegration::messageProcessor)
+    val MENU_AUDIO_PLAYER_UPLOAD: ProcessType<ProcessData> = ProcessType(ProcessData::class.java, "MENU_AUDIO_PLAYER_UPLOAD", ProcessorType.ANY_MESSAGE, AudioPlayerIntegration::messageProcessor)
+    val MENU_FABRIC_TAILOR_UPLOAD: ProcessType<FabricTailorIntegration.FTProcessData> = ProcessType(FabricTailorIntegration.FTProcessData::class.java, "MENU_FABRIC_TAILOR_UPLOAD", ProcessorType.ANY_MESSAGE, FabricTailorIntegration::messageProcessor)
     val DUMMY = ProcessType(ProcessData::class.java, "DUMMY")
 
     val entries = hashMapOf<String, ProcessType<*>>(

@@ -82,6 +82,7 @@ object ServerBotLogic {
                 callbackName = "audioPlayer",
                 menuDisplay = config.integration.audioPlayer.buttonMenu,
                 processor = AudioPlayerIntegration::callbackProcessor,
+                filter = { chatId, userId -> chatId == userId },
             ))
         if (FabricTailorIntegration.isModLoaded)
             Menu.addIntegration(Menu.Integration.of(

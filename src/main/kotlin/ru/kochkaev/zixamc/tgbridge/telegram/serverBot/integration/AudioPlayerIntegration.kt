@@ -93,7 +93,8 @@ object AudioPlayerIntegration {
                         display = user.nickname ?: "",
                     )
                 ).build(),
-            )))
+            ))),
+            messageThreadId = cbq.message.messageThreadId,
         )
         if (isModLoaded) {
             SQLProcess.get(cbq.message.chat.id, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD)?.also {
@@ -115,7 +116,7 @@ object AudioPlayerIntegration {
     }
 
     suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<*>, data: ProcessData) = runBlocking {
-        if (msg.replyToMessage==null || msg.replyToMessage.messageId != data.messageId) return@runBlocking
+//        if (msg.replyToMessage==null || msg.replyToMessage.messageId != data.messageId) return@runBlocking
         var done = false
         val user = msg.from?.id?.let {SQLEntity.get(it) } ?: return@runBlocking
         val message = ServerBot.bot.sendMessage(

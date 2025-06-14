@@ -156,7 +156,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                                                 itProcess = true
                                             }
                                         }
-                                        ProcessorType.ANY_TEXT_MESSAGE -> process.data?.also {
+                                        ProcessorType.ANY_MESSAGE -> process.data?.also {
                                             process as SQLProcess<Any>
                                             process.type.processor?.invoke(this, process, it)
                                             itProcess = true
