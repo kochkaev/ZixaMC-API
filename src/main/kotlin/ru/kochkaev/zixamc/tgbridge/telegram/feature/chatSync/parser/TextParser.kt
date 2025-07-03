@@ -9,9 +9,8 @@ import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessageMedia
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntity
 
@@ -139,7 +138,7 @@ object TextParser {
             )
         }
 
-        val senderNickname = SQLEntity.get(message.from?.id?:0)?.nickname
+        val senderNickname = SQLUser.get(message.from?.id?:0)?.nickname
         messages.add(lang.minecraft.messageTGFormat.get(
             plainPlaceholders = listOf(
                 "sender" to (senderNickname?:message.senderName),
@@ -190,7 +189,7 @@ object TextParser {
                 return@also
             info = ReplyInfo(
                 isReplyToMinecraft = reply.from?.id == botId,
-                senderName = SQLEntity.get(reply.from?.id?:0)?.nickname ?: reply.senderName,
+                senderName = SQLUser.get(reply.from?.id?:0)?.nickname ?: reply.senderName,
                 media = mediaToText(reply, resolveMessageLink(message)),
                 text = reply.effectiveText,
                 entities = reply.entities,
@@ -255,7 +254,7 @@ object TextParser {
     }
     private fun forwardFromToText(message: TgMessage) =
         message.forwardFrom?.let {
-            lang.minecraft.forward.get(listOf("from" to (SQLEntity.get(it.id)?.nickname ?: message.senderUserName), "url" to resolveMessageLink(message)))
+            lang.minecraft.forward.get(listOf("from" to (SQLUser.get(it.id)?.nickname ?: message.senderUserName), "url" to resolveMessageLink(message)))
         }
 //    fun topicToText(message: TgMessage) =
 //        SQLGroup.get(message.chat.id)?.features?.getCasted(FeatureTypes.CHAT_SYNC)?.let {

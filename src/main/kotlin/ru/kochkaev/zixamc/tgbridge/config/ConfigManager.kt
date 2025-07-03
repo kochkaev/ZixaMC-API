@@ -24,7 +24,7 @@ object ConfigManager {
         init(CONFIG_FILE, Config::class.java, ::Config, ConfigManager::CONFIG) { CONFIG = it }
     }
     @Throws(Exception::class)
-    private fun <T> init(file: File, clazz: Class<T>, supplier: ()->T, getter: ()->T?, setter: (T?)->Unit) {
+    fun <T> init(file: File, clazz: Class<T>, supplier: ()->T, getter: ()->T?, setter: (T?)->Unit) {
         if (file.length() != 0L) {
             try {
                 setter.invoke(load(file, clazz))
@@ -37,7 +37,7 @@ object ConfigManager {
         }
     }
 
-    private fun <T> create(file: File, supplier: ()->T): T? {
+    fun <T> create(file: File, supplier: ()->T): T? {
         val content: T = supplier.invoke()
         try {
             FileOutputStream(file).use { outputStream ->
@@ -54,7 +54,7 @@ object ConfigManager {
     fun load() {
         CONFIG = load(CONFIG_FILE, Config::class.java)
     }
-    private fun <T> load(file: File, clazz: Class<T>): T? {
+    fun <T> load(file: File, clazz: Class<T>): T? {
         var content: T? = null
         try {
             content = gson.fromJson(
@@ -70,7 +70,7 @@ object ConfigManager {
     fun update() {
         update(CONFIG_FILE, CONFIG)
     }
-    private fun update(file: File, content: Any?) {
+    fun update(file: File, content: Any?) {
         try {
             FileOutputStream(file).use { outputStream ->
                 val jsonString = gson.toJson(content)

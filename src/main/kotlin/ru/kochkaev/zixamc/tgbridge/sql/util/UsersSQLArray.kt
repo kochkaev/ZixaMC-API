@@ -3,7 +3,7 @@ package ru.kochkaev.zixamc.tgbridge.sql.util
 import com.google.common.reflect.TypeToken
 import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
 import ru.kochkaev.zixamc.tgbridge.sql.MySQL
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 
 class UsersSQLArray(
     sql: MySQL,
@@ -19,14 +19,14 @@ class UsersSQLArray(
 ) {
     fun contains(userId: Long?) =
         userId?.let { contains(LinkedUser(it))} ?: false
-    fun contains(entity: SQLEntity?) =
+    fun contains(entity: SQLUser?) =
         contains(entity?.userId)
     fun add(userId: Long?) {
         userId?.also {
             add(LinkedUser(it))
         }
     }
-    fun add(entity: SQLEntity?) {
+    fun add(entity: SQLUser?) {
         add(entity?.userId)
     }
     fun remove(userId: Long?) {
@@ -34,7 +34,7 @@ class UsersSQLArray(
             remove(LinkedUser(it))
         }
     }
-    fun remove(entity: SQLEntity?) {
+    fun remove(entity: SQLUser?) {
         remove(entity?.userId)
     }
 }

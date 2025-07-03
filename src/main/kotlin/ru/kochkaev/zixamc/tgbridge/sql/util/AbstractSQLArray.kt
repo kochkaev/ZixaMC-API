@@ -61,13 +61,16 @@ open class AbstractSQLArray<T>(
             false
         }
     fun add(value: T) = try {
-        reConnect()
-        val preparedStatement =
-            MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_ARRAY_APPEND($column, '$', ?) WHERE $uniqueColumn = ?;")
-        preparedStatement.setString(1, valSerializer(value))
-        preparedStatement.setLong(2, uniqueId)
-        preparedStatement.executeUpdate()
-        true
+        if (contains(value)) false
+        else {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_ARRAY_APPEND($column, '$', ?) WHERE $uniqueColumn = ?;")
+            preparedStatement.setString(1, valSerializer(value))
+            preparedStatement.setLong(2, uniqueId)
+            preparedStatement.executeUpdate()
+            true
+        }
     } catch (e: SQLException) {
         ZixaMCTGBridge.logger.error("Add value to SQLArray \"$column\" in table \"${sql.tableName}\" error", e)
         false

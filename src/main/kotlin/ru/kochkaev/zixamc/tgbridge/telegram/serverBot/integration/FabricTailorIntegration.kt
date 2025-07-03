@@ -10,7 +10,7 @@ import org.samo_lego.fabrictailor.casts.TailoredPlayer
 import org.samo_lego.fabrictailor.command.SkinCommand
 import ru.kochkaev.zixamc.tgbridge.Initializer
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackCanExecute
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
@@ -18,9 +18,7 @@ import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
-import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessType
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
-import ru.kochkaev.zixamc.tgbridge.sql.util.LinkedUser
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 import java.io.*
@@ -34,7 +32,6 @@ import java.util.*
 import java.util.function.Supplier
 import javax.imageio.ImageIO
 import javax.net.ssl.HttpsURLConnection
-import kotlin.jvm.optionals.getOrNull
 
 object FabricTailorIntegration {
 
@@ -42,7 +39,7 @@ object FabricTailorIntegration {
         get() = FabricLoader.getInstance().isModLoaded("fabrictailor")
 
     suspend fun callbackProcessor(cbq: TgCallbackQuery, sql: SQLCallback<Menu.MenuCallbackData<AdditionalData>>): TgCBHandlerResult {
-        val user = SQLEntity.get(cbq.from.id) ?: return TgCBHandlerResult.SUCCESS
+        val user = SQLUser.get(cbq.from.id) ?: return TgCBHandlerResult.SUCCESS
         val menuData = sql.data ?: Menu.MenuCallbackData.of(
             operation = "fabricTailor",
             additionalType = AdditionalData::class.java,
@@ -184,7 +181,7 @@ object FabricTailorIntegration {
     }
 
     suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<*>, data: FTProcessData) = Initializer.coroutineScope.launch {
-        val user = SQLEntity.get(msg.from?.id ?: return@launch) ?: return@launch
+        val user = SQLUser.get(msg.from?.id ?: return@launch) ?: return@launch
         if (!user.nicknames.contains(data.nickname)) return@launch
         msg.document?.let {
             val message = ServerBot.bot.sendMessage(

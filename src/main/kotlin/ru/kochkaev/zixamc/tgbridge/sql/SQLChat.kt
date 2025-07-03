@@ -14,7 +14,7 @@ abstract class SQLChat(
     companion object {
         fun get(id: Long) =
             if (id<0) SQLGroup.get(id)
-            else SQLEntity.get(id)
+            else SQLUser.get(id)
     }
     abstract val dataGetter: () -> ChatData
     abstract val dataSetter: (ChatData) -> Unit

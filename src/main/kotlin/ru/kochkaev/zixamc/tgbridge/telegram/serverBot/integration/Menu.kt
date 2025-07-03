@@ -1,30 +1,23 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration
 
-import kotlinx.coroutines.runBlocking
-import net.fabricmc.loader.api.FabricLoader
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.SUCCESS
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.ServerBotLogic
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
 import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackCanExecute
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.sql.process.GroupChatSyncWaitPrefixProcessData
-import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
 import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
-import ru.kochkaev.zixamc.tgbridge.sql.util.LinkedUser
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.answerHaventRights
 import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenuButton
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
 
 object Menu {
@@ -34,7 +27,7 @@ object Menu {
         type = "menu",
         data = MenuCallbackData.of("back")
     )
-    fun getBackButtonExecuteOnly(user: SQLEntity) = SQLCallback.of(
+    fun getBackButtonExecuteOnly(user: SQLUser) = SQLCallback.of(
         display = ServerBot.config.integration.buttonBackToMenu,
         type = "menu",
         data = MenuCallbackData.of("back"),
@@ -95,7 +88,7 @@ object Menu {
 
     suspend fun sendMenu(chatId: Long, userId: Long?, threadId: Int? = null) {
         val chat = SQLChat.get(chatId)
-        val user = userId?.let { SQLEntity.get(it) }
+        val user = userId?.let { SQLUser.get(it) }
         listOfNotNull(
             SQLProcess.get(chatId, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD),
             SQLProcess.get(chatId, ProcessTypes.MENU_FABRIC_TAILOR_UPLOAD),
@@ -132,7 +125,7 @@ object Menu {
     }
     suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<MenuCallbackData<*>>): TgCBHandlerResult {
 //        if (cbq.data == null || !cbq.data.startsWith("menu")) return
-        val entity = SQLEntity.get(cbq.from.id)?:return SUCCESS
+        val entity = SQLUser.get(cbq.from.id)?:return SUCCESS
         if (!entity.hasProtectedLevel(AccountType.PLAYER)) {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,

@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
 import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
@@ -23,12 +23,12 @@ object RequestsCommandLogic {
         text4User: String? = null,
         text4Target: String? = null,
         removePreviousTgReplyMarkup: Boolean = true,
-        additionalConsumer: suspend (Boolean, SQLEntity?) -> Unit = { _, _ -> },
+        additionalConsumer: suspend (Boolean, SQLUser?) -> Unit = { _, _ -> },
         replyMarkup4Message: ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup? = null,
         protectContentInMessage: Boolean = false,
         removeProtectedContent: Boolean = false,
-        entity: SQLEntity? = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself),
-        entityExecutor: SQLEntity? = if (message!=null) SQLEntity.get(message.from!!.id) else null,
+        entity: SQLUser? = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself),
+        entityExecutor: SQLUser? = if (message!=null) SQLUser.get(message.from!!.id) else null,
         messageForReplyId: Int? = message?.messageId,
     ) : Boolean {
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
@@ -96,7 +96,7 @@ object RequestsCommandLogic {
     ) : Boolean {
         if (message.chat.id >= 0) return true
         val replied = message.replyToMessage?:return false
-        val entity = SQLEntity.getByTempArray(replied.messageId.toString())?:return false
+        val entity = SQLUser.getByTempArray(replied.messageId.toString())?:return false
         if (!checkPermissionToExecute(
                 message, entity, listOf(AccountType.ADMIN), false
             )) return true

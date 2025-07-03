@@ -14,11 +14,11 @@ plugins {
 //    id("io.spring.dependency-management") version "1.0.11.RELEASE"
 //    kotlin("plugin.spring") version "1.5.31"
     id("java")
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm") version "2.2.0"
 //    id("org.jetbrains.kotlin.jvm") version "2.0.21"
 //    id("com.github.johnrengelman.shadow") version "8.1.1"
 //    id("com.gradleup.shadow") version "8.3.4"
-    id("fabric-loom") version "1.9.1"
+    id("fabric-loom") version "1.10.1"
 //    id("fabric-loom") version "1.7.1"
     id("maven-publish")
 }
@@ -42,13 +42,31 @@ java {
     withSourcesJar()
 }
 
-loom {
-    splitEnvironmentSourceSets()
+subprojects {
+    apply(plugin = "java")
+    apply(plugin = "kotlin")
+    apply(plugin = "fabric-loom")
 
-    mods {
-        register("zixamcrequests") {
-            sourceSet("main")
-            sourceSet("client")
+    // Применяем настройки Loom только для основного проекта
+    if (project.name == "main") {
+        loom {
+            splitEnvironmentSourceSets()
+
+            mods {
+                register("zixamcrequests") {
+                    sourceSet("main")
+                    sourceSet("client")
+                }
+            }
+        }
+    } else {
+        tasks {
+            runServer {
+                enabled = false
+            }
+            runClient {
+                enabled = false
+            }
         }
     }
 }
@@ -125,10 +143,10 @@ dependencies {
     })
 
     // EasyAuth
-    compileOnly("maven.modrinth:easyauth:3.0.25")
+    compileOnly("maven.modrinth:easyauth:${project.property("easyauth_version")}")
 //    compileOnly("maven.modrinth:easywhitelist:1.0.1")
 //    modImplementation("xyz.nucleoid:server-translations-api:2.4.0+1.21.2-rc1")
-    modImplementation("xyz.nucleoid:server-translations-api:2.3.1+1.21-pre2")
+    modImplementation("xyz.nucleoid:server-translations-api:${project.property("server_translations_api_version")}")
     // Password hashing
     // Argon2
     modImplementation("de.mkammerer:argon2-jvm:2.11")
@@ -159,13 +177,13 @@ dependencies {
     include(implementation("net.kyori:option:1.0.0")!!)
 
     compileOnly("com.google.code.gson:gson:2.10.1")
-    modImplementation("maven.modrinth:vanish:1.5.7+1.21.1")
-    modImplementation("eu.pb4:player-data-api:0.6.0+1.21")
-    modImplementation("me.lucko:fabric-permissions-api:0.3.1")
-    modImplementation("eu.pb4:predicate-api:0.5.2+1.21")
-    modImplementation("eu.pb4:placeholder-api:2.4.1+1.21")
+    modImplementation("maven.modrinth:vanish:${project.property("vanish_version")}")
+    modImplementation("eu.pb4:player-data-api:${project.property("player_data_api_version")}")
+    modImplementation("me.lucko:fabric-permissions-api:${project.property("fabric_permissions_api_version")}")
+    modImplementation("eu.pb4:predicate-api:${project.property("predicate_api_version")}")
+    modImplementation("eu.pb4:placeholder-api:${project.property("placeholder_api_version")}")
 
-    modImplementation("maven.modrinth:audioplayer:fabric-1.21.1-1.13.2")
+    modImplementation("maven.modrinth:audioplayer:${project.property("audioplayer_version")}")
 //
 //    modImplementation("maven.modrinth:fabrictailor:2.5.0") {
 //        exclude(group = "net.fabricmc.fabric-loader")

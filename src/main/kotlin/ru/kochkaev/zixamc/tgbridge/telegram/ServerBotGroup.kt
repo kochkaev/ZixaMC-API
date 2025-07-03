@@ -1,12 +1,11 @@
 package ru.kochkaev.zixamc.tgbridge.telegram
 
 import com.google.gson.annotations.SerializedName
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.config.TextData
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
@@ -16,7 +15,6 @@ import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
 import ru.kochkaev.zixamc.tgbridge.sql.callback.*
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.sql.process.*
-import ru.kochkaev.zixamc.tgbridge.sql.util.*
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.TopicFeatureData
@@ -85,7 +83,7 @@ object ServerBotGroup {
                     } catch (_: Exception) { } }
                     it.drop()
                 }
-                val user = SQLEntity.get(msg.from.id)
+                val user = SQLUser.get(msg.from.id)
                 if (user == null || !user.hasProtectedLevel(AccountType.PLAYER)) {
                     bot.sendMessage(
                         chatId = msg.chat.id,
@@ -129,7 +127,7 @@ object ServerBotGroup {
             else {
                 group.members.add(member.id)
                 if (!member.isBot) {
-                    val user = SQLEntity.getOrCreate(member.id)
+                    val user = SQLUser.getOrCreate(member.id)
                     group.cleanUpProtected(user.accountType)
                     if (group.data.greetingEnable) bot.sendMessage(
                         chatId = group.chatId,
@@ -140,7 +138,7 @@ object ServerBotGroup {
         }
     }
     suspend fun newChatMembersRequests(msg: TgMessage) {
-        val user = msg.from?.let { SQLEntity.get(it.id) } ?: return
+        val user = msg.from?.let { SQLUser.get(it.id) } ?: return
         if (msg.newChatMembers?.map { it.id } ?.contains(RequestsBot.bot.me.id) == true && !user.hasProtectedLevel(AccountType.ADMIN))
             RequestsBot.bot.leaveChat(msg.chat.id)
     }

@@ -1,6 +1,5 @@
 package ru.kochkaev.zixamc.tgbridge.sql
 
-import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.config.GsonManager.gson
@@ -12,7 +11,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import java.sql.SQLException
 
-class SQLEntity private constructor(val userId: Long): SQLChat(userId) {
+class SQLUser private constructor(val userId: Long): SQLChat(userId) {
 
     var nickname: String?
         get() = try {
@@ -39,7 +38,7 @@ class SQLEntity private constructor(val userId: Long): SQLChat(userId) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    var nicknames = StringSQLArray(SQLEntity, "nicknames", userId, "user_id")
+    val nicknames = StringSQLArray(SQLUser, "nicknames", userId, "user_id")
     var accountType: AccountType
         get() = try {
             reConnect()
@@ -74,7 +73,7 @@ class SQLEntity private constructor(val userId: Long): SQLChat(userId) {
                 ZixaMCTGBridge.logger.error("updateUserData error", e)
             }
         }
-    val tempArray = StringSQLArray(SQLEntity, "temp_array", userId, "user_id")
+    val tempArray = StringSQLArray(SQLUser, "temp_array", userId, "user_id")
     var agreedWithRules: Boolean
         get() = try {
             reConnect()
@@ -174,19 +173,19 @@ class SQLEntity private constructor(val userId: Long): SQLChat(userId) {
             )
 
         fun get(userId: Long) =
-            if (exists(userId)) SQLEntity(userId)
+            if (exists(userId)) SQLUser(userId)
             else null
         fun get(nickname: String) =
             if (exists(nickname))
-                SQLEntity(getId(nickname)!!)
+                SQLUser(getId(nickname)!!)
             else null
-        fun getByTempArray(value: String): SQLEntity? {
+        fun getByTempArray(value: String): SQLUser? {
             val userId: Long = getIdByTempArrayVal(value)?:return null
             return get(userId)
         }
-        fun getOrCreate(userId: Long): SQLEntity {
+        fun getOrCreate(userId: Long): SQLUser {
             if (!exists(userId)) createDefault(userId)
-            return SQLEntity(userId)
+            return SQLUser(userId)
         }
         fun create(userId: Long, nickname: String?, nicknames: List<String>?, accountType: Int?, data: String?): Boolean {
             try {

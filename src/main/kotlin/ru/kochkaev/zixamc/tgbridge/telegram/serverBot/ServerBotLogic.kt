@@ -10,15 +10,12 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.AudioPlayerIntegration
-import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.AudioPlayerIntegration.callbackProcessor
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.FabricTailorIntegration
 
 object ServerBotLogic {
@@ -64,7 +61,7 @@ object ServerBotLogic {
         Menu.addIntegration(Menu.Integration.of(
             callbackName = "info",
             menuDisplay = config.integration.infoButton,
-            processor = { cbq, sql -> SQLEntity.get(cbq.from.id)?.let{
+            processor = { cbq, sql -> SQLUser.get(cbq.from.id)?.let{
                 if (it.hasProtectedLevel(AccountType.PLAYER))
                     sendInfoMessage(it)
             } },

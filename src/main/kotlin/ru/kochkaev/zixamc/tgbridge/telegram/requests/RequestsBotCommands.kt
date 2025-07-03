@@ -13,7 +13,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.promoteUser
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
@@ -25,14 +25,14 @@ object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
 //        RequestsCommandLogic.executeRequestFinalAction(msg, true)
         return RequestsLogic.executeRequestFinalAction(
-            entity = SQLEntity.get(msg.from?.id ?: return false) ?: return false,
+            entity = SQLUser.get(msg.from?.id ?: return false) ?: return false,
             isAccepted = true,
         )
     }
     suspend fun onTelegramRejectCommand(msg: TgMessage): Boolean {
 //        RequestsCommandLogic.executeRequestFinalAction(msg, false)
         return RequestsLogic.executeRequestFinalAction(
-            entity = SQLEntity.get(msg.from?.id ?: return false) ?: return false,
+            entity = SQLUser.get(msg.from?.id ?: return false) ?: return false,
             isAccepted = false,
         )
     }
@@ -58,11 +58,11 @@ object RequestsBotCommands {
         }
     }
     suspend fun onTelegramRulesUpdatedCommand(msg: TgMessage): Boolean {
-        val entity = SQLEntity.get(msg.from?.id?:return false)?:return false
+        val entity = SQLUser.get(msg.from?.id?:return false)?:return false
         return RequestsLogic.updateRules(entity, msg.messageId, false)
     }
     suspend fun onTelegramRulesUpdatedWithRevokeCommand(msg: TgMessage): Boolean {
-        val entity = SQLEntity.get(msg.from?.id?:return false)?:return false
+        val entity = SQLUser.get(msg.from?.id?:return false)?:return false
         return RequestsLogic.updateRules(entity, msg.messageId, true)
     }
     suspend fun onTelegramLeaveCommand(msg: TgMessage): Boolean =
@@ -137,7 +137,7 @@ object RequestsBotCommands {
             removeProtectedContent = true,
         )
     suspend fun onTelegramRestrictCommand(message: TgMessage): Boolean {
-        val entity = SQLEntity.getByTempArray(message.replyToMessage?.messageId.toString())
+        val entity = SQLUser.getByTempArray(message.replyToMessage?.messageId.toString())
             ?: matchEntityFromUpdateServerPlayerStatusCommand(message, false)
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
@@ -194,7 +194,7 @@ object RequestsBotCommands {
     }
     suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = SQLEntity.getOrCreate(msg.from?.id?:return false)
+        val entity = SQLUser.getOrCreate(msg.from?.id?:return false)
         if (entity.isRestricted) return false
         bot.sendMessage(
             chatId = msg.chat.id,
@@ -212,13 +212,13 @@ object RequestsBotCommands {
     suspend fun onTelegramNewCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
         if (msg.from == null) return false
-        val entity = SQLEntity.get(msg.from.id)?:return false
+        val entity = SQLUser.get(msg.from.id)?:return false
         if (entity.isRestricted) return false
         return newRequest(entity)
     }
     suspend fun onTelegramCancelCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = SQLEntity.get(msg.from?.id?:return false)?:return false
+        val entity = SQLUser.get(msg.from?.id?:return false)?:return false
         val requests = (entity.data).requests
         if (requests.any { RequestType.getAllPending().contains(it.request_status)}) return cancelRequest(entity)
         else if (requests.any {it.request_status == RequestType.CREATING}) return cancelSendingRequest(entity)

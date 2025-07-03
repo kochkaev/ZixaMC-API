@@ -2,7 +2,7 @@ package ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser
 
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.markdown.RegularNode
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import java.util.*
 
 object Markdown2HTMLParser {
@@ -125,8 +125,8 @@ object Markdown2HTMLParser {
         text.replace(Regex("(@[A-Za-z0-9_]*+)")) {
             val mention = it.value
             val nickname = mention.replace("@", "")
-            if (SQLEntity.exists(nickname))
-                "<a href=\"tg://user?id=${SQLEntity.get(nickname)?.userId}\">$mention</a>"
+            if (SQLUser.exists(nickname))
+                "<a href=\"tg://user?id=${SQLUser.get(nickname)?.userId}\">$mention</a>"
             else mention
         }
 

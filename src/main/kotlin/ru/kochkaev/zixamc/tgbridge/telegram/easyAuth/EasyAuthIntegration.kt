@@ -3,7 +3,7 @@ package ru.kochkaev.zixamc.tgbridge.telegram.easyAuth
 import com.google.gson.annotations.SerializedName
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.network.ServerPlayerEntity
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
@@ -11,16 +11,16 @@ import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 
 object EasyAuthIntegration {
 
-    private val onApproveHandlers = ArrayList<(SQLEntity, String)->Unit>()
-    private val onDenyHandlers = ArrayList<(SQLEntity, String)->Unit>()
+    private val onApproveHandlers = ArrayList<(SQLUser, String)->Unit>()
+    private val onDenyHandlers = ArrayList<(SQLUser, String)->Unit>()
 
     val isEnabled: Boolean
         get() = FabricLoader.getInstance().isModLoaded("easyauth") && config.easyAuth.isEnabled
 
-    fun registerOnTelegramApproveHandler(handler: (SQLEntity, String) -> Unit) {
+    fun registerOnTelegramApproveHandler(handler: (SQLUser, String) -> Unit) {
         onApproveHandlers.add(handler)
     }
-    fun registerOnTelegramDenyHandler(handler: (SQLEntity, String) -> Unit) {
+    fun registerOnTelegramDenyHandler(handler: (SQLUser, String) -> Unit) {
         onDenyHandlers.add(handler)
     }
 
@@ -56,7 +56,7 @@ object EasyAuthIntegration {
         val nickname = args.substring(args.indexOf('/')+1, args.length)
         val operation = args.substring(0, args.indexOf('/'))
         if (!isEnabled) return
-        val entity = SQLEntity.get(cbq.from.id)?:return
+        val entity = SQLUser.get(cbq.from.id)?:return
         when (/*data.data!!.operation*/ operation) {
             "approve" -> AuthManager.approve(entity, /*data.data.nickname*/nickname)
             "deny" -> AuthManager.deny(entity, /*data.data.nickname*/nickname)

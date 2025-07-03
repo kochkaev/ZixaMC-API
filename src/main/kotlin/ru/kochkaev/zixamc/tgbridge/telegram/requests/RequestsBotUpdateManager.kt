@@ -9,7 +9,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.model.*
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
@@ -25,7 +25,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
         if (msg.chat.id>=0) {
-            val entity = SQLEntity.get(msg.from!!.id)?:return
+            val entity = SQLUser.get(msg.from!!.id)?:return
             if (entity.isRestricted) return
             if (entity.accountType == AccountType.REQUESTER) {
                 val requesterData = entity.data
@@ -136,7 +136,7 @@ object RequestsBotUpdateManager {
         }
         else {
             val replied = msg.replyToMessage?:return
-            val entity = SQLEntity.getByTempArray(replied.messageId.toString())?:return
+            val entity = SQLUser.getByTempArray(replied.messageId.toString())?:return
             if (!entity.tempArray.contains(replied.messageId.toString()) || !entity.data.requests.any { RequestType.getAllPending().contains(it.request_status)}) return
             bot.forwardMessage(
                 chatId = entity.userId,
@@ -147,7 +147,7 @@ object RequestsBotUpdateManager {
         }
     }
     suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery, sql: SQLCallback<RequestCallback>): TgCBHandlerResult {
-        val entity = SQLEntity.get(cbq.from.id)?:return TgCBHandlerResult.SUCCESS
+        val entity = SQLUser.get(cbq.from.id)?:return TgCBHandlerResult.SUCCESS
         if (entity.isRestricted) return TgCBHandlerResult.DELETE_MARKUP
         when (sql.data?.operation) {
             Operations.AGREE_WITH_RULES -> {
@@ -192,7 +192,7 @@ object RequestsBotUpdateManager {
                         callbackQueryId = cbq.id,
                         text = TextParser.formatLang(
                             text = config.commonLang.thatButtonFor,
-                            "nickname" to (sql.data?.userId?.let { SQLEntity.get(it)?.nickname ?: it.toString() } ?:"")
+                            "nickname" to (sql.data?.userId?.let { SQLUser.get(it)?.nickname ?: it.toString() } ?:"")
                         ),
                         showAlert = true,
                     )
@@ -278,7 +278,7 @@ object RequestsBotUpdateManager {
                 entity.addNickname(request.request_nickname!!)
             }
             Operations.APPROVE_REQUEST -> {
-                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
@@ -359,7 +359,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             Operations.DENY_REQUEST -> {
-                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
@@ -391,7 +391,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             Operations.RESTRICT_USER -> {
-                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
@@ -417,7 +417,7 @@ object RequestsBotUpdateManager {
             Operations.CLOSE_POLL -> {
                 if (entity.accountType != AccountType.ADMIN) return TgCBHandlerResult.SUCCESS
                 SQLCallback.getAll(cbq.message.chat.id, cbq.message.messageId).forEach { it.drop() }
-                val userEntity = SQLEntity.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.PENDING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.PENDING }
@@ -441,7 +441,7 @@ object RequestsBotUpdateManager {
                         callbackQueryId = cbq.id,
                         text = TextParser.formatLang(
                             text = config.commonLang.thatButtonFor,
-                            "nickname" to (sql.data?.userId?.let { SQLEntity.get(it)?.nickname ?: it.toString() } ?:"")
+                            "nickname" to (sql.data?.userId?.let { SQLUser.get(it)?.nickname ?: it.toString() } ?:"")
                         ),
                         showAlert = true,
                     )
@@ -460,7 +460,7 @@ object RequestsBotUpdateManager {
     suspend fun onTelegramChatJoinRequest(request: TgChatJoinRequest) {
         val group = SQLGroup.get(request.chat.id)?:return
         if (group.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoAccept == true) {
-            val user = SQLEntity.get(request.from.id)?:return
+            val user = SQLUser.get(request.from.id)?:return
             if (user.isRestricted) return
             if (user.accountType.isHigherThanOrEqual(AccountType.PLAYER)) {
                 try {

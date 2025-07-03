@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
@@ -15,7 +15,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager.Re
 
 object RequestsLogic {
 
-    suspend fun cancelRequest(entity: SQLEntity): Boolean {
+    suspend fun cancelRequest(entity: SQLUser): Boolean {
         val request = (entity.data).requests.firstOrNull { RequestType.getAllPending().contains(it.request_status) } ?: return false
         entity.editRequest(request.apply { this.request_status = RequestType.CANCELED })
         bot.sendMessage(
@@ -57,7 +57,7 @@ object RequestsLogic {
         entity.tempArray.set(listOf())
         return true
     }
-    suspend fun cancelSendingRequest(entity: SQLEntity): Boolean {
+    suspend fun cancelSendingRequest(entity: SQLUser): Boolean {
         entity.data = entity.data.apply {
             this.requests.filter { it.request_status == RequestType.CREATING }
         }
@@ -74,7 +74,7 @@ object RequestsLogic {
         )
         return true
     }
-    suspend fun newRequest(entity: SQLEntity): Boolean {
+    suspend fun newRequest(entity: SQLUser): Boolean {
         when (entity.data.requests.firstOrNull { RequestType.getAllPendingAndCreating().contains(it.request_status) }?.request_status) {
             RequestType.CREATING -> {
                 bot.sendMessage(
@@ -147,10 +147,10 @@ object RequestsLogic {
         return true
     }
 
-    fun promoteUser(argEntity: SQLEntity? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null, argTarget: AccountType? = null): Boolean {
+    fun promoteUser(argEntity: SQLUser? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null, argTarget: AccountType? = null): Boolean {
         val entity = argEntity ?:
-            if (userId != null) SQLEntity.get(userId) ?: return false
-            else if (nickname != null) SQLEntity.get(nickname) ?: return false
+            if (userId != null) SQLUser.get(userId) ?: return false
+            else if (nickname != null) SQLUser.get(nickname) ?: return false
             else return false
         val target = argTarget ?:
             if (argTargetId!=null) AccountType.parse(argTargetId)
@@ -162,13 +162,13 @@ object RequestsLogic {
 
     fun checkPermissionToExecute(
         message: TgMessage?,
-        entity: SQLEntity = SQLEntity.getOrCreate(message?.from!!.id),
+        entity: SQLUser = SQLUser.getOrCreate(message?.from!!.id),
         allowedAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedIfSpendByItself: Boolean = false,
     ): Boolean =
         (entity.accountType in allowedAccountTypes || (allowedIfSpendByItself && message?.from?.id==entity.userId))
 
-    fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage?, allowedIfSpendByItself: Boolean = false): SQLEntity? {
+    fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage?, allowedIfSpendByItself: Boolean = false): SQLUser? {
         if (msg == null) return null
         val args = msg.text!!.split(" ")
         val isArgUserId = if (args.size > 1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
@@ -176,19 +176,19 @@ object RequestsLogic {
         val isItLegalReply = isReplyToMessage && msg.replyToMessage!!.messageId != config.target.topicId
         val entity =
             if (isArgUserId)
-                SQLEntity.get(args[1].toLong())
+                SQLUser.get(args[1].toLong())
             else if (isItLegalReply)
-                SQLEntity.get(msg.replyToMessage!!.from?.id ?: return null)
+                SQLUser.get(msg.replyToMessage!!.from?.id ?: return null)
             else if (!isReplyToMessage && args.size>1 && args[1].matches("[a-zA-Z0-9_]+".toRegex()) && args[1].length in 3..16)
-                SQLEntity.get(args[1])
+                SQLUser.get(args[1])
             else if (allowedIfSpendByItself)
-                SQLEntity.get(msg.from!!.id)
+                SQLUser.get(msg.from!!.id)
             else null
         return entity
     }
 
     fun updateServerPlayerStatus(
-        entity: SQLEntity,
+        entity: SQLUser,
         applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
         targetAccountStatus: MinecraftAccountType = MinecraftAccountType.PLAYER,
         targetAccountType: AccountType = targetAccountStatus.toAccountType(),
@@ -239,8 +239,8 @@ object RequestsLogic {
 
     suspend fun executeCheckPermissionsAndExceptions(
         message: TgMessage?,
-        entity: SQLEntity?,
-        entityExecutor: SQLEntity? = if (message!=null) SQLEntity.get(message.from!!.id) else null,
+        entity: SQLUser?,
+        entityExecutor: SQLUser? = if (message!=null) SQLUser.get(message.from!!.id) else null,
         allowedExecutionAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedExecutionIfSpendByItself: Boolean = false,
         applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
@@ -282,7 +282,7 @@ object RequestsLogic {
         return errorDueExecuting
     }
     suspend fun executeRequestFinalAction(
-        entity: SQLEntity,
+        entity: SQLUser,
         isAccepted: Boolean,
     ) : Boolean {
         val request = entity.data.requests.firstOrNull {it.request_status == RequestType.PENDING} ?: return false
@@ -323,7 +323,7 @@ object RequestsLogic {
         return true
     }
     suspend fun updateRules(
-        entity: SQLEntity,
+        entity: SQLUser,
         toReplyMessageId: Int? = null,
         revokeAccepts: Boolean = false,
     ): Boolean {
@@ -352,7 +352,7 @@ object RequestsLogic {
 //            ) else null,
 //        )
         SQLGroup.groups.forEach { it.getSQLAssert().sendRulesUpdated(revokeAccepts) }
-        SQLEntity.users.map {it.getSQLAssert()} .filter { it.agreedWithRules } .forEach {
+        SQLUser.users.map {it.getSQLAssert()} .filter { it.agreedWithRules } .forEach {
             if (revokeAccepts) it.agreedWithRules = false
             try {
                 bot.sendMessage(

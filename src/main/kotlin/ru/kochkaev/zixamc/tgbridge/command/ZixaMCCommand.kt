@@ -3,16 +3,22 @@ package ru.kochkaev.zixamc.tgbridge.command
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.LongArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.builder.ArgumentBuilder
+import net.minecraft.component.DataComponentTypes
+import net.minecraft.component.type.WrittenBookContentComponent
+import net.minecraft.item.Items
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
+import net.minecraft.text.RawFilteredPair
 import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
 
 
 object ZixaMCCommand {
+    private val integrations = arrayListOf<ArgumentBuilder<ServerCommandSource, *>>()
     fun registerCommand(dispatcher: CommandDispatcher<ServerCommandSource?>) {
         dispatcher.register(
             CommandManager.literal("zixamc")
@@ -25,7 +31,7 @@ object ZixaMCCommand {
                             .executes { context ->
                                 val userId = context.getArgument("user_id", Long::class.java)
                                 val accountType = context.getArgument("account_type", String::class.java)
-                                SQLEntity.get(userId)
+                                SQLUser.get(userId)
                                     ?.accountType = AccountType.parse(accountType.lowercase())
                                 context.source.sendFeedback( { Text.literal("Successfully promoted user $userId to $accountType") }, true)
                                 0
@@ -49,6 +55,13 @@ object ZixaMCCommand {
                         0
                     }
                 )
+                .apply {
+                    integrations.forEach { then(it) }
+                }
         )
+    }
+
+    fun registerIntegration(argument: ArgumentBuilder<ServerCommandSource, *>) {
+        integrations.add(argument)
     }
 }

@@ -24,7 +24,7 @@ object Initializer {
         MySQL.connect()
         SQLCallback.connectTable()
         SQLProcess.connectTable()
-        SQLEntity.connectTable()
+        SQLUser.connectTable()
         SQLGroup.connectTable()
     }
     fun startConsoleSync() {

@@ -6,7 +6,7 @@ import ru.kochkaev.zixamc.tgbridge.config.serialize.LinkedGroupAdapter
 import ru.kochkaev.zixamc.tgbridge.config.serialize.LinkedUserAdapter
 import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
 import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLEntity
+import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
 import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
 
 abstract class LinkedEntity<T, V>(val key: V, private val getter: (V) -> T?) {
@@ -16,7 +16,7 @@ abstract class LinkedEntity<T, V>(val key: V, private val getter: (V) -> T?) {
         getter.invoke(key)!!
 }
 @JsonAdapter(LinkedUserAdapter::class)
-class LinkedUser(key: Long): LinkedEntity<SQLEntity, Long> (key, { SQLEntity.get(it) })
+class LinkedUser(key: Long): LinkedEntity<SQLUser, Long> (key, { SQLUser.get(it) })
 @JsonAdapter(LinkedGroupAdapter::class)
 class LinkedGroup(key: Long): LinkedEntity<SQLGroup, Long> (key, { SQLGroup.get(it) })
 @JsonAdapter(LinkedCallbackAdapter::class)

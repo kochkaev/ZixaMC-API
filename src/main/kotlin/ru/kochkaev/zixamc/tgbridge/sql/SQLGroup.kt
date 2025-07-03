@@ -167,7 +167,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 chatId = config.defaultGroup.chatId,
                 name = config.defaultGroup.name,
                 aliases = config.defaultGroup.aliases,
-                members = SQLEntity.users.map { it.key.toString() },
+                members = SQLUser.users.map { it.key.toString() },
                 agreedWithRules = true,
                 isRestricted = false,
                 features = mapOf(
@@ -306,8 +306,8 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
             if (chat.id>0 || user == null) return
             val userId = user.id
             val group = get(chat.id)?:return
-            if (!SQLEntity.exists(userId) && !user.isBot)
-                SQLEntity.createDefault(userId)
+            if (!SQLUser.exists(userId) && !user.isBot)
+                SQLUser.createDefault(userId)
             if (!group.members.contains(userId))
                 group.members.add(userId)
             val data = group.data
@@ -369,7 +369,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
     val enabled: Boolean
         get() = agreedWithRules
     fun isMember(nickname: String) =
-        members.contains(SQLEntity.get(nickname))
+        members.contains(SQLUser.get(nickname))
     suspend fun getNoBotsMembers(): List<LinkedUser> =
         members.get()?.let {
             it.filter { it1 -> !bot.getChatMember(chatId, it1.key).user.isBot }
