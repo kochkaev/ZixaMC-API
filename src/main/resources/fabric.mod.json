@@ -2,22 +2,23 @@
   "schemaVersion": 1,
   "id": "zixamc",
   "version": "${version}",
-  "name": "ZixaMCTGBridge",
+  "name": "ZixaMC API",
   "description": "",
-  "authors": [],
-  "contact": {},
+  "authors": [
+    "kochkaev"
+  ],
+  "contact": {
+    "telegram": "https://t.me/kleverdi"
+  },
   "license": "MIT",
-  "icon": "assets/zixamcrequests/icon.png",
+  "icon": "assets/zixamc/icon.png",
   "environment": "*",
   "entrypoints": {
-    "client": [
-      "ru.kochkaev.zixamc.tgbridge.client.ZixaMCTGBridgeClient"
-    ],
     "main": [
-      "ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge"
+      "ru.kochkaev.zixamc.api.ZixaMC"
     ],
     "preLaunch": [
-      "ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridgePreLaunch"
+      "ru.kochkaev.zixamc.api.ZixaMCPreLaunch"
     ]
   },
   "mixins": [

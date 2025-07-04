@@ -1,7 +1,5 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.markdown
 
-import org.spongepowered.configurate.objectmapping.meta.NodeResolver
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.markdown.FormatTypes.REGULAR
 
 interface FormatType {

@@ -1,19 +1,20 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.serverBot
 
-import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.telegram.BotLogic
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotLogic
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.telegram.easyAuth.EasyAuthIntegration
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.group.ConsoleFeature
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.SQLChat
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
+import ru.kochkaev.zixamc.api.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.AudioPlayerIntegration
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.FabricTailorIntegration
@@ -26,10 +27,10 @@ object ServerBotLogic {
     ) : TgMessage = BotLogic.sendInfoMessage(
             bot = bot,
             chat = chat,
-            replyParameters = if (replyToMessageID!=null) ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(
+            replyParameters = if (replyToMessageID!=null) TgReplyParameters(
                 replyToMessageID
             ) else null,
-            replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup(
+            replyMarkup = TgInlineKeyboardMarkup(
                 listOf(
                     listOf(BotLogic.copyIPReplyMarkup),
                 )
@@ -47,7 +48,7 @@ object ServerBotLogic {
             bot.sendMessage(
                 chatId = it.chat.id,
                 text = group.mentionAll(),
-                replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(
+                replyParameters = TgReplyParameters(
                     it.replyToMessage?.messageId ?: it.messageId
                 )
             )

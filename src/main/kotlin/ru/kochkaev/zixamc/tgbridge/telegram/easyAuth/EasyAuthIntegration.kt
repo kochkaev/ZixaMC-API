@@ -3,11 +3,11 @@ package ru.kochkaev.zixamc.tgbridge.telegram.easyAuth
 import com.google.gson.annotations.SerializedName
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.network.ServerPlayerEntity
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.telegram.ServerBot
+import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
+import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 
 object EasyAuthIntegration {
 

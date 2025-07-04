@@ -5,18 +5,18 @@ import net.kyori.adventure.text.Component
 import kotlinx.coroutines.*
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
-import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import java.time.Clock
 import java.time.temporal.ChronoUnit
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.config
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.Initializer.coroutineScope
+import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.Markdown2HTMLParser
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.telegram.model.*
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.api.telegram.model.*
+import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 
 
@@ -25,16 +25,16 @@ object ChatSyncBotLogic {
     val DEFAULT_GROUP = SQLGroup.get("main")!!
 
     suspend fun sendServerStartedMessage() {
-        if (!ZixaMCTGBridge.tmp.isSilentRestart)
+        if (!ZixaMC.tmp.isSilentRestart)
             DEFAULT_GROUP.sendMessage(lang.telegram.serverStarted)
         else {
-            ZixaMCTGBridge.tmp.isSilentRestart = false
+            ZixaMC.tmp.isSilentRestart = false
             ConfigManager.update()
             ConfigManager.load()
         }
     }
     suspend fun sendServerStoppedMessage() {
-        if (!ZixaMCTGBridge.tmp.isSilentRestart)
+        if (!ZixaMC.tmp.isSilentRestart)
             DEFAULT_GROUP.sendMessage(lang.telegram.serverStopped)
     }
 

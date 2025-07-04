@@ -1,6 +1,6 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature.data
 
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.SQLGroup
 
 class PlayersGroupFeatureData (
     var autoAccept: Boolean = true,

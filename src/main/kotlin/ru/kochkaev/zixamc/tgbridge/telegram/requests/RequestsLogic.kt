@@ -1,15 +1,19 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.data.RequestData
+import ru.kochkaev.zixamc.api.sql.data.RequestType
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountData
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
-import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
-import ru.kochkaev.zixamc.tgbridge.telegram.model.*
-import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
-import ru.kochkaev.zixamc.tgbridge.sql.data.*
+import ru.kochkaev.zixamc.api.telegram.BotLogic
+import ru.kochkaev.zixamc.api.telegram.model.*
+import ru.kochkaev.zixamc.api.sql.SQLChat
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager.Operations
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager.RequestCallback
 
@@ -134,15 +138,15 @@ object RequestsLogic {
         )
         entity.addRequest(
             RequestData(
-            (entity.data.requests.maxOfOrNull { it.user_request_id } ?: -1)+1,
-            null,
-            forReplyMessage.messageId.toLong(),
-            null,
-            null,
-            null,
-            RequestType.CREATING,
-            null,
-        ))
+                (entity.data.requests.maxOfOrNull { it.user_request_id } ?: -1) + 1,
+                null,
+                forReplyMessage.messageId.toLong(),
+                null,
+                null,
+                null,
+                RequestType.CREATING,
+                null,
+            ))
         if (entity.accountType == AccountType.UNKNOWN) entity.accountType = AccountType.REQUESTER
         return true
     }
@@ -352,7 +356,7 @@ object RequestsLogic {
 //            ) else null,
 //        )
         SQLGroup.groups.forEach { it.getSQLAssert().sendRulesUpdated(revokeAccepts) }
-        SQLUser.users.map {it.getSQLAssert()} .filter { it.agreedWithRules } .forEach {
+        SQLUser.users.filter { it.agreedWithRules } .forEach {
             if (revokeAccepts) it.agreedWithRules = false
             try {
                 bot.sendMessage(

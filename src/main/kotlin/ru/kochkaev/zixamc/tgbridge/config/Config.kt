@@ -1,5 +1,8 @@
 package ru.kochkaev.zixamc.tgbridge.config
 
+import ru.kochkaev.zixamc.api.config.ConfigSQL
+import ru.kochkaev.zixamc.api.config.TextData
+
 /**
  * @author kochkaev
  */

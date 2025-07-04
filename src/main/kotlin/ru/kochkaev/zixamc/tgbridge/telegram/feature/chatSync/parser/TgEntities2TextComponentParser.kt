@@ -7,9 +7,9 @@ import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser.resolveMessageLink
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntity
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntityType
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.telegram.model.TgEntity
+import ru.kochkaev.zixamc.api.telegram.model.TgEntityType
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 
 object TgEntities2TextComponentParser {
 

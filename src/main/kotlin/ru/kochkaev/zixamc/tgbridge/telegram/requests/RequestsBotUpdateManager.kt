@@ -1,24 +1,24 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
 import com.google.gson.annotations.SerializedName
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.newRequest
-import ru.kochkaev.zixamc.tgbridge.telegram.model.*
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.tgbridge.sql.data.RequestType
-import ru.kochkaev.zixamc.tgbridge.sql.util.*
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.api.telegram.model.*
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.callback.CallbackData
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
+import ru.kochkaev.zixamc.api.sql.data.RequestType
+import ru.kochkaev.zixamc.api.sql.util.LinkedUser
+import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
 
@@ -278,7 +278,7 @@ object RequestsBotUpdateManager {
                 entity.addNickname(request.request_nickname!!)
             }
             Operations.APPROVE_REQUEST -> {
-                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
@@ -359,7 +359,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             Operations.DENY_REQUEST -> {
-                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
@@ -391,7 +391,7 @@ object RequestsBotUpdateManager {
                 userEntity.editRequest(request)
             }
             Operations.RESTRICT_USER -> {
-                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.MODERATING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.MODERATING }
@@ -417,7 +417,7 @@ object RequestsBotUpdateManager {
             Operations.CLOSE_POLL -> {
                 if (entity.accountType != AccountType.ADMIN) return TgCBHandlerResult.SUCCESS
                 SQLCallback.getAll(cbq.message.chat.id, cbq.message.messageId).forEach { it.drop() }
-                val userEntity = SQLUser.users.map(LinkedUser::getSQLAssert).first {
+                val userEntity = SQLUser.users.first {
                     it.data.requests.any { it1 -> it1.request_status == RequestType.PENDING && it1.message_id_in_moderators_chat?.toInt() == cbq.message.messageId }
                 }
                 val request = userEntity.data.requests.first { it.request_status == RequestType.PENDING }

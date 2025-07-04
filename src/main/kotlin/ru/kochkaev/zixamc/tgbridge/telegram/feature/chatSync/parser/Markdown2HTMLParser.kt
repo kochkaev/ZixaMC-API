@@ -1,8 +1,8 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser
 
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
+import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.markdown.RegularNode
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.SQLUser
 import java.util.*
 
 object Markdown2HTMLParser {

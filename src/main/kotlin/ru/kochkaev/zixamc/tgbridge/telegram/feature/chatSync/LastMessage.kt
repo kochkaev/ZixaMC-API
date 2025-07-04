@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync
 
 import net.kyori.adventure.text.Component
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntity
+import ru.kochkaev.zixamc.api.telegram.model.TgEntity
 import java.time.Instant
 
 enum class LastMessageType {

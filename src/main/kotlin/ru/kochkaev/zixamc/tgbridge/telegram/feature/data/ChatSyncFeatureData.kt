@@ -2,10 +2,9 @@ package ru.kochkaev.zixamc.tgbridge.telegram.feature.data
 
 import eu.pb4.placeholders.api.parsers.MarkdownLiteParserV1
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.ComponentBuilder
-import ru.kochkaev.zixamc.tgbridge.config.TextData
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.config.TextData
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotLogic
@@ -13,7 +12,7 @@ import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.MinecraftAdv
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser.replyToText
 //import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser.topicToText
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 
 class ChatSyncFeatureData (
     topicId: Int? = null,

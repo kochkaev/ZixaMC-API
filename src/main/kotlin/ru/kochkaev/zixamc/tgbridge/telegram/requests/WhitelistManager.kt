@@ -5,13 +5,13 @@ import net.minecraft.server.Whitelist
 import net.minecraft.server.WhitelistEntry
 import net.minecraft.text.Text
 import net.minecraft.util.Uuids
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.api.ZixaMC
 
 object WhitelistManager {
 
     fun add(nickname:String): Boolean {
         val profiles = getProfileFromNickname(nickname)
-        val server = ZixaMCTGBridge.server?:return false
+        val server = ZixaMC.server?:return false
         val whitelist: Whitelist = server.playerManager.whitelist
         var i = 0
         for (gameProfile in profiles) {
@@ -32,7 +32,7 @@ object WhitelistManager {
 
     fun remove(nickname:String): Boolean {
         val profiles = getProfileFromNickname(nickname)
-        val server = ZixaMCTGBridge.server?:return false
+        val server = ZixaMC.server?:return false
         val whitelist: Whitelist = server.playerManager.whitelist
         var i = 0
         for (gameProfile in profiles) {

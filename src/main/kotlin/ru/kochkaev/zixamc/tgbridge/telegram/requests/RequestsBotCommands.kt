@@ -1,25 +1,26 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.tgbridge.sql.data.RequestType
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
+import ru.kochkaev.zixamc.api.sql.data.RequestType
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.cancelRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.cancelSendingRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.newRequest
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.promoteUser
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.telegram.ServerBot
+import ru.kochkaev.zixamc.api.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 
 object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
@@ -107,7 +108,7 @@ object RequestsBotCommands {
                 )
             ),
             additionalConsumer = { hasError, entity ->
-                if (!hasError) SQLGroup.groups.forEach {
+                if (!hasError) SQLGroup.getAllWithFeature(FeatureTypes.PLAYERS_GROUP).forEach {
                     try {
                         bot.unbanChatMember(it.key, entity!!.userId, true)
                     } catch (_: Exception) { try {

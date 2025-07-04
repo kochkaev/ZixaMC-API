@@ -1,14 +1,18 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.requests
 
-import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.data.NewProtectedData
+import ru.kochkaev.zixamc.api.sql.data.RequestType
+import ru.kochkaev.zixamc.api.telegram.BotLogic
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountData
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot.config
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.checkPermissionToExecute
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
-import ru.kochkaev.zixamc.tgbridge.sql.data.*
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 
 object RequestsCommandLogic {
 
@@ -24,7 +28,7 @@ object RequestsCommandLogic {
         text4Target: String? = null,
         removePreviousTgReplyMarkup: Boolean = true,
         additionalConsumer: suspend (Boolean, SQLUser?) -> Unit = { _, _ -> },
-        replyMarkup4Message: ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup? = null,
+        replyMarkup4Message: ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup? = null,
         protectContentInMessage: Boolean = false,
         removeProtectedContent: Boolean = false,
         entity: SQLUser? = matchEntityFromUpdateServerPlayerStatusCommand(message, allowedExecutionIfSpendByItself),
@@ -46,7 +50,7 @@ object RequestsCommandLogic {
             if (text4Target!=null) bot.sendMessage(
                 chatId = config.target.chatId,
                 text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
-                replyParameters = if (messageForReplyId!=null) ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(
+                replyParameters = if (messageForReplyId!=null) ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters(
                     messageForReplyId
                 ) else null,
             )
@@ -112,12 +116,12 @@ object RequestsCommandLogic {
         bot.sendMessage(
             chatId = config.target.chatId,
             text = message4Target,
-            replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(replied.messageId),
+            replyParameters = ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters(replied.messageId),
         )
         val newMessage = bot.sendMessage(
             chatId = entity.userId,
             text = message4User,
-            replyParameters = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
+            replyParameters = ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
             protectContent = false,
         )
         bot.editMessageReplyMarkup(

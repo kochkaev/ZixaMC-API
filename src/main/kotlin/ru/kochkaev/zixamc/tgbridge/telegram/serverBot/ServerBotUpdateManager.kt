@@ -1,7 +1,8 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.serverBot
 
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 
 object ServerBotUpdateManager {
 
@@ -10,7 +11,7 @@ object ServerBotUpdateManager {
             bot.editMessageReplyMarkup(
                 chatId = cbq.message.chat.id,
                 messageId = cbq.message.messageId,
-                replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup()
+                replyMarkup = TgReplyMarkup()
             )
         } catch (_: Exception) {}
     }

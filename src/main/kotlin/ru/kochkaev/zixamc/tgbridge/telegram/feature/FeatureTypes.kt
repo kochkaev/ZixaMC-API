@@ -1,9 +1,9 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature
 
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.TopicFeatureData
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.type.ChatSyncFeatureType

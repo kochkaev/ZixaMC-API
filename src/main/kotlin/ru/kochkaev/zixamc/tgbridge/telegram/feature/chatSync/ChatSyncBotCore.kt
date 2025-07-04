@@ -10,13 +10,13 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
 import ru.kochkaev.zixamc.tgbridge.config.Config
-import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.server
+import ru.kochkaev.zixamc.api.config.ConfigManager
+import ru.kochkaev.zixamc.api.telegram.ServerBot
+import ru.kochkaev.zixamc.api.telegram.ServerBot.server
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.tgbridge.telegram.easyAuth.EasyAuthCustomEvents
 import ru.kochkaev.zixamc.tgbridge.telegram.easyAuth.EasyAuthIntegration
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.SQLGroup
 
 
 object ChatSyncBotCore {
@@ -25,8 +25,8 @@ object ChatSyncBotCore {
     lateinit var config: Config.ServerBotDataClass.ServerBotChatSyncDataClass
     lateinit var lang: Config.ServerBotDataClass.ServerBotChatSyncDataClass.ServerBotChatSyncLangDataClass
     fun init() {
-        config = ConfigManager.CONFIG!!.serverBot.chatSync
-        lang = ConfigManager.CONFIG!!.serverBot.chatSync.lang
+        config = ConfigManager.config.serverBot.chatSync
+        lang = ConfigManager.config.serverBot.chatSync.lang
     }
     fun registerChatMessageListener(handler: (TBPlayerEventData) -> Boolean) {
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register { message: SignedMessage, sender, params ->

@@ -5,7 +5,7 @@ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.minecraft.registry.DynamicRegistryManager
 import net.minecraft.registry.Registries
 import net.minecraft.text.Text
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge.Companion.server
+import ru.kochkaev.zixamc.api.ZixaMC.Companion.server
 
 object MinecraftAdventureConverter {
     private val registries: DynamicRegistryManager.Immutable

@@ -1,25 +1,24 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.feature
 
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
+import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.GroupCallback
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.Operations
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
-import ru.kochkaev.zixamc.tgbridge.sql.process.GroupSelectTopicProcessData
-import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.SQLProcess
+import ru.kochkaev.zixamc.api.sql.callback.CallbackData
+import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.process.GroupSelectTopicProcessData
+import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.TopicFeatureData
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
 
 
 open class TopicFeatureType<R: TopicFeatureData>(

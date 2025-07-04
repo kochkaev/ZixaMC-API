@@ -5,20 +5,18 @@ import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.GroupCallback
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.FeatureGroupCallback
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.SetupFeatureCallback
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.Operations
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.CAN_EXECUTE_ADMIN
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.PlayersGroupFeatureData
-import ru.kochkaev.zixamc.tgbridge.telegram.model.*
+import ru.kochkaev.zixamc.api.telegram.model.*
 
 object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
     model = PlayersGroupFeatureData::class.java,

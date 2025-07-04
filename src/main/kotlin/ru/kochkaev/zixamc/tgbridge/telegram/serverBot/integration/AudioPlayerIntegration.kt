@@ -4,21 +4,21 @@ import de.maxhenkel.audioplayer.AudioManager
 import kotlinx.coroutines.runBlocking
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackCanExecute
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CancelCallbackData
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
-import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessData
-import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.SQLProcess
+import ru.kochkaev.zixamc.api.sql.callback.CallbackCanExecute
+import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.process.ProcessData
+import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.api.telegram.ServerBot
+import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.api.telegram.model.TgChatMemberStatuses
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu.BACK_BUTTON
 import java.nio.file.Path
 import java.util.UUID
@@ -168,7 +168,7 @@ object AudioPlayerIntegration {
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = message.chat.id,
                     messageId = data.messageId,
-                    replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON))),
+                    replyMarkup = TgMenu(listOf(listOf(BACK_BUTTON))),
                 )
                 SQLCallback.dropAll(message.chat.id, data.messageId)
             } catch (_: Exception) {}

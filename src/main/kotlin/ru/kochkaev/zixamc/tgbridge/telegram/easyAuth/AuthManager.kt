@@ -1,14 +1,14 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.easyAuth
 
 import net.minecraft.server.network.ServerPlayerEntity
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.tgbridge.telegram.BotLogic
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.server
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgInlineKeyboardMarkup
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
+import ru.kochkaev.zixamc.api.telegram.BotLogic
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
+import ru.kochkaev.zixamc.api.telegram.ServerBot.server
+import ru.kochkaev.zixamc.api.telegram.model.TgInlineKeyboardMarkup
 import xyz.nikitacartes.easyauth.utils.PlayerAuth
 import java.time.ZonedDateTime
 import xyz.nikitacartes.easyauth.EasyAuth.config as easyAuthConfig
@@ -111,7 +111,7 @@ object AuthManager {
                 bot.editMessageReplyMarkup(
                     chatId = entity.userId,
                     messageId = Integer.parseInt(it),
-                    replyMarkup = ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup(),
+                    replyMarkup = ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup(),
                 )
             } catch (_: Exception) {}
         }

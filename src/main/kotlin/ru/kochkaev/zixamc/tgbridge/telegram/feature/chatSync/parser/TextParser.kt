@@ -5,14 +5,14 @@ import net.kyori.adventure.text.ComponentIteratorType
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
 import net.minecraft.util.Language
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessageMedia
+import ru.kochkaev.zixamc.api.telegram.model.TgMessageMedia
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.lang
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore.config
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgEntity
+import ru.kochkaev.zixamc.api.telegram.model.TgEntity
 
 object TextParser {
 

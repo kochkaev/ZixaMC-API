@@ -3,23 +3,22 @@ package ru.kochkaev.zixamc.tgbridge.telegram.serverBot.group
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
+import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgMessage
-import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
+import ru.kochkaev.zixamc.api.telegram.model.TgMessage
+import ru.kochkaev.zixamc.api.sql.SQLChat
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
-import ru.kochkaev.zixamc.tgbridge.sql.data.NewProtectedData
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyParameters
-import kotlin.coroutines.CoroutineContext
-import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
+import ru.kochkaev.zixamc.api.sql.data.NewProtectedData
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
+import ru.kochkaev.zixamc.api.Initializer.coroutineScope
 
 object ConsoleFeature {
     private val groups: HashMap<Long, Int?>
-        get() = SQLGroup.groups.fold(hashMapOf()) { acc, linked ->
+        get() = SQLGroup.getAllWithFeature(FeatureTypes.CONSOLE).fold(hashMapOf()) { acc, linked ->
             linked.getSQL()?.also {
                 it.features.getCasted(FeatureTypes.CONSOLE)?.run {
                     acc[it.chatId] = this.topicId
@@ -103,7 +102,7 @@ object ConsoleFeature {
         try {
             lastedMessage[group.chatId] = null
             lastMessage = null
-            ZixaMCTGBridge.runConsoleCommand(message)
+            ZixaMC.runConsoleCommand(message)
         } catch (e: Exception) {
             e.message?.also {
                 bot.sendMessage(

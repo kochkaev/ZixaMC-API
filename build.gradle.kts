@@ -275,7 +275,7 @@ tasks.jar {
         rename { "${it}_${project.base.archivesName}" }
     }
     manifest {
-        attributes["Main-Class"] = "ru.kochkaev.zixamc.tgbridge.ZixaMCRequests"
+        attributes["Main-Class"] = "ru.kochkaev.zixamc.api.ZixaMC"
     }
 }
 //tasks {

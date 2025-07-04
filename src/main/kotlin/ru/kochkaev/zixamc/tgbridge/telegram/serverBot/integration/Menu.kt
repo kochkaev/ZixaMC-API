@@ -1,24 +1,24 @@
 package ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration
 
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.SUCCESS
+import ru.kochkaev.zixamc.api.telegram.ServerBot
+import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.SUCCESS
 import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.ServerBotLogic
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLChat
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackCanExecute
-import ru.kochkaev.zixamc.tgbridge.sql.callback.CallbackData
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgMenu
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.sql.SQLChat
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.SQLProcess
+import ru.kochkaev.zixamc.api.sql.callback.CallbackCanExecute
+import ru.kochkaev.zixamc.api.sql.callback.CallbackData
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup.answerHaventRights
-import ru.kochkaev.zixamc.tgbridge.telegram.model.ITgMenuButton
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgChatMemberStatuses
-import ru.kochkaev.zixamc.tgbridge.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.api.telegram.model.ITgMenuButton
+import ru.kochkaev.zixamc.api.telegram.model.TgChatMemberStatuses
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 
 object Menu {
 

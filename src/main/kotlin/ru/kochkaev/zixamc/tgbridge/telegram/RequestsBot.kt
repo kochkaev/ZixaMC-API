@@ -1,12 +1,12 @@
 package ru.kochkaev.zixamc.tgbridge.telegram
 
 import kotlinx.coroutines.*
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge
-import ru.kochkaev.zixamc.tgbridge.ZixaMCTGBridge.Companion.logger
-import ru.kochkaev.zixamc.tgbridge.config.ConfigManager
+import ru.kochkaev.zixamc.api.ZixaMC.Companion.logger
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotCommands
 import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
-import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
+import ru.kochkaev.zixamc.api.Initializer.coroutineScope
+import ru.kochkaev.zixamc.api.telegram.TelegramBotZixa
 
 /**
  * @author kochkaev
@@ -14,7 +14,7 @@ import ru.kochkaev.zixamc.tgbridge.Initializer.coroutineScope
 object RequestsBot {
     lateinit var bot: TelegramBotZixa
     val config
-        get() = ConfigManager.CONFIG!!.requestsBot
+        get() = ConfigManager.config.requestsBot
     var isInitialized = false
 
     fun startBot() {

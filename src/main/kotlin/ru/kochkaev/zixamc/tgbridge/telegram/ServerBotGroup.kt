@@ -1,20 +1,27 @@
 package ru.kochkaev.zixamc.tgbridge.telegram
 
 import com.google.gson.annotations.SerializedName
-import ru.kochkaev.zixamc.tgbridge.sql.SQLUser
-import ru.kochkaev.zixamc.tgbridge.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBot.config
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
+import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.callback.CallbackCanExecute
+import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
+import ru.kochkaev.zixamc.api.telegram.ServerBot.config
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.TextParser
-import ru.kochkaev.zixamc.tgbridge.telegram.model.*
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
-import ru.kochkaev.zixamc.tgbridge.sql.callback.TgCBHandlerResult.Companion.SUCCESS
-import ru.kochkaev.zixamc.tgbridge.sql.SQLCallback
-import ru.kochkaev.zixamc.tgbridge.sql.SQLProcess
-import ru.kochkaev.zixamc.tgbridge.sql.callback.*
-import ru.kochkaev.zixamc.tgbridge.sql.data.AccountType
-import ru.kochkaev.zixamc.tgbridge.sql.process.*
+import ru.kochkaev.zixamc.api.telegram.model.*
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_MARKUP
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.SUCCESS
+import ru.kochkaev.zixamc.api.sql.process.GroupChatSyncWaitPrefixProcessData
+import ru.kochkaev.zixamc.api.sql.process.GroupSelectTopicProcessData
+import ru.kochkaev.zixamc.api.sql.SQLCallback
+import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.SQLProcess
+import ru.kochkaev.zixamc.api.sql.callback.CallbackData
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.process.GroupWaitingNameProcessData
+import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
 import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.TopicFeatureData
@@ -31,38 +38,50 @@ object ServerBotGroup {
         statuses = listOf(TgChatMemberStatuses.CREATOR),
         display = config.integration.group.memberStatus.creator,
     )
-    val SETTINGS = TgMenu(listOf(
-        listOf(SQLCallback.of(
-            display = config.integration.group.settings.features,
-            type = "group",
-            data = GroupCallback(Operations.EDIT_FEATURES),
-            canExecute = CAN_EXECUTE_ADMIN,
-        )),
-        listOf(SQLCallback.of(
-            display = config.integration.group.settings.changeName,
-            type = "group",
-            data = GroupCallback(Operations.UPDATE_NAME),
-            canExecute = CAN_EXECUTE_ADMIN,
-        )),
-        listOf(SQLCallback.of(
-            display = config.integration.group.settings.aliases,
-            type = "group",
-            data = GroupCallback(Operations.GET_ALIASES),
-            canExecute = CAN_EXECUTE_ADMIN,
-        )),
-        listOf(SQLCallback.of(
-            display = config.integration.group.removeAgreeWithRules,
-            type = "group",
-            data = GroupCallback(Operations.REMOVE_AGREE_WITH_RULES),
-            canExecute = CAN_EXECUTE_ADMIN,
-        )),
-        listOf(SQLCallback.of(
-            display = config.integration.group.success,
-            type = "group",
-            data = GroupCallback(Operations.SUCCESS),
-            canExecute = CAN_EXECUTE_ADMIN,
-        )),
-    ))
+    val SETTINGS = TgMenu(
+        listOf(
+            listOf(
+                SQLCallback.of(
+                    display = config.integration.group.settings.features,
+                    type = "group",
+                    data = GroupCallback(Operations.EDIT_FEATURES),
+                    canExecute = CAN_EXECUTE_ADMIN,
+                )
+            ),
+            listOf(
+                SQLCallback.of(
+                    display = config.integration.group.settings.changeName,
+                    type = "group",
+                    data = GroupCallback(Operations.UPDATE_NAME),
+                    canExecute = CAN_EXECUTE_ADMIN,
+                )
+            ),
+            listOf(
+                SQLCallback.of(
+                    display = config.integration.group.settings.aliases,
+                    type = "group",
+                    data = GroupCallback(Operations.GET_ALIASES),
+                    canExecute = CAN_EXECUTE_ADMIN,
+                )
+            ),
+            listOf(
+                SQLCallback.of(
+                    display = config.integration.group.removeAgreeWithRules,
+                    type = "group",
+                    data = GroupCallback(Operations.REMOVE_AGREE_WITH_RULES),
+                    canExecute = CAN_EXECUTE_ADMIN,
+                )
+            ),
+            listOf(
+                SQLCallback.of(
+                    display = config.integration.group.success,
+                    type = "group",
+                    data = GroupCallback(Operations.SUCCESS),
+                    canExecute = CAN_EXECUTE_ADMIN,
+                )
+            ),
+        )
+    )
     suspend fun newChatMembers(msg: TgMessage) {
         if (msg.chat.type == TgChatType.CHANNEL) {
             bot.leaveChat(msg.chat.id)
@@ -171,33 +190,33 @@ object ServerBotGroup {
                         text = config.integration.group.thinkOfName,
                         replyMarkup = TgMenu(
                             listOf(
-                            cbq.message.chat.title.let { escapeName(it) }.let {
-                                if (group.canTakeName(it)) listOf(
-                                    SQLCallback.of(
-                                        display = it,
-                                        type = "group",
-                                        data = GroupCallback(
-                                            operation = Operations.SET_NAME,
-                                            name = it
-                                        ),
-                                        canExecute = CAN_EXECUTE_ADMIN,
-                                    )
-                                ) else listOf()
-                            },
-                            cbq.message.chat.username?.let { escapeName(it) }?.let {
-                                if (group.canTakeName(it)) listOf(
-                                    SQLCallback.of(
-                                        display = it,
-                                        type = "group",
-                                        data = GroupCallback(
-                                            operation = Operations.SET_NAME,
-                                            name = it
-                                        ),
-                                        canExecute = CAN_EXECUTE_ADMIN,
-                                    )
-                                ) else listOf()
-                            } ?: listOf(),
-                        ))
+                                cbq.message.chat.title.let { escapeName(it) }.let {
+                                    if (group.canTakeName(it)) listOf(
+                                        SQLCallback.of(
+                                            display = it,
+                                            type = "group",
+                                            data = GroupCallback(
+                                                operation = Operations.SET_NAME,
+                                                name = it
+                                            ),
+                                            canExecute = CAN_EXECUTE_ADMIN,
+                                        )
+                                    ) else listOf()
+                                },
+                                cbq.message.chat.username?.let { escapeName(it) }?.let {
+                                    if (group.canTakeName(it)) listOf(
+                                        SQLCallback.of(
+                                            display = it,
+                                            type = "group",
+                                            data = GroupCallback(
+                                                operation = Operations.SET_NAME,
+                                                name = it
+                                            ),
+                                            canExecute = CAN_EXECUTE_ADMIN,
+                                        )
+                                    ) else listOf()
+                                } ?: listOf(),
+                            ))
                     )
                     SQLProcess.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
                         this.data?.messageId?.also { try {
@@ -211,9 +230,9 @@ object ServerBotGroup {
                     } ?.drop()
                     SQLProcess.of(
                         ProcessTypes.GROUP_WAITING_NAME, GroupWaitingNameProcessData(
-                        messageId = message.messageId,
-                        nameType = GroupWaitingNameProcessData.NameType.NAME,
-                    )
+                            messageId = message.messageId,
+                            nameType = GroupWaitingNameProcessData.NameType.NAME,
+                        )
                     ).pull(group.chatId)
                 }
                 else sendFeatures(group, cbq.message.messageId, true, null)
@@ -253,9 +272,9 @@ object ServerBotGroup {
                 } ?.drop()
                 SQLProcess.of(
                     ProcessTypes.GROUP_WAITING_NAME, GroupWaitingNameProcessData(
-                    messageId = cbq.message.messageId,
-                    nameType = GroupWaitingNameProcessData.NameType.NAME
-                )
+                        messageId = cbq.message.messageId,
+                        nameType = GroupWaitingNameProcessData.NameType.NAME
+                    )
                 ).pull(group.chatId)
                 bot.editMessageText(
                     chatId = group.chatId,
@@ -265,16 +284,20 @@ object ServerBotGroup {
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    replyMarkup = TgMenu(listOf(listOf(
-                        CancelCallbackData(
-                            asCallbackSend = CancelCallbackData.CallbackSend(
-                                type = "group",
-                                data = GroupCallback(Operations.SETTINGS),
-                                result = DELETE_LINKED
-                            ),
-                            canExecute = CAN_EXECUTE_ADMIN,
-                        ).build()
-                    ))),
+                    replyMarkup = TgMenu(
+                        listOf(
+                            listOf(
+                                CancelCallbackData(
+                                    asCallbackSend = CancelCallbackData.CallbackSend(
+                                        type = "group",
+                                        data = GroupCallback(Operations.SETTINGS),
+                                        result = DELETE_LINKED
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                ).build()
+                            )
+                        )
+                    ),
                 )
                 return DELETE_LINKED
             }
@@ -291,9 +314,9 @@ object ServerBotGroup {
                 } ?.drop()
                 SQLProcess.of(
                     ProcessTypes.GROUP_WAITING_NAME, GroupWaitingNameProcessData(
-                    messageId = cbq.message.messageId,
-                    nameType = GroupWaitingNameProcessData.NameType.ALIAS
-                )
+                        messageId = cbq.message.messageId,
+                        nameType = GroupWaitingNameProcessData.NameType.ALIAS
+                    )
                 ).pull(group.chatId)
                 bot.editMessageText(
                     chatId = group.chatId,
@@ -303,16 +326,20 @@ object ServerBotGroup {
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    replyMarkup = TgMenu(listOf(listOf(
-                        CancelCallbackData(
-                            asCallbackSend = CancelCallbackData.CallbackSend(
-                                type = "group",
-                                data = GroupCallback(Operations.GET_ALIASES),
-                                result = DELETE_LINKED
-                            ),
-                            canExecute = CAN_EXECUTE_ADMIN,
-                        ).build()
-                    ))),
+                    replyMarkup = TgMenu(
+                        listOf(
+                            listOf(
+                                CancelCallbackData(
+                                    asCallbackSend = CancelCallbackData.CallbackSend(
+                                        type = "group",
+                                        data = GroupCallback(Operations.GET_ALIASES),
+                                        result = DELETE_LINKED
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                ).build()
+                            )
+                        )
+                    ),
                 )
                 return DELETE_LINKED
             }
@@ -326,39 +353,49 @@ object ServerBotGroup {
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
-                        (group.aliases.get()?. let {
+                        (group.aliases.get()?.let {
                             it.fold(arrayListOf<List<SQLCallback.Companion.Builder<out CallbackData>>>()) { acc, a ->
-                                acc.add(listOf(SQLCallback.of(
-                                    display = TextParser.formatLang(
-                                        text = config.integration.group.settings.removeAlias,
-                                        "alias" to a
-                                    ),
-                                    type = "group",
-                                    data = GroupCallback(
-                                        operation = Operations.REMOVE_ALIAS,
-                                        name = a
-                                    ),
-                                    canExecute = CAN_EXECUTE_ADMIN,
-                                )))
+                                acc.add(
+                                    listOf(
+                                        SQLCallback.of(
+                                            display = TextParser.formatLang(
+                                                text = config.integration.group.settings.removeAlias,
+                                                "alias" to a
+                                            ),
+                                            type = "group",
+                                            data = GroupCallback(
+                                                operation = Operations.REMOVE_ALIAS,
+                                                name = a
+                                            ),
+                                            canExecute = CAN_EXECUTE_ADMIN,
+                                        )
+                                    )
+                                )
                                 acc
                             }
                         } ?: arrayListOf()).apply {
-                            this.add(listOf(SQLCallback.of(
-                                display = config.integration.group.settings.addAlias,
-                                type = "group",
-                                data = GroupCallback(Operations.ADD_ALIAS),
-                                canExecute = CAN_EXECUTE_ADMIN,
-                            )))
-                            this.add(listOf(
-                                CancelCallbackData(
-                                    asCallbackSend = CancelCallbackData.CallbackSend(
+                            this.add(
+                                listOf(
+                                    SQLCallback.of(
+                                        display = config.integration.group.settings.addAlias,
                                         type = "group",
-                                        data = GroupCallback(Operations.SETTINGS),
-                                        result = DELETE_LINKED
-                                    ),
-                                    canExecute = CAN_EXECUTE_ADMIN,
-                                ).build()
-                            ))
+                                        data = GroupCallback(Operations.ADD_ALIAS),
+                                        canExecute = CAN_EXECUTE_ADMIN,
+                                    )
+                                )
+                            )
+                            this.add(
+                                listOf(
+                                    CancelCallbackData(
+                                        asCallbackSend = CancelCallbackData.CallbackSend(
+                                            type = "group",
+                                            data = GroupCallback(Operations.SETTINGS),
+                                            result = DELETE_LINKED
+                                        ),
+                                        canExecute = CAN_EXECUTE_ADMIN,
+                                    ).build()
+                                )
+                            )
                         }
                     ),
                 )
@@ -378,17 +415,19 @@ object ServerBotGroup {
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    replyMarkup = TgMenu(listOf(
+                    replyMarkup = TgMenu(
                         listOf(
-                            CancelCallbackData(
-                                asCallbackSend = CancelCallbackData.CallbackSend(
-                                    type = "group",
-                                    data = GroupCallback(Operations.GET_ALIASES),
-                                    result = DELETE_LINKED
-                                ),
-                                canExecute = CAN_EXECUTE_ADMIN,
-                            ).build()
-                        ))
+                            listOf(
+                                CancelCallbackData(
+                                    asCallbackSend = CancelCallbackData.CallbackSend(
+                                        type = "group",
+                                        data = GroupCallback(Operations.GET_ALIASES),
+                                        result = DELETE_LINKED
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                ).build()
+                            )
+                        )
                     ),
                 )
                 return DELETE_LINKED
@@ -413,33 +452,44 @@ object ServerBotGroup {
                     replyMarkup = TgMenu(
                         (group.features.getAll()?.let {
                             it.keys.fold(arrayListOf<List<SQLCallback.Companion.Builder<out CallbackData>>>()) { acc, feature ->
-                                acc.add(listOf(SQLCallback.of(
-                                    display = feature.tgDisplayName(),
-                                    type = "group",
-                                    data = GroupCallback(
-                                        operation = Operations.EDIT_FEATURE,
-                                        name = feature.serializedName,
-                                    ),
-                                    canExecute = CAN_EXECUTE_ADMIN,
-                                )))
+                                acc.add(
+                                    listOf(
+                                        SQLCallback.of(
+                                            display = feature.tgDisplayName(),
+                                            type = "group",
+                                            data = GroupCallback(
+                                                operation = Operations.EDIT_FEATURE,
+                                                name = feature.serializedName,
+                                            ),
+                                            canExecute = CAN_EXECUTE_ADMIN,
+                                        )
+                                    )
+                                )
                                 acc
                             }
                         } ?: arrayListOf()).apply {
-                            this.add(listOf(SQLCallback.of(
-                                display = config.integration.group.settings.addFeature,
-                                type = "group",
-                                data = GroupCallback(Operations.SEND_FEATURES),
-                                canExecute = CAN_EXECUTE_ADMIN,
-                            )))
-                            this.add(listOf(
-                                CancelCallbackData(
-                                asCallbackSend = CancelCallbackData.CallbackSend(
-                                    type = "group",
-                                    data = GroupCallback(Operations.SETTINGS),
-                                    result = DELETE_LINKED
-                                ),
-                                canExecute = CAN_EXECUTE_ADMIN,
-                            ).build()))
+                            this.add(
+                                listOf(
+                                    SQLCallback.of(
+                                        display = config.integration.group.settings.addFeature,
+                                        type = "group",
+                                        data = GroupCallback(Operations.SEND_FEATURES),
+                                        canExecute = CAN_EXECUTE_ADMIN,
+                                    )
+                                )
+                            )
+                            this.add(
+                                listOf(
+                                    CancelCallbackData(
+                                        asCallbackSend = CancelCallbackData.CallbackSend(
+                                            type = "group",
+                                            data = GroupCallback(Operations.SETTINGS),
+                                            result = DELETE_LINKED
+                                        ),
+                                        canExecute = CAN_EXECUTE_ADMIN,
+                                    ).build()
+                                )
+                            )
                         }),
                 )
                 return DELETE_LINKED
@@ -460,35 +510,41 @@ object ServerBotGroup {
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    replyMarkup = TgMenu(listOf(
-                        listOf(SQLCallback.of(
-                            display = config.integration.group.settings.editFeature,
-                            type = "group",
-                            data = GroupCallback(
-                                operation = Operations.EDIT_FEATURE_DATA,
-                                name = type.serializedName,
-                            ),
-                            canExecute = CAN_EXECUTE_ADMIN,
-                        )),
-                        listOf(SQLCallback.of(
-                            display = config.integration.group.settings.removeFeature,
-                            type = "group",
-                            data = GroupCallback(
-                                operation = Operations.REMOVE_FEATURE,
-                                name = type.serializedName,
-                            ),
-                            canExecute = CAN_EXECUTE_ADMIN,
-                        )),
+                    replyMarkup = TgMenu(
                         listOf(
-                            CancelCallbackData(
-                                asCallbackSend = CancelCallbackData.CallbackSend(
+                            listOf(
+                                SQLCallback.of(
+                                    display = config.integration.group.settings.editFeature,
                                     type = "group",
-                                    data = GroupCallback(Operations.EDIT_FEATURES),
-                                    result = DELETE_LINKED
-                                ),
-                                canExecute = CAN_EXECUTE_ADMIN,
-                            ).build()
-                        ))
+                                    data = GroupCallback(
+                                        operation = Operations.EDIT_FEATURE_DATA,
+                                        name = type.serializedName,
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                )
+                            ),
+                            listOf(
+                                SQLCallback.of(
+                                    display = config.integration.group.settings.removeFeature,
+                                    type = "group",
+                                    data = GroupCallback(
+                                        operation = Operations.REMOVE_FEATURE,
+                                        name = type.serializedName,
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                )
+                            ),
+                            listOf(
+                                CancelCallbackData(
+                                    asCallbackSend = CancelCallbackData.CallbackSend(
+                                        type = "group",
+                                        data = GroupCallback(Operations.EDIT_FEATURES),
+                                        result = DELETE_LINKED
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                ).build()
+                            )
+                        )
                     ),
                 )
                 return DELETE_LINKED
@@ -518,17 +574,19 @@ object ServerBotGroup {
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    replyMarkup = TgMenu(listOf(
+                    replyMarkup = TgMenu(
                         listOf(
-                            CancelCallbackData(
-                                asCallbackSend = CancelCallbackData.CallbackSend(
-                                    type = "group",
-                                    data = GroupCallback(Operations.EDIT_FEATURES),
-                                    result = DELETE_LINKED
-                                ),
-                                canExecute = CAN_EXECUTE_ADMIN,
-                            ).build()
-                        ))
+                            listOf(
+                                CancelCallbackData(
+                                    asCallbackSend = CancelCallbackData.CallbackSend(
+                                        type = "group",
+                                        data = GroupCallback(Operations.EDIT_FEATURES),
+                                        result = DELETE_LINKED
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                ).build()
+                            )
+                        )
                     ),
                 )
                 return DELETE_LINKED
@@ -558,25 +616,31 @@ object ServerBotGroup {
                     this.data?.also { bot.deleteMessage(group.chatId, it.messageId) }
                     this.drop()
                 }
-                SQLProcess.of(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE, GroupSelectTopicProcessData(cbq.message.messageId, type.serializedName)).pull(group.chatId)
+                SQLProcess.of(
+                    ProcessTypes.GROUP_SELECT_TOPIC_FEATURE,
+                    GroupSelectTopicProcessData(cbq.message.messageId, type.serializedName)
+                ).pull(group.chatId)
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    replyMarkup = TgMenu(listOf(
+                    replyMarkup = TgMenu(
                         listOf(
-                            CancelCallbackData(
-                            cancelProcesses = listOf(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE),
-                            asCallbackSend = CancelCallbackData.CallbackSend(
-                                type = "group",
-                                data = GroupCallback(
-                                    operation = Operations.EDIT_FEATURE_DATA,
-                                    name = type.serializedName,
-                                ),
-                                result = DELETE_LINKED,
-                            ),
-                            canExecute = CAN_EXECUTE_ADMIN,
-                        ).build())
-                    ))
+                            listOf(
+                                CancelCallbackData(
+                                    cancelProcesses = listOf(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE),
+                                    asCallbackSend = CancelCallbackData.CallbackSend(
+                                        type = "group",
+                                        data = GroupCallback(
+                                            operation = Operations.EDIT_FEATURE_DATA,
+                                            name = type.serializedName,
+                                        ),
+                                        result = DELETE_LINKED,
+                                    ),
+                                    canExecute = CAN_EXECUTE_ADMIN,
+                                ).build()
+                            )
+                        )
+                    )
                 )
                 return DELETE_LINKED
             }
@@ -595,20 +659,26 @@ object ServerBotGroup {
                     chatId = group.chatId,
                     text = config.integration.group.removeAgreeWithRulesAreYouSure,
                     replyParameters = TgReplyParameters(cbq.message.messageId),
-                    replyMarkup = TgMenu(listOf(
-                        listOf(SQLCallback.of(
-                            display = config.integration.group.confirm,
-                            type = "group",
-                            data = GroupCallback(Operations.CONFIRM_REMOVE_AGREE_WITH_RULES),
-                            canExecute = CAN_EXECUTE_OWNER
-                        )),
-                        listOf(SQLCallback.of(
-                            display = config.integration.group.cancelConfirm,
-                            type = "group",
-                            data = GroupCallback(Operations.CANCEL_REMOVE_AGREE_WITH_RULES),
-                            canExecute = CAN_EXECUTE_OWNER
-                        )),
-                    ))
+                    replyMarkup = TgMenu(
+                        listOf(
+                            listOf(
+                                SQLCallback.of(
+                                    display = config.integration.group.confirm,
+                                    type = "group",
+                                    data = GroupCallback(Operations.CONFIRM_REMOVE_AGREE_WITH_RULES),
+                                    canExecute = CAN_EXECUTE_OWNER
+                                )
+                            ),
+                            listOf(
+                                SQLCallback.of(
+                                    display = config.integration.group.cancelConfirm,
+                                    type = "group",
+                                    data = GroupCallback(Operations.CANCEL_REMOVE_AGREE_WITH_RULES),
+                                    canExecute = CAN_EXECUTE_OWNER
+                                )
+                            ),
+                        )
+                    )
                 )
                 return SUCCESS
             }
@@ -791,15 +861,17 @@ object ServerBotGroup {
                 .map { it.value }
                 .filter { it.checkAvailable(group) }
                 .filter { !group.features.contains(it) }
-                .map { SQLCallback.of(
-                    display = it.tgDisplayName(),
-                    type = "group",
-                    data = GroupCallback(
-                        operation = Operations.SELECT_FEATURE,
-                        name = it.serializedName
-                    ),
-                    canExecute = CAN_EXECUTE_ADMIN,
-                ) }
+                .map {
+                    SQLCallback.of(
+                        display = it.tgDisplayName(),
+                        type = "group",
+                        data = GroupCallback(
+                            operation = Operations.SELECT_FEATURE,
+                            name = it.serializedName
+                        ),
+                        canExecute = CAN_EXECUTE_ADMIN,
+                    )
+                }
                 .map { listOf(it) }
         )
         if (edit == null) bot.sendMessage(

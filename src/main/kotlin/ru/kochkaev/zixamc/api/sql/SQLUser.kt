@@ -1,0 +1,274 @@
+package ru.kochkaev.zixamc.api.sql
+
+import com.google.gson.annotations.JsonAdapter
+import kotlinx.coroutines.launch
+import ru.kochkaev.zixamc.api.Initializer
+import ru.kochkaev.zixamc.api.ZixaMC
+import ru.kochkaev.zixamc.api.config.GsonManager.gson
+import ru.kochkaev.zixamc.api.config.serialize.SQLUserAdapter
+import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.data.ChatData
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountData
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
+import ru.kochkaev.zixamc.api.sql.data.RequestData
+import ru.kochkaev.zixamc.api.sql.data.UserData
+import ru.kochkaev.zixamc.api.sql.util.AbstractSQLField
+import ru.kochkaev.zixamc.api.sql.util.BooleanSQLField
+import ru.kochkaev.zixamc.api.sql.util.NullableStringSQLField
+import ru.kochkaev.zixamc.api.sql.util.StringSQLArray
+import ru.kochkaev.zixamc.api.telegram.ServerBot
+import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import java.sql.SQLException
+
+@JsonAdapter(SQLUserAdapter::class)
+class SQLUser private constructor(val userId: Long): SQLChat(userId) {
+
+    private val nicknameField = NullableStringSQLField(SQLUser, "nicknames", userId, "user_id")
+    var nickname: String?
+        get() = nicknameField.get()
+        set(nickname) { nicknameField.set(nickname) }
+    val nicknames = StringSQLArray(SQLUser, "nicknames", userId, "user_id")
+    private val accountTypeField = object: AbstractSQLField<AccountType>(SQLUser, "account_type", userId, "user_id",
+        getter = { rs -> AccountType.Companion.parse(rs.getInt(1)) },
+        setter = { ps, it -> ps.setInt(1, accountType.id) }
+    ) {
+        override fun set(value: AccountType): Boolean {
+            val original = super.set(value)
+            if (original && !value.isHigherThanOrEqual(AccountType.PLAYER)) Initializer.coroutineScope.launch {
+                SQLGroup.getAllWithUser(userId).forEach {
+                    if (it.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoRemove == true)
+                        try {
+                            ServerBot.bot.banChatMember(it.chatId, userId)
+                        } catch (_: Exception) {}
+                    if (!it.atLeastOnePlayer()) it.onNoMorePlayers()
+                }
+            }
+            return original
+        }
+    }
+    var accountType: AccountType
+        get() = accountTypeField.get() ?: AccountType.UNKNOWN
+        set(accountType) { accountTypeField.set(accountType) }
+    val tempArray = StringSQLArray(SQLUser, "temp_array", userId, "user_id")
+    private val agreedWithRulesField = BooleanSQLField(SQLUser, "agreed_with_rules", userId, "user_id")
+    var agreedWithRules: Boolean
+        get() = agreedWithRulesField.get() ?: false
+        set(agreedWithRules) { agreedWithRulesField.set(agreedWithRules) }
+    private val isRestrictedField = BooleanSQLField(SQLUser, "agreed_with_rules", userId, "user_id")
+    var isRestricted: Boolean
+        get() = isRestrictedField.get() ?: false
+        set(isRestricted) { isRestrictedField.set(isRestricted) }
+    private val dataField = AbstractSQLField<UserData>(SQLUser, "data", userId, "user_id")
+    var data: UserData
+        get() = dataField.get() ?: UserData()
+        set(data) { dataField.set(data) }
+
+    companion object: MySQL() {
+        override val tableName: String = config.usersTable
+        override fun getModel(): String =
+            String.format(
+                """
+                CREATE TABLE `%s`.`%s` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `user_id` BIGINT NOT NULL,
+                    `nickname` VARCHAR(16),
+                    `nicknames` JSON DEFAULT "[]",
+                    `account_type` INT NOT NULL DEFAULT 3,
+                    `temp_array` JSON NOT NULL DEFAULT "[]",
+                    `agreed_with_rules` BOOLEAN NOT NULL DEFAULT FALSE,
+                    `is_restricted` BOOLEAN NOT NULL DEFAULT FALSE,
+                    `data` JSON NOT NULL DEFAULT "{}",
+                    PRIMARY KEY (`id`), UNIQUE (`user_id`)
+                ) ENGINE = InnoDB;
+                """.trimIndent(),
+                config.database,
+                config.usersTable
+            )
+
+        fun get(userId: Long) =
+            if (exists(userId)) SQLUser(userId)
+            else null
+        @Deprecated("Not safe", replaceWith = ReplaceWith("get(userId)"))
+        fun getWithoutCheck(userId: Long) = SQLUser(userId)
+        fun get(nickname: String) =
+            if (exists(nickname))
+                SQLUser(getId(nickname)!!)
+            else null
+        fun getByTempArray(value: String): SQLUser? {
+            val userId: Long = getIdByTempArrayVal(value)?:return null
+            return get(userId)
+        }
+        fun getOrCreate(userId: Long): SQLUser {
+            if (!exists(userId)) createDefault(userId)
+            return SQLUser(userId)
+        }
+        fun create(userId: Long, nickname: String?, nicknames: List<String>?, accountType: Int?, data: String?): Boolean {
+            try {
+                reConnect()
+                if (!exists(userId) && (nickname == null || !exists(nickname)) && (nicknames?.any{ exists(it) } != true)) {
+                    val preparedStatement =
+                        MySQLConnection!!.prepareStatement("INSERT INTO $tableName (user_id, nickname, nicknames, account_type, temp_array, data) VALUES (?, ?, ?, ?, ?, ?);")
+                    preparedStatement.setLong(1, userId)
+                    preparedStatement.setString(2, nickname)
+                    preparedStatement.setString(3, gson.toJson(nicknames?:listOf<String>()))
+                    preparedStatement.setInt(4, accountType?:3)
+                    preparedStatement.setString(5, gson.toJson(listOf<String>()))
+                    preparedStatement.setString(6, data)
+                    preparedStatement.executeUpdate()
+                    return true
+                }
+            } catch (e: SQLException) {
+                ZixaMC.logger.error("Register error ", e)
+            }
+            return false
+        }
+        fun createDefault(userId: Long) =
+            create(
+                userId = userId,
+                nickname = null,
+                nicknames = listOf(),
+                accountType = AccountType.UNKNOWN.id,
+                data = gson.toJson(UserData())
+            )
+        
+        fun exists(userId: Long) = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id = ?;")
+            preparedStatement.setLong(1, userId)
+            preparedStatement.executeQuery().next()
+        } catch (e: SQLException) {
+            ZixaMC.logger.error("isRegistered error", e)
+            false
+        }
+        fun exists(nickname: String) = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$');")
+            preparedStatement.setString(1, nickname)
+            preparedStatement.setString(2, nickname)
+            preparedStatement.executeQuery().next()
+        } catch (e: SQLException) {
+            ZixaMC.logger.error("isRegistered error", e)
+            false
+        }
+        
+        fun getId(nickname: String) = try {
+            reConnect()
+            if (exists(nickname)) {
+                val preparedStatement =
+                    MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$');")
+                preparedStatement.setString(1, nickname)
+                preparedStatement.setString(2, nickname)
+                val query = preparedStatement.executeQuery()
+                if (!query.next()) null
+                else query.getLong(1)
+            } else null
+        } catch (e: SQLException) {
+            ZixaMC.logger.error("getUserData error", e)
+            null
+        }
+        fun getIdByTempArrayVal(value: String) = try {
+            reConnect()
+            val preparedStatement =
+                MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName WHERE JSON_CONTAINS(temp_array, JSON_QUOTE(?), '$');")
+            preparedStatement.setString(1, value)
+            val query = preparedStatement.executeQuery()
+            if (!query.next()) null
+            else query.getLong(1)
+        } catch (e: SQLException) {
+            ZixaMC.logger.error("getUserData error", e)
+            null
+        }
+
+        val users: List<SQLUser>
+            get() {
+                val users = arrayListOf<SQLUser>()
+                try {
+                    reConnect()
+                    val preparedStatement =
+                        MySQLConnection!!.prepareStatement("SELECT user_id FROM $tableName;")
+                    val query = preparedStatement.executeQuery()
+                    while (query.next()) {
+                        val userId = query.getLong(1)
+                        users.add(SQLUser(userId))
+                    }
+                } catch (e: SQLException) {
+                    ZixaMC.logger.error("getAllData error", e)
+                }
+                return users
+            }
+    }
+
+    fun isInTable() = exists(userId)
+    fun addToTable() = createDefault(userId)
+
+    fun canTakeNickname(nickname: String) =
+        try {
+            MySQL.Companion.reConnect()
+            val preparedStatement =
+                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$'));")
+            preparedStatement.setLong(1, userId)
+            preparedStatement.setString(2, nickname)
+            preparedStatement.setString(3, nickname)
+            !preparedStatement.executeQuery().next()
+        } catch (e: SQLException) {
+            ZixaMC.logger.error("isRegistered error", e)
+            false
+        }
+
+    fun setPreferNickname(nickname: String) {
+        if ((data.minecraftAccounts).any { it.nickname == nickname }) {
+            addNickname(nickname)
+        }
+    }
+    fun addNickname(nickname: String) {
+        if (!nicknames.contains(nickname)) nicknames.add(nickname)
+        this.nickname = nickname
+    }
+
+    fun addMinecraftAccount(account: MinecraftAccountData): Boolean {
+        val accounts = data.minecraftAccounts
+        if (accounts.stream().anyMatch{it.nickname == account.nickname}) return false
+        else accounts.add(account)
+        if (!nicknames.contains(account.nickname)) nicknames.add(account.nickname)
+        if (nickname == null) nickname = account.nickname
+        data = data.apply { this.minecraftAccounts = accounts }
+        return true
+    }
+    fun editMinecraftAccount(nickname: String, newStatus: MinecraftAccountType) {
+        val accounts = (data).minecraftAccounts
+        val matched = accounts.first { it.nickname == nickname }
+        matched.accountStatus = newStatus
+        accounts.removeIf { it.nickname == nickname }
+        accounts.add(matched)
+        data = data.apply { this.minecraftAccounts = accounts }
+    }
+    fun addRequest(requestData: RequestData) {
+        if (accountType == AccountType.UNKNOWN) accountType = AccountType.REQUESTER
+        val requests = data.requests
+        requests.add(requestData)
+        data = data.apply { this.requests = requests }
+    }
+    fun editRequest(requestData: RequestData) {
+        val requests = (data).requests
+        requests.removeIf {it.user_request_id == requestData.user_request_id}
+        requests.add(requestData)
+//        when (requestData.request_status) {
+//            "creating" -> {
+//                requests.removeIf {it.request_status == "creating"}
+//                requests.add(requestData)
+//            }
+//            else -> {
+//                requests.removeIf {it.message_id_in_chat_with_user == requestData.message_id_in_chat_with_user}
+//                requests.add(requestData)
+//            }
+//        }
+        data = data.apply { this.requests = requests }
+    }
+
+    override val dataGetter: () -> ChatData = { data }
+    override val dataSetter: (ChatData) -> Unit = { data = it as UserData }
+    override suspend fun hasProtectedLevel(level: AccountType): Boolean =
+        accountType.isHigherThanOrEqual(level)
+}
