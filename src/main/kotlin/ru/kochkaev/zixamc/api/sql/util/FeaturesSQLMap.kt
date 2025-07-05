@@ -4,8 +4,8 @@ import com.google.common.reflect.TypeToken
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.sql.MySQL
 import ru.kochkaev.zixamc.api.sql.SQLGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
+import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
+import ru.kochkaev.zixamc.api.sql.feature.FeatureType
 
 class FeaturesSQLMap(
     sql: MySQL,

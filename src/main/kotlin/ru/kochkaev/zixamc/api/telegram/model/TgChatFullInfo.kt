@@ -1,7 +1,5 @@
 package ru.kochkaev.zixamc.api.telegram.model
 
-import com.google.gson.annotations.SerializedName
-
 /**
  * @author vanutp
  */

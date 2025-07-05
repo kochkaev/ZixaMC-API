@@ -1,8 +1,8 @@
 package ru.kochkaev.zixamc.api.config.serialize
 
 import com.google.gson.*
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
+import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
+import ru.kochkaev.zixamc.api.sql.feature.FeatureType
 import java.lang.reflect.Type
 
 class FeatureMapDeserializer : JsonDeserializer<Map<FeatureType<out FeatureData>, FeatureData>> {

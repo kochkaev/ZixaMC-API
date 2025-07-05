@@ -1,11 +1,11 @@
 package ru.kochkaev.zixamc.api.sql
 
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
-import ru.kochkaev.zixamc.api.sql.data.ChatData
 import ru.kochkaev.zixamc.api.sql.data.NewProtectedData
+import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
+import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
-import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
-import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 
 abstract class SQLChat(
@@ -16,54 +16,49 @@ abstract class SQLChat(
             if (id<0) SQLGroup.get(id)
             else SQLUser.get(id)
     }
-    abstract val dataGetter: () -> ChatData
-    abstract val dataSetter: (ChatData) -> Unit
+    abstract val data: ChatDataSQLMap
     open fun setProtectedInfoMessage(
         message: TgMessage,
         protectLevel: AccountType,
         protectedType: NewProtectedData.ProtectedType,
         senderBotId: Long,
     ) {
-        dataSetter(dataGetter().apply {
-            val data = NewProtectedData(
-                messageId = message.messageId,
-                protectedType = protectedType,
-                senderBotId = senderBotId,
-            )
-            this.protected[protectLevel]?.add(data) ?: also { this.protected[protectLevel] = arrayListOf(data) }
-        })
+        val protected = data.getCasted(ChatDataTypes.PROTECTED) ?: hashMapOf()
+        val new = NewProtectedData(
+            messageId = message.messageId,
+            protectedType = protectedType,
+            senderBotId = senderBotId,
+        )
+        protected[protectLevel]?.add(new) ?: also { protected[protectLevel] = arrayListOf(new) }
+        data.set(ChatDataTypes.PROTECTED, protected)
     }
     open suspend fun deleteProtected(protectLevel: AccountType) {
-        dataSetter(dataGetter().apply {
-            var level: AccountType? = protectLevel
-            while (level!=null){
-                this.protected[level]?.sortedByDescending { it.messageId } ?.forEach { data ->
-                    data.senderBotId.let { id ->
-                        when (id) {
-                            ServerBot.bot.me.id -> ServerBot.bot
-                            RequestsBot.bot.me.id -> RequestsBot.bot
-                            else -> null
-                        }
-                    } ?.also { bot ->
-                        try { when (data.protectedType) {
-                            NewProtectedData.ProtectedType.TEXT ->
-                                bot.deleteMessage(
-                                    chatId = id,
-                                    messageId = data.messageId,
-                                )
-                            NewProtectedData.ProtectedType.REPLY_MARKUP ->
-                                bot.editMessageReplyMarkup(
-                                    chatId = id,
-                                    messageId = data.messageId,
-                                    replyMarkup = TgReplyMarkup()
-                                )
-                        } } catch (_: Exception) {}
-                    }
+        val protected = data.getCasted(ChatDataTypes.PROTECTED) ?: return
+        var level: AccountType? = protectLevel
+        while (level!=null){
+            protected[level]?.sortedByDescending { it.messageId } ?.forEach { data ->
+                data.senderBotId.let { id ->
+                    BotLogic.bots.firstOrNull { it.me.id == id }
+                } ?.also { bot ->
+                    try { when (data.protectedType) {
+                        NewProtectedData.ProtectedType.TEXT ->
+                            bot.deleteMessage(
+                                chatId = id,
+                                messageId = data.messageId,
+                            )
+                        NewProtectedData.ProtectedType.REPLY_MARKUP ->
+                            bot.editMessageReplyMarkup(
+                                chatId = id,
+                                messageId = data.messageId,
+                                replyMarkup = TgReplyMarkup()
+                            )
+                    } } catch (_: Exception) {}
                 }
-                this.protected.remove(level)
-                level = level.levelHigh
             }
-        })
+            protected.remove(level)
+            level = level.levelHigh
+        }
+        data.set(ChatDataTypes.PROTECTED, protected)
     }
     abstract suspend fun hasProtectedLevel(level: AccountType): Boolean
 }

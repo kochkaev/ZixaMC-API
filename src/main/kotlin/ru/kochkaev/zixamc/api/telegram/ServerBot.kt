@@ -7,11 +7,10 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
 import ru.kochkaev.zixamc.api.ZixaMC.Companion.logger
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotCore
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotLogic
+import ru.kochkaev.zixamc.chatsync.ChatSyncBotCore
+import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.api.config.ConfigManager
-import ru.kochkaev.zixamc.tgbridge.telegram.easyAuth.EasyAuthIntegration
-import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.ServerBotLogic
+import ru.kochkaev.zixamc.easyauthintegration.EasyAuthIntegration
 import ru.kochkaev.zixamc.api.Initializer.coroutineScope
 
 /**

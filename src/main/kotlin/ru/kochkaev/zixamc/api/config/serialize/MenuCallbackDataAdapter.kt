@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.api.config.serialize
 
 import com.google.gson.*
-import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
+import ru.kochkaev.zixamc.api.telegram.Menu
 import java.lang.reflect.Type
 
 class MenuCallbackDataAdapter: JsonDeserializer<Menu.MenuCallbackData<*>>, JsonSerializer<Menu.MenuCallbackData<*>> {

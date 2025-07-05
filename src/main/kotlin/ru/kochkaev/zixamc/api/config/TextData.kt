@@ -6,7 +6,7 @@ import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import ru.kochkaev.zixamc.api.config.serialize.TextDataAdapter
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.parser.MinecraftAdventureConverter
+import ru.kochkaev.zixamc.chatsync.parser.MinecraftAdventureConverter
 
 @JsonAdapter(TextDataAdapter::class)
 data class TextData (

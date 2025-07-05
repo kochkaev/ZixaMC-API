@@ -6,8 +6,8 @@ import ru.kochkaev.zixamc.api.Initializer
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLUserAdapter
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
-import ru.kochkaev.zixamc.api.sql.data.ChatData
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountData
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.api.sql.data.RequestData
@@ -17,7 +17,9 @@ import ru.kochkaev.zixamc.api.sql.util.BooleanSQLField
 import ru.kochkaev.zixamc.api.sql.util.NullableStringSQLField
 import ru.kochkaev.zixamc.api.sql.util.StringSQLArray
 import ru.kochkaev.zixamc.api.telegram.ServerBot
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
+import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
+import ru.kochkaev.zixamc.requests.RequestsChatDataType
 import java.sql.SQLException
 
 @JsonAdapter(SQLUserAdapter::class)
@@ -58,10 +60,7 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
     var isRestricted: Boolean
         get() = isRestrictedField.get() ?: false
         set(isRestricted) { isRestrictedField.set(isRestricted) }
-    private val dataField = AbstractSQLField<UserData>(SQLUser, "data", userId, "user_id")
-    var data: UserData
-        get() = dataField.get() ?: UserData()
-        set(data) { dataField.set(data) }
+    override val data = ChatDataSQLMap(SQLUser, "data", userId, "user_id")
 
     companion object: MySQL() {
         override val tableName: String = config.usersTable
@@ -218,7 +217,7 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
         }
 
     fun setPreferNickname(nickname: String) {
-        if ((data.minecraftAccounts).any { it.nickname == nickname }) {
+        if (data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS)?.any { it.nickname == nickname } == true) {
             addNickname(nickname)
         }
     }
@@ -228,47 +227,35 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
     }
 
     fun addMinecraftAccount(account: MinecraftAccountData): Boolean {
-        val accounts = data.minecraftAccounts
+        val accounts = data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS) ?: arrayListOf()
         if (accounts.stream().anyMatch{it.nickname == account.nickname}) return false
         else accounts.add(account)
         if (!nicknames.contains(account.nickname)) nicknames.add(account.nickname)
         if (nickname == null) nickname = account.nickname
-        data = data.apply { this.minecraftAccounts = accounts }
+        data.set(ChatDataTypes.MINECRAFT_ACCOUNTS, accounts)
         return true
     }
     fun editMinecraftAccount(nickname: String, newStatus: MinecraftAccountType) {
-        val accounts = (data).minecraftAccounts
+        val accounts = data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS) ?: return
         val matched = accounts.first { it.nickname == nickname }
         matched.accountStatus = newStatus
         accounts.removeIf { it.nickname == nickname }
         accounts.add(matched)
-        data = data.apply { this.minecraftAccounts = accounts }
+        data.set(ChatDataTypes.MINECRAFT_ACCOUNTS, accounts)
     }
     fun addRequest(requestData: RequestData) {
         if (accountType == AccountType.UNKNOWN) accountType = AccountType.REQUESTER
-        val requests = data.requests
+        val requests = data.getCasted(RequestsChatDataType) ?: arrayListOf()
         requests.add(requestData)
-        data = data.apply { this.requests = requests }
+        data.set(RequestsChatDataType, requests)
     }
     fun editRequest(requestData: RequestData) {
-        val requests = (data).requests
-        requests.removeIf {it.user_request_id == requestData.user_request_id}
+        val requests = data.getCasted(RequestsChatDataType) ?: return
+        requests.removeIf { it.user_request_id == requestData.user_request_id }
         requests.add(requestData)
-//        when (requestData.request_status) {
-//            "creating" -> {
-//                requests.removeIf {it.request_status == "creating"}
-//                requests.add(requestData)
-//            }
-//            else -> {
-//                requests.removeIf {it.message_id_in_chat_with_user == requestData.message_id_in_chat_with_user}
-//                requests.add(requestData)
-//            }
-//        }
-        data = data.apply { this.requests = requests }
+        data.set(RequestsChatDataType, requests)
     }
 
-    override val dataGetter: () -> ChatData = { data }
-    override val dataSetter: (ChatData) -> Unit = { data = it as UserData }
     override suspend fun hasProtectedLevel(level: AccountType): Boolean =
         accountType.isHigherThanOrEqual(level)
 }

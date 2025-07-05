@@ -5,11 +5,11 @@ import com.google.gson.annotations.JsonAdapter
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLProcess
 import ru.kochkaev.zixamc.api.sql.process.ProcessType
-import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
+import ru.kochkaev.zixamc.requests.RequestsBot
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.TelegramBotZixa
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
 import java.lang.reflect.Type
 
 data class CancelCallbackData(

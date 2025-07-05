@@ -8,12 +8,13 @@ import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.api.Initializer.coroutineScope
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.ConfigManager
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.ChatSyncBotLogic
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.chatSync.LastMessage
+import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
+import ru.kochkaev.zixamc.chatsync.LastMessage
 import ru.kochkaev.zixamc.api.config.ConfigManager.config
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLGroupAdapter
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.data.ChatData
 import ru.kochkaev.zixamc.api.sql.data.GroupData
@@ -23,23 +24,21 @@ import ru.kochkaev.zixamc.api.sql.util.FeaturesSQLMap
 import ru.kochkaev.zixamc.api.sql.util.NullableStringSQLField
 import ru.kochkaev.zixamc.api.sql.util.StringSQLArray
 import ru.kochkaev.zixamc.api.sql.util.UsersSQLArray
-import ru.kochkaev.zixamc.api.telegram.model.TgEntity
-import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.api.telegram.BotLogic
-import ru.kochkaev.zixamc.tgbridge.telegram.RequestsBot
+import ru.kochkaev.zixamc.requests.RequestsBot
 import ru.kochkaev.zixamc.api.telegram.ServerBot
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.ChatSyncFeatureData
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureData
+import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
+import ru.kochkaev.zixamc.api.sql.feature.FeatureType
+import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import java.sql.SQLException
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes.CHAT_SYNC
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.PlayersGroupFeatureData
+import ru.kochkaev.zixamc.api.sql.feature.data.PlayersGroupFeatureData
+import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
 import ru.kochkaev.zixamc.api.telegram.model.TgChat
-import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
 import ru.kochkaev.zixamc.api.telegram.model.TgUser
-import ru.kochkaev.zixamc.tgbridge.telegram.requests.RequestsBotUpdateManager
+import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureType
+import ru.kochkaev.zixamc.requests.RequestsBotUpdateManager
 
 @JsonAdapter(SQLGroupAdapter::class)
 class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
@@ -59,10 +58,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         get() = isRestrictedField.get() ?: false
         set(isRestricted) { isRestrictedField.set(isRestricted) }
     val features = FeaturesSQLMap(SQLGroup, "features", chatId, "chat_id", this)
-    private val dataField = AbstractSQLField<GroupData>(SQLGroup, "data", chatId, "chat_id")
-    var data: GroupData
-        get() = dataField.get() ?: GroupData()
-        set(data) { dataField.set(data) }
+    override val data = ChatDataSQLMap(SQLGroup, "data", chatId, "chat_id")
 
     companion object: MySQL() {
         override val tableName: String = config.groupsTable
@@ -95,7 +91,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 agreedWithRules = true,
                 isRestricted = false,
                 features = mapOf(
-                    CHAT_SYNC to ChatSyncFeatureData(
+                    ChatSyncFeatureType to ChatSyncFeatureData(
                         enabled = true,
                         topicId = config.defaultGroup.topicId,
 //                        name = config.defaultGroup.name,
@@ -251,21 +247,16 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 SQLUser.createDefault(userId)
             if (!group.members.contains(userId))
                 group.members.add(userId)
-            val data = group.data
-            if (chat.username != null && data.isPrivate) {
-                group.data = data.apply {
-                    this.isPrivate = false
-                }
+            if (chat.username != null && group.data.getCasted(ChatDataTypes.IS_PRIVATE)?:false) {
+                group.data.set(ChatDataTypes.IS_PRIVATE, false)
                 group.cleanUpProtected(AccountType.UNKNOWN)
                 bot.sendMessage(
                     chatId = chat.id,
                     text = ServerBot.config.integration.group.switchToPublic,
                 )
             }
-            else if (chat.username == null && !data.isPrivate) {
-                group.data = data.apply {
-                    this.isPrivate = true
-                }
+            else if (chat.username == null && !(group.data.getCasted(ChatDataTypes.IS_PRIVATE)?:false)) {
+                group.data.set(ChatDataTypes.IS_PRIVATE, true)
             }
         }
     }
@@ -316,26 +307,6 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
             it.filter { it1 -> !bot.getChatMember(chatId, it1.id).user.isBot }
         } ?: listOf()
 
-    suspend fun sendMessage(text: String, reply: Int? = null, entities: List<TgEntity>? = null): TgMessage {
-        return bot.sendMessage(
-            chatId = chatId,
-            text = text,
-            messageThreadId = features.getCasted(CHAT_SYNC)!!.topicId,
-            entities = entities,
-            replyParameters = reply?.let {
-                TgReplyParameters(
-                    reply
-                )
-            }
-        )
-    }
-    suspend fun editMessageText(messageId: Int, text: String, entities: List<TgEntity>? = null): TgMessage {
-        return bot.editMessageText(chatId, messageId, text, entities=entities)
-    }
-    suspend fun deleteMessage(messageId: Int) {
-        bot.deleteMessage(chatId, messageId)
-    }
-
     fun withScopeAndLock(fn: suspend () -> Unit) {
         coroutineScope.launch {
             lastMessageLock.withLock {
@@ -354,8 +325,6 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
     }
 
 
-    override val dataGetter: () -> ChatData = { data }
-    override val dataSetter: (ChatData) -> Unit = { data = it as GroupData }
     override suspend fun hasProtectedLevel(level: AccountType): Boolean =
         getNoBotsMembers().fold(true) { acc, it -> acc && it.hasProtectedLevel(level) }
         && (!level.requireGroupPrivate || bot.getChat(chatId).username == null)

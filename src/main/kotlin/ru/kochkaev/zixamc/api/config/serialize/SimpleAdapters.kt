@@ -7,8 +7,10 @@ import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.process.ProcessType
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureTypes
+import ru.kochkaev.zixamc.api.sql.feature.FeatureType
+import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 
 class SQLUserAdapter: SimpleAdapter<SQLUser>(
     reader = { SQLUser.getWithoutCheck(it.nextString().toLong()) },
@@ -36,5 +38,9 @@ class FeatureTypeAdapter: SimpleAdapter<FeatureType<*>>(
 )
 class ProcessTypeAdapter: SimpleAdapter<ProcessType<*>>(
     reader = { ProcessTypes.entries[it.nextString()] },
+    writer = { out, it -> out.value(it.serializedName) }
+)
+class ChatDataTypeAdapter: SimpleAdapter<ChatDataType<*>>(
+    reader = { ChatDataTypes.entries[it.nextString()] },
     writer = { out, it -> out.value(it.serializedName) }
 )

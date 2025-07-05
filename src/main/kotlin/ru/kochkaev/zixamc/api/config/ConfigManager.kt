@@ -4,7 +4,6 @@ import net.fabricmc.loader.api.FabricLoader
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
 import ru.kochkaev.zixamc.api.ZixaMC
-import ru.kochkaev.zixamc.tgbridge.config.Config
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets

@@ -17,16 +17,19 @@ import ru.kochkaev.zixamc.api.config.serialize.SQLUserAdapter
 import ru.kochkaev.zixamc.api.config.serialize.SetupFeatureCallbackAdapter
 import ru.kochkaev.zixamc.api.config.serialize.TextDataAdapter
 import ru.kochkaev.zixamc.api.config.serialize.TgChatMemberAdapter
+import ru.kochkaev.zixamc.api.config.serialize.ChatDataMapDeserializer
+import ru.kochkaev.zixamc.api.config.serialize.ChatDataTypeAdapter
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.callback.TgCallback
 import ru.kochkaev.zixamc.api.sql.process.ProcessType
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.data.FeatureData
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.FeatureType
+import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
+import ru.kochkaev.zixamc.api.sql.feature.FeatureType
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMember
-import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.Menu
+import ru.kochkaev.zixamc.api.telegram.Menu
 
 /**
  * @author kochkaev
@@ -40,6 +43,8 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
                 Menu.MenuCallbackData::class.java to MenuCallbackDataAdapter(),
                 object : TypeToken<Map<FeatureType<out FeatureData>, FeatureData>>() {}.type to FeatureMapDeserializer(),
                 FeatureType::class.java to FeatureTypeAdapter(),
+                object : TypeToken<Map<ChatDataType<*>, *>>() {}.type to ChatDataMapDeserializer(),
+                ChatDataType::class.java to ChatDataTypeAdapter(),
                 SQLUser::class.java to SQLUserAdapter(),
                 SQLGroup::class.java to SQLGroupAdapter(),
                 SQLCallback::class.java to SQLCallbackAdapter(),

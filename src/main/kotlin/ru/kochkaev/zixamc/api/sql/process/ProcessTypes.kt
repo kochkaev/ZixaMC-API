@@ -1,9 +1,9 @@
 package ru.kochkaev.zixamc.api.sql.process
 
-import ru.kochkaev.zixamc.tgbridge.telegram.ServerBotGroup
-import ru.kochkaev.zixamc.tgbridge.telegram.feature.type.ChatSyncFeatureType
-import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.AudioPlayerIntegration
-import ru.kochkaev.zixamc.tgbridge.telegram.serverBot.integration.FabricTailorIntegration
+import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureType
+import ru.kochkaev.zixamc.audioplayerintegration.AudioPlayerIntegration
+import ru.kochkaev.zixamc.fabrictailorintegration.FabricTailorIntegration
 
 object ProcessTypes {
     val GROUP_WAITING_NAME = ProcessType(GroupWaitingNameProcessData::class.java, "GROUP_WAITING_NAME", ProcessorType.REPLY_MESSAGE, ServerBotGroup::waitNameProcessor)

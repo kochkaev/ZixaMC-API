@@ -18,8 +18,8 @@ import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLProcess
+import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.process.ProcessorType
-import ru.kochkaev.zixamc.api.sql.util.LinkedUser
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.time.Duration
@@ -29,7 +29,13 @@ import java.util.Queue
 /**
  * @author vanutp
  */
-class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logger: Logger, private val POLL_TIMEOUT_SECONDS: Int = 60) {
+class TelegramBotZixa(
+    botApiUrl: String,
+    val botToken: String,
+    private val logger: Logger,
+    private val POLL_TIMEOUT_SECONDS: Int = 60,
+    val canAddToGroups: AccountType = AccountType.PLAYER,
+) {
 
     private val okhttpClient = OkHttpClient.Builder()
         .readTimeout(Duration.ofSeconds((POLL_TIMEOUT_SECONDS + 10).toLong()))
@@ -183,7 +189,7 @@ class TelegramBotZixa(botApiUrl: String, val botToken: String, private val logge
                                         )
                                     } catch (_: Exception) {}
                                     if (result.deleteAllLinked)
-                                        sql.linked.get()?.forEach { linked -> linked.getSQL()?.drop() }
+                                        sql.linked.get()?.forEach { sql -> sql.drop() }
                                     if (result.deleteCallback) sql.drop()
                                 }
                             }
