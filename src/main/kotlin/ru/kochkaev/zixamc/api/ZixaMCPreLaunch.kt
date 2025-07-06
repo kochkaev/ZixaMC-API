@@ -2,6 +2,7 @@ package ru.kochkaev.zixamc.api
 
 import com.google.common.reflect.TypeToken
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint
+import ru.kochkaev.zixamc.api.config.Config
 import ru.kochkaev.zixamc.api.config.serialize.GroupCallbackAdapter
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.config.GsonManager
@@ -58,13 +59,8 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
     }
     override fun onPreLaunch() {
         registerTypeAdapters()
-        ConfigManager.init()
+        ConfigManager.registerConfig(Config)
 
-//        MySQL.connect()
-//        SQLCallback.connectTable()
-//        SQLProcess.connectTable()
-//        SQLEntity.connectTable()
-//        SQLGroup.connectTable()
         Initializer.startSQL()
     }
 }

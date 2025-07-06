@@ -20,13 +20,13 @@ import ru.kochkaev.zixamc.fabrictailorintegration.FabricTailorUploadProcess
 
 object Menu {
 
-    val BACK_BUTTON = SQLCallback.Companion.of(
-        display = ServerBot.config.integration.buttonBackToMenu,
+    val BACK_BUTTON = SQLCallback.of(
+        display = ServerBot.config.menu.buttonBackToMenu,
         type = "menu",
         data = MenuCallbackData.of("back")
     )
-    fun getBackButtonExecuteOnly(user: SQLUser) = SQLCallback.Companion.of(
-        display = ServerBot.config.integration.buttonBackToMenu,
+    fun getBackButtonExecuteOnly(user: SQLUser) = SQLCallback.of(
+        display = ServerBot.config.menu.buttonBackToMenu,
         type = "menu",
         data = MenuCallbackData.of("back"),
         canExecute = CallbackCanExecute(
@@ -52,7 +52,7 @@ object Menu {
             fun of(
                 menuButton: ITgMenuButton,
                 filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
-            ): Integration = Integration(listOf(menuButton), { _, _ -> TgCBHandlerResult.Companion.SUCCESS }, filter)
+            ): Integration = Integration(listOf(menuButton), { _, _ -> TgCBHandlerResult.SUCCESS }, filter)
             fun of(
                 callbackName: String,
                 menuDisplay: String,
@@ -69,7 +69,7 @@ object Menu {
             ): Integration {
                 return Integration(
                     menuButton = listOf(
-                        SQLCallback.Companion.of(
+                        SQLCallback.of(
                         display = menuDisplay,
                         type = "menu",
                         data = MenuCallbackData.of(callbackName, customDataType, customDataInitial),
@@ -77,7 +77,7 @@ object Menu {
                     menuCallbackProcessor = { cbq, sql ->
                         if (sql.data?.operation == callbackName)
                             processor(cbq, sql as SQLCallback<MenuCallbackData<T>>)
-                        else TgCBHandlerResult.Companion.SUCCESS
+                        else TgCBHandlerResult.SUCCESS
                     },
                     filter = filter,
                 )
@@ -86,8 +86,8 @@ object Menu {
     }
 
     suspend fun sendMenu(chatId: Long, userId: Long?, threadId: Int? = null) {
-        val chat = SQLChat.Companion.get(chatId)
-        val user = userId?.let { SQLUser.Companion.get(it) }
+        val chat = SQLChat.get(chatId)
+        val user = userId?.let { SQLUser.get(it) }
         ProcessTypes.entries.values
             .filter { it.cancelOnMenuSend }
             .mapNotNull { SQLProcess.get(chatId, it) }
@@ -101,7 +101,7 @@ object Menu {
                         )
                     } catch (_: Exception) {
                     }
-                    SQLCallback.Companion.dropAll(process.chatId, this.messageId)
+                    SQLCallback.dropAll(process.chatId, this.messageId)
                 }
                 process.drop()
             }
@@ -109,7 +109,7 @@ object Menu {
             ServerBot.bot.sendMessage(
                 chatId = chatId,
                 messageThreadId = threadId,
-                text = ServerBot.config.integration.messageMenu,
+                text = ServerBot.config.menu.messageMenu,
                 replyMarkup = TgMenu(arrayListOf<List<ITgMenuButton>>().apply {
                     addAll(integrations.filter { it.filter(chatId, userId) }.map { it.menuButton })
                 })
@@ -119,17 +119,17 @@ object Menu {
         else
             ServerBot.bot.sendMessage(
                 chatId = chatId,
-                text = ServerBot.config.integration.messageNotPlayer,
+                text = ServerBot.config.menu.messageNotPlayer,
             )
     }
     suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<MenuCallbackData<*>>): TgCBHandlerResult {
 //        if (cbq.data == null || !cbq.data.startsWith("menu")) return
-        val entity = SQLUser.Companion.get(cbq.from.id)?:return TgCBHandlerResult.Companion.SUCCESS
+        val entity = SQLUser.get(cbq.from.id)?:return TgCBHandlerResult.SUCCESS
         if (!entity.hasProtectedLevel(AccountType.PLAYER)) {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,
                 messageId = cbq.message.messageId,
-                text = ServerBot.config.integration.messageNotPlayer,
+                text = ServerBot.config.menu.messageNotPlayer,
             )
             return TgCBHandlerResult.Companion.DELETE_MARKUP
         }

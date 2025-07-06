@@ -52,7 +52,7 @@ object FabricTailorIntegration {
         get() = FabricLoader.getInstance().isModLoaded("fabrictailor")
 
     suspend fun callbackProcessor(cbq: TgCallbackQuery, sql: SQLCallback<Menu.MenuCallbackData<AdditionalData>>): TgCBHandlerResult {
-        val user = SQLUser.Companion.get(cbq.from.id) ?: return TgCBHandlerResult.Companion.SUCCESS
+        val user = SQLUser.get(cbq.from.id) ?: return TgCBHandlerResult.SUCCESS
         val menuData = sql.data ?: Menu.MenuCallbackData.of(
             operation = "fabricTailor",
             additionalType = AdditionalData::class.java,
@@ -60,7 +60,7 @@ object FabricTailorIntegration {
         )
         val data = menuData.additional
         if (data.nickname == null) {
-            val nicknames = user.data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS)?.filter { MinecraftAccountType.Companion.getAllActiveNow().contains(it.accountStatus) } ?.map { it.nickname } ?: listOf()
+            val nicknames = user.data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS)?.filter { MinecraftAccountType.getAllActiveNow().contains(it.accountStatus) } ?.map { it.nickname } ?: listOf()
             if (nicknames.size == 1) {
                 data.nickname = nicknames[0]
             } else if (nicknames.isEmpty()) {
@@ -70,7 +70,7 @@ object FabricTailorIntegration {
                     text = ServerBot.config.integration.fabricTailor.messageErrorUpload,
                     replyMarkup = TgMenu(listOf(listOf(Menu.getBackButtonExecuteOnly(user))))
                 )
-                return TgCBHandlerResult.Companion.DELETE_MARKUP
+                return TgCBHandlerResult.DELETE_MARKUP
             } else {
                 ServerBot.bot.editMessageText(
                     chatId = cbq.message.chat.id,
@@ -82,7 +82,7 @@ object FabricTailorIntegration {
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(nicknames.map {
                         listOf<ITgMenuButton>(
-                            SQLCallback.Companion.of(
+                            SQLCallback.of(
                                 display = it,
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of(
@@ -101,7 +101,7 @@ object FabricTailorIntegration {
                         )
                     }.toMutableList().apply { add(listOf<ITgMenuButton>(Menu.getBackButtonExecuteOnly(user))) })
                 )
-                return TgCBHandlerResult.Companion.DELETE_LINKED
+                return TgCBHandlerResult.DELETE_LINKED
             }
         }
         if (data.slim == null) {
@@ -116,7 +116,7 @@ object FabricTailorIntegration {
                 replyMarkup = TgMenu(
                     listOf(
                         listOf(
-                            SQLCallback.Companion.of(
+                            SQLCallback.of(
                                 display = ServerBot.config.integration.fabricTailor.buttonModelClassic,
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of(
@@ -135,7 +135,7 @@ object FabricTailorIntegration {
                             )
                         ),
                         listOf(
-                            SQLCallback.Companion.of(
+                            SQLCallback.of(
                                 display = ServerBot.config.integration.fabricTailor.buttonModelSlim,
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of(
@@ -157,7 +157,7 @@ object FabricTailorIntegration {
                     )
                 )
             )
-            return TgCBHandlerResult.Companion.DELETE_LINKED
+            return TgCBHandlerResult.DELETE_LINKED
         } else {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,

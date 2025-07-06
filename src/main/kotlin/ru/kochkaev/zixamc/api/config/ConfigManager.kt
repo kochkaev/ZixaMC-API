@@ -1,6 +1,5 @@
 package ru.kochkaev.zixamc.api.config
 
-import net.fabricmc.loader.api.FabricLoader
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
 import ru.kochkaev.zixamc.api.ZixaMC
@@ -15,13 +14,21 @@ object ConfigManager {
 
     private val logger
         get() = ZixaMC.logger
-    lateinit var config: Config
-    private val configFile = File(FabricLoader.getInstance().configDir.toFile(), "ZixaMCTGBridge.json")
+    var config: Config
+        get() = Config.config
+        set(config) {
+            Config.config = config
+        }
 
-    @Throws(Exception::class)
-    fun init() {
-        init(configFile, Config::class.java, ::Config, ConfigManager::config) { config = it ?: Config() }
+    private val toReload = arrayListOf<ConfigFile<*>>()
+    fun registerConfig(config: ConfigFile<*>) {
+        toReload.add(config)
+        config.init()
     }
+    fun reload() {
+        toReload.forEach { it.load() }
+    }
+
     @Throws(Exception::class)
     fun <T> init(file: File, clazz: Class<T>, supplier: ()->T, getter: ()->T?, setter: (T?)->Unit) {
         if (file.length() != 0L) {
@@ -36,7 +43,7 @@ object ConfigManager {
         }
     }
 
-    fun <T> create(file: File, supplier: ()->T): T? {
+    private fun <T> create(file: File, supplier: ()->T): T? {
         val content: T = supplier.invoke()
         try {
             FileOutputStream(file).use { outputStream ->
@@ -50,9 +57,6 @@ object ConfigManager {
         }
     }
 
-    fun load() {
-        config = load(configFile, Config::class.java) ?: Config()
-    }
     fun <T> load(file: File, clazz: Class<T>): T? {
         var content: T? = null
         try {
@@ -66,9 +70,6 @@ object ConfigManager {
         return content
     }
 
-    fun update() {
-        update(configFile, config)
-    }
     fun update(file: File, content: Any?) {
         try {
             FileOutputStream(file).use { outputStream ->

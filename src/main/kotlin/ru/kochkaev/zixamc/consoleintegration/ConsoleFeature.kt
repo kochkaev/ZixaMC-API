@@ -64,7 +64,7 @@ object ConsoleFeature {
     }
     fun startPeriodicBroadcast() {
         job = coroutineScope.launch {
-            broadcast(config.integration.group.features.console.newSession)
+            broadcast(config.group.features.console.newSession)
             while (isActive) {
                 delay(10_000L) // ожидание 10 секунд
                 val messagesToSend = broadcastLock.withLock {
@@ -86,7 +86,7 @@ object ConsoleFeature {
                     accumulatedMessages.clear()
                     content
                 } else null
-            } + "\n" + config.integration.group.features.console.stopSession
+            } + "\n" + config.group.features.console.stopSession
             broadcast(messagesToSend)
             job.cancel()
         }

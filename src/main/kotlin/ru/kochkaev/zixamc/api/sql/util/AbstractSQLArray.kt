@@ -17,9 +17,9 @@ open class AbstractSQLArray<T>(
 ) {
     open fun get() =
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT $column FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("SELECT $column FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
             preparedStatement.setLong(1, uniqueId)
             val query = preparedStatement.executeQuery()
             query.next()
@@ -30,9 +30,9 @@ open class AbstractSQLArray<T>(
         }
     open fun set(array: List<T>) {
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = ? WHERE $uniqueColumn = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = ? WHERE $uniqueColumn = ?;")
             preparedStatement.setString(1, serializer(array))
             preparedStatement.setLong(2, uniqueId)
             preparedStatement.executeUpdate()
@@ -43,9 +43,9 @@ open class AbstractSQLArray<T>(
 
     open fun contains(value: T): Boolean =
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT JSON_CONTAINS($column, JSON_QUOTE(?), '$') FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("SELECT JSON_CONTAINS($column, JSON_QUOTE(?), '$') FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
             preparedStatement.setString(1, valSerializer(value))
             preparedStatement.setLong(2, uniqueId)
             val query = preparedStatement.executeQuery()
@@ -58,9 +58,9 @@ open class AbstractSQLArray<T>(
     open fun add(value: T) = try {
         if (contains(value)) false
         else {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_ARRAY_APPEND($column, '$', ?) WHERE $uniqueColumn = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = JSON_ARRAY_APPEND($column, '$', ?) WHERE $uniqueColumn = ?;")
             preparedStatement.setString(1, valSerializer(value))
             preparedStatement.setLong(2, uniqueId)
             preparedStatement.executeUpdate()
@@ -73,12 +73,12 @@ open class AbstractSQLArray<T>(
     open fun remove(value: T) = try {
         if (!contains(value)) false
         else {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val statement = "UPDATE ${sql.tableName} " +
                     "SET $column = JSON_REMOVE($column, JSON_UNQUOTE(JSON_SEARCH($column, 'one', ?, NULL, '$'))) " +
                     "WHERE $uniqueColumn = ?;"
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement(statement)
+                MySQL.MySQLConnection!!.prepareStatement(statement)
             preparedStatement.setString(1, valSerializer(value))
             preparedStatement.setLong(2, uniqueId)
             preparedStatement.executeUpdate()

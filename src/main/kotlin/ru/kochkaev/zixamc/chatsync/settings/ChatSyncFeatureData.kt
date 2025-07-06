@@ -1,9 +1,11 @@
-package ru.kochkaev.zixamc.chatsync
+package ru.kochkaev.zixamc.chatsync.settings
 
 import eu.pb4.placeholders.api.parsers.MarkdownLiteParserV1
 import net.kyori.adventure.text.Component
 import ru.kochkaev.zixamc.api.config.TextData
+import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.chatsync.ChatSyncBotCore.config
 import ru.kochkaev.zixamc.chatsync.parser.MinecraftAdventureConverter
@@ -12,6 +14,10 @@ import ru.kochkaev.zixamc.chatsync.parser.TextParser.replyToText
 //import ru.kochkaev.zixamc.chatsync.TextParser.topicToText
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.api.sql.feature.data.TopicFeatureData
+import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
+import ru.kochkaev.zixamc.chatsync.ChatSyncBotCore
+import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
 
 class ChatSyncFeatureData (
     topicId: Int? = null,

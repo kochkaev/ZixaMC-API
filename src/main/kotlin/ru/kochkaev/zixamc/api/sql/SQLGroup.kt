@@ -7,8 +7,6 @@ import kotlinx.coroutines.sync.withLock
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.api.Initializer.coroutineScope
 import ru.kochkaev.zixamc.api.ZixaMC
-import ru.kochkaev.zixamc.api.config.ConfigManager
-import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.chatsync.LastMessage
 import ru.kochkaev.zixamc.api.config.ConfigManager.config
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
@@ -17,27 +15,22 @@ import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
-import ru.kochkaev.zixamc.api.sql.util.AbstractSQLField
 import ru.kochkaev.zixamc.api.sql.util.BooleanSQLField
 import ru.kochkaev.zixamc.api.sql.util.FeaturesSQLMap
 import ru.kochkaev.zixamc.api.sql.util.NullableStringSQLField
 import ru.kochkaev.zixamc.api.sql.util.StringSQLArray
 import ru.kochkaev.zixamc.api.sql.util.UsersSQLArray
 import ru.kochkaev.zixamc.api.telegram.BotLogic
-import ru.kochkaev.zixamc.requests.RequestsBot
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
-import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureData
 import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
 import ru.kochkaev.zixamc.api.sql.feature.FeatureType
 import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import java.sql.SQLException
-import ru.kochkaev.zixamc.api.sql.feature.data.PlayersGroupFeatureData
 import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
+import ru.kochkaev.zixamc.api.telegram.RulesManager
 import ru.kochkaev.zixamc.api.telegram.model.TgChat
 import ru.kochkaev.zixamc.api.telegram.model.TgUser
-import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureType
-import ru.kochkaev.zixamc.requests.RequestsBotUpdateManager
 
 @JsonAdapter(SQLGroupAdapter::class)
 class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
@@ -215,10 +208,10 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 group.members.add(userId)
             if (chat.username != null && group.data.getCasted(ChatDataTypes.IS_PRIVATE)?:false) {
                 group.data.set(ChatDataTypes.IS_PRIVATE, false)
-                group.cleanUpProtected(AccountType.UNKNOWN)
+                group.deleteProtected(AccountType.UNKNOWN)
                 bot.sendMessage(
                     chatId = chat.id,
-                    text = ServerBot.config.integration.group.switchToPublic,
+                    text = ServerBot.config.group.switchToPublic,
                 )
             }
             else if (chat.username == null && !(group.data.getCasted(ChatDataTypes.IS_PRIVATE)?:false)) {
@@ -232,10 +225,10 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 
     fun canTakeName(value: String) =
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
 //                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND JSON_CONTAINS_PATH(features, 'one', '$.map.CHAT_SYNC') AND (features->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(features, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
-                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE chat_id != ? AND (name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$'));")
+                MySQL.MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE chat_id != ? AND (name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$'));")
             preparedStatement.setLong(1, chatId)
             preparedStatement.setString(2, value)
             preparedStatement.setString(3, value)
@@ -247,11 +240,11 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 
     fun updateChatId(newChatId: Long) =
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val old = chatId
             if (exists(old) && !exists(newChatId)) {
                 val preparedStatement =
-                    MySQL.Companion.MySQLConnection!!.prepareStatement("UPDATE $tableName SET chat_id = ? WHERE chat_id = ?;")
+                    MySQL.MySQLConnection!!.prepareStatement("UPDATE $tableName SET chat_id = ? WHERE chat_id = ?;")
                 preparedStatement.setLong(1, newChatId)
                 preparedStatement.setLong(2, old)
                 preparedStatement.executeUpdate()
@@ -295,8 +288,8 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         getNoBotsMembers().fold(true) { acc, it -> acc && it.hasProtectedLevel(level) }
         && (!level.requireGroupPrivate || bot.getChat(chatId).username == null)
         && bot.getChatMemberCount(chatId) == (members.get()?.size?:0)+1
-    suspend fun cleanUpProtected(protectLevel: AccountType) {
-        protectLevel.levelHigh?.also { deleteProtected(it) }
+    override suspend fun deleteProtected(protectLevel: AccountType) {
+        super.deleteProtected(protectLevel)
         features.getAll()?.keys?.forEach { key ->
             if (!key.checkAvailable(this)) features.remove(key)
         }
@@ -310,7 +303,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         try {
             bot.sendMessage(
                 chatId = chatId,
-                text = ServerBot.config.integration.group.hasNoMorePlayers,
+                text = ServerBot.config.group.hasNoMorePlayers,
             )
             bot.leaveChat(chatId)
         } catch (_: Exception) {}
@@ -318,34 +311,32 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 
     override suspend fun sendRulesUpdated(capital: Boolean) {
         val isPlayers = features.contains(FeatureTypes.PLAYERS_GROUP)
-        val message = if (isPlayers)
-                RequestsBot.config.target.lang.event.onRulesUpdated
-            else ServerBot.config.integration.group.rulesUpdated
+        val message = if (isPlayers) config.general.rules.updated4group
+            else config.general.rules.updated4player
         val menu = TgMenu(
             listOf(
             listOf(
-            ServerBot.config.integration.group
-                .let { if (capital) it.needAgreeWithRules else it.removeAgreeWithRules }
-                .let {
-                    if (isPlayers) SQLCallback.of(
-                        display = it,
-                        type = "requests",
-                        data = RequestsBotUpdateManager.RequestCallback(
-                            if (capital) RequestsBotUpdateManager.Operations.AGREE_WITH_RULES
-                            else RequestsBotUpdateManager.Operations.REVOKE_AGREE_WITH_RULES
-                        ),
-                        canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
-                    )
-                    else SQLCallback.of(
-                        display = it,
-                        type = "group",
-                        data = ServerBotGroup.GroupCallback(
-                            if (capital) ServerBotGroup.Operations.AGREE_WITH_RULES
-                            else ServerBotGroup.Operations.REMOVE_AGREE_WITH_RULES
-                        ),
-                        canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
-                    )
-                }
+                if (isPlayers) SQLCallback.of(
+                    display = if (capital) config.general.rules.agreeButton
+                        else config.general.rules.removeButton,
+                    type = "rules",
+                    data = RulesManager.RulesCallbackData(
+                        operation = if (capital) RulesManager.RulesOperation.SET_AGREE
+                            else RulesManager.RulesOperation.REMOVE_AGREE,
+                        type = RulesManager.RulesOperationType.RULES_UPDATED
+                    ),
+                )
+                else SQLCallback.of(
+                    display = if (capital) config.general.rules.agreeButton
+                        else config.general.rules.removeButton,
+                    type = "rules",
+                    data = RulesManager.RulesCallbackData(
+                        operation = if (capital) RulesManager.RulesOperation.SET_AGREE_GROUP
+                            else RulesManager.RulesOperation.REMOVE_AGREE_GROUP,
+                        type = RulesManager.RulesOperationType.RULES_UPDATED
+                    ),
+                    canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
+                )
         )))
         for(it in BotLogic.bots) {
             try {

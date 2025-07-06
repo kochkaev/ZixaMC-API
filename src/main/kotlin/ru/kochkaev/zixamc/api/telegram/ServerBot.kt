@@ -27,7 +27,6 @@ object ServerBot {
     private val lastMessageLock = Mutex()
 
     fun startBot() {
-        if (!config.isEnabled) return
         bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, config.pollTimeout)
         runBlocking {
             bot.init()
@@ -57,7 +56,6 @@ object ServerBot {
                 EasyAuthIntegration.registerEasyAuthHandlers()
             }
             if (config.chatSync.isEnabled) {
-                ChatSyncBotCore.init()
                 ChatSyncBotLogic.sendServerStartedMessage()
             }
         }
@@ -65,14 +63,8 @@ object ServerBot {
     }
 
     fun stopBot() {
-        if (config.isEnabled) {
-            coroutineScope.launch {
-//                if (config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
-                bot.shutdown()
-//                ZixaMCTGBridge.isServerBotLoaded = false
-//                ZixaMCTGBridge.executeStopSQL()
-//                job.cancelAndJoin()
-            }
+        coroutineScope.launch {
+            bot.shutdown()
         }
         isInitialized = false
     }

@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.chatsync
+package ru.kochkaev.zixamc.chatsync.settings
 
 import ru.kochkaev.zixamc.api.sql.process.ProcessData
 

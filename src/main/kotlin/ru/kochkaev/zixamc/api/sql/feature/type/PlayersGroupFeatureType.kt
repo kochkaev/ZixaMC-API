@@ -21,25 +21,27 @@ import ru.kochkaev.zixamc.api.telegram.model.*
 object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
     model = PlayersGroupFeatureData::class.java,
     serializedName = "PLAYERS_GROUP",
-    tgDisplayName = { config.integration.group.features.playersGroup.display },
-    tgDescription = { config.integration.group.features.playersGroup.description },
-    tgOnDone = { config.integration.group.features.playersGroup.done },
+    tgDisplayName = { config.group.features.playersGroup.display },
+    tgDescription = { config.group.features.playersGroup.description },
+    tgOnDone = { config.group.features.playersGroup.done },
     checkAvailable = { true },
     getDefault = { PlayersGroupFeatureData(group = it) },
     optionsResolver = {
-        config.integration.group.features.playersGroup.options.formatLang(
-            "autoAccept" to config.integration.group.settings.let { lang -> if (it.autoAccept) lang.truePlaceholder else lang.falsePlaceholder },
-            "autoRemove" to config.integration.group.settings.let { lang -> if (it.autoRemove) lang.truePlaceholder else lang.falsePlaceholder },
+        config.group.features.playersGroup.options.formatLang(
+            "autoAccept" to config.group.settings.let { lang -> if (it.autoAccept) lang.truePlaceholder else lang.falsePlaceholder },
+            "autoRemove" to config.group.settings.let { lang -> if (it.autoRemove) lang.truePlaceholder else lang.falsePlaceholder },
         )
     }
 ) {
     override fun getEditorMarkup(cbq: TgCallbackQuery, group: SQLGroup) = arrayListOf(
         listOf(
             SQLCallback.of(
-            display = config.integration.group.features.playersGroup.autoAccept,
+            display = config.group.features.playersGroup.autoAccept,
             type = "group",
-            data = FeatureGroupCallback(
-                data = SetupFeatureCallback(
+            data = GroupCallback.of(
+                operation = Operations.SETUP_FEATURE,
+                additionalType = SetupFeatureCallback::class.java,
+                additional = SetupFeatureCallback(
                     feature = this,
                     temp = group.features.getCasted(this)?:getDefault(group),
                     field = "autoAccept",
@@ -49,10 +51,12 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
         )),
         listOf(
             SQLCallback.of(
-                display = config.integration.group.features.playersGroup.autoRemove,
+                display = config.group.features.playersGroup.autoRemove,
                 type = "group",
-                data = FeatureGroupCallback(
-                    data = SetupFeatureCallback(
+                data = GroupCallback.of(
+                    operation = Operations.SETUP_FEATURE,
+                    additionalType = SetupFeatureCallback::class.java,
+                    additional = SetupFeatureCallback(
                         feature = this,
                         temp = group.features.getCasted(this)?:getDefault(group),
                         field = "autoRemove",
@@ -63,8 +67,8 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
         listOf(CancelCallbackData(
             asCallbackSend = CancelCallbackData.CallbackSend(
                 type = "group",
-                data = if (!group.features.contains(this)) GroupCallback(Operations.SEND_FEATURES)
-                    else GroupCallback(Operations.EDIT_FEATURE, serializedName),
+                data = if (!group.features.contains(this)) GroupCallback.of(Operations.SEND_FEATURES)
+                    else GroupCallback.of(Operations.EDIT_FEATURE, serializedName),
                 result = DELETE_LINKED
             ),
             canExecute = CAN_EXECUTE_ADMIN
@@ -74,14 +78,14 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
     override suspend fun processSetup(
         cbq: TgCallbackQuery,
         group: SQLGroup,
-        cbd: FeatureGroupCallback<PlayersGroupFeatureData>
+        cbd: GroupCallback<SetupFeatureCallback<PlayersGroupFeatureData>>
     ): TgCBHandlerResult {
-        if (cbd.data.arg.isEmpty()) when (cbd.data.field) {
+        if (cbd.additional.arg.isEmpty()) when (cbd.additional.field) {
             "autoAccept" -> {
                 bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = config.integration.group.features.playersGroup.autoAccept
+                    text = config.group.features.playersGroup.autoAccept
                 )
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
@@ -90,12 +94,14 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
                         listOf(
                             listOf(
                                 SQLCallback.of(
-                                    display = config.integration.group.settings.turnOn,
+                                    display = config.group.settings.turnOn,
                                     type = "group",
-                                    data = FeatureGroupCallback(
-                                        data = SetupFeatureCallback(
+                                    data = GroupCallback.of(
+                                        operation = Operations.SETUP_FEATURE,
+                                        additionalType = SetupFeatureCallback::class.java,
+                                        additional = SetupFeatureCallback(
                                             feature = this,
-                                            temp = with(cbd.data.temp) {
+                                            temp = with(cbd.additional.temp) {
                                                 it.autoAccept = true
                                                 it
                                             },
@@ -107,12 +113,14 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
                             ),
                             listOf(
                                 SQLCallback.of(
-                                    display = config.integration.group.settings.turnOff,
+                                    display = config.group.settings.turnOff,
                                     type = "group",
-                                    data = FeatureGroupCallback(
-                                        data = SetupFeatureCallback(
+                                    data = GroupCallback.of(
+                                        operation = Operations.SETUP_FEATURE,
+                                        additionalType = SetupFeatureCallback::class.java,
+                                        additional = SetupFeatureCallback(
                                             feature = this,
-                                            temp = with(cbd.data.temp) {
+                                            temp = with(cbd.additional.temp) {
                                                 it.autoAccept = false
                                                 it
                                             },
@@ -130,7 +138,7 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
                 bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = config.integration.group.features.playersGroup.autoRemove
+                    text = config.group.features.playersGroup.autoRemove
                 )
                 bot.editMessageReplyMarkup(
                     chatId = group.chatId,
@@ -139,12 +147,14 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
                         listOf(
                             listOf(
                                 SQLCallback.of(
-                                    display = config.integration.group.settings.turnOn,
+                                    display = config.group.settings.turnOn,
                                     type = "group",
-                                    data = FeatureGroupCallback(
-                                        data = SetupFeatureCallback(
+                                    data = GroupCallback.of(
+                                        operation = Operations.SETUP_FEATURE,
+                                        additionalType = SetupFeatureCallback::class.java,
+                                        additional = SetupFeatureCallback(
                                             feature = this,
-                                            temp = with(cbd.data.temp) {
+                                            temp = with(cbd.additional.temp) {
                                                 it.autoRemove = true
                                                 it
                                             },
@@ -156,12 +166,14 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
                             ),
                             listOf(
                                 SQLCallback.of(
-                                    display = config.integration.group.settings.turnOff,
+                                    display = config.group.settings.turnOff,
                                     type = "group",
-                                    data = FeatureGroupCallback(
-                                        data = SetupFeatureCallback(
+                                    data = GroupCallback.of(
+                                        operation = Operations.SETUP_FEATURE,
+                                        additionalType = SetupFeatureCallback::class.java,
+                                        additional = SetupFeatureCallback(
                                             feature = this,
-                                            temp = with(cbd.data.temp) {
+                                            temp = with(cbd.additional.temp) {
                                                 it.autoRemove = false
                                                 it
                                             },
@@ -176,7 +188,7 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
                 )
             }
         } else {
-            group.features.set(this, cbd.data.temp)
+            group.features.set(this, cbd.additional.temp)
             sendEditor(cbq, group)
         }
         return DELETE_LINKED

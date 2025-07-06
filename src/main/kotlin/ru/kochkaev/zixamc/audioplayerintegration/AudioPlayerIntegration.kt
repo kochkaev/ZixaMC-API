@@ -61,7 +61,7 @@ object AudioPlayerIntegration {
     }
 
     suspend fun callbackProcessor(cbq: TgCallbackQuery, sql: SQLCallback<Menu.MenuCallbackData<*>>): TgCBHandlerResult {
-        val user = cbq.from.id.let { SQLUser.Companion.get(it) } ?: return TgCBHandlerResult.Companion.SUCCESS
+        val user = cbq.from.id.let { SQLUser.get(it) } ?: return TgCBHandlerResult.SUCCESS
         val message = ServerBot.bot.sendMessage(
             chatId = cbq.message.chat.id,
             text = if (isModLoaded) ServerBot.config.integration.audioPlayer.messageUpload else ServerBot.config.integration.audioPlayer.modIsNodInstalled,
@@ -84,7 +84,7 @@ object AudioPlayerIntegration {
                             asCallbackSend = CancelCallbackData.CallbackSend(
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of("back"),
-                                result = TgCBHandlerResult.Companion.DELETE_MARKUP,
+                                result = TgCBHandlerResult.DELETE_MARKUP,
                             ),
                             canExecute = CallbackCanExecute(
                                 statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
@@ -98,28 +98,28 @@ object AudioPlayerIntegration {
             messageThreadId = cbq.message.messageThreadId,
         )
         if (isModLoaded) {
-            SQLProcess.Companion.get(cbq.message.chat.id, AudioPlayerUploadProcess)?.also {
+            SQLProcess.get(cbq.message.chat.id, AudioPlayerUploadProcess)?.also {
                 it.data?.run {
                     try { ServerBot.bot.editMessageReplyMarkup(
                         chatId = cbq.message.chat.id,
                         messageId = this.messageId,
                         replyMarkup = TgReplyMarkup()
                     ) } catch (_: Exception) {}
-                    SQLCallback.Companion.dropAll(cbq.message.chat.id, this.messageId)
+                    SQLCallback.dropAll(cbq.message.chat.id, this.messageId)
                 }
             } ?.drop()
-            SQLProcess.Companion.of(
+            SQLProcess.of(
                 type = AudioPlayerUploadProcess,
                 data = ProcessData(message.messageId)
             ).pull(cbq.message.chat.id)
         }
-        return TgCBHandlerResult.Companion.DELETE_MARKUP
+        return TgCBHandlerResult.DELETE_MARKUP
     }
 
     suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<*>, data: ProcessData) = runBlocking {
 //        if (msg.replyToMessage==null || msg.replyToMessage.messageId != data.messageId) return@runBlocking
         var done = false
-        val user = msg.from?.id?.let { SQLUser.Companion.get(it) } ?: return@runBlocking
+        val user = msg.from?.id?.let { SQLUser.get(it) } ?: return@runBlocking
         val message = ServerBot.bot.sendMessage(
             chatId = msg.chat.id,
             text = ServerBot.config.integration.audioPlayer.messagePreparing,
@@ -174,7 +174,7 @@ object AudioPlayerIntegration {
                     messageId = data.messageId,
                     replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON))),
                 )
-                SQLCallback.Companion.dropAll(message.chat.id, data.messageId)
+                SQLCallback.dropAll(message.chat.id, data.messageId)
             } catch (_: Exception) {
             }
             process.drop()

@@ -17,9 +17,9 @@ open class AbstractSQLField<T>(
     val getter: (ResultSet) -> T = { rs -> gson.fromJson(rs.getString(1), object: TypeToken<T>(AbstractSQLField::class.java){}.type) },
 ) {
     protected open fun exists(): Boolean = try {
-        MySQL.Companion.reConnect()
+        MySQL.reConnect()
         val preparedStatement =
-            MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT * FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
+            MySQL.MySQLConnection!!.prepareStatement("SELECT * FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
         preparedStatement.setLong(1, uniqueId)
         val query = preparedStatement.executeQuery()
         query.next()
@@ -28,9 +28,9 @@ open class AbstractSQLField<T>(
         false
     }
     open fun get(): T? = try {
-        MySQL.Companion.reConnect()
+        MySQL.reConnect()
         val preparedStatement =
-            MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT $column FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
+            MySQL.MySQLConnection!!.prepareStatement("SELECT $column FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
         preparedStatement.setLong(1, uniqueId)
         val query = preparedStatement.executeQuery()
         if (query.next())
@@ -43,9 +43,9 @@ open class AbstractSQLField<T>(
     open fun set(value: T): Boolean = try {
         if (!exists()) false
         else {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = ? WHERE $uniqueColumn = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = ? WHERE $uniqueColumn = ?;")
             setter(preparedStatement, value)
             preparedStatement.setLong(2, uniqueId)
             preparedStatement.executeUpdate()

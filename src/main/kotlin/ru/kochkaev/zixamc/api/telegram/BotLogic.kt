@@ -12,11 +12,11 @@ import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
 
 object BotLogic {
-
     val bots: List<TelegramBotZixa> = arrayListOf()
     fun registerBot(bot: TelegramBotZixa) {
         (bots as ArrayList<TelegramBotZixa>).add(bot)
     }
+    fun getBot(id: Long) = bots.firstOrNull { it.me.id == id }
 
     val copyIPReplyMarkup
         get() = TgInlineKeyboardMarkup.TgInlineKeyboardButton(

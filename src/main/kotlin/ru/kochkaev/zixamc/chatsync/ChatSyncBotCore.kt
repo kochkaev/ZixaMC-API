@@ -9,8 +9,6 @@ import net.minecraft.network.message.SignedMessage
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
-import ru.kochkaev.zixamc.api.config.Config
-import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.ServerBot.server
 import ru.kochkaev.zixamc.chatsync.parser.MinecraftAdventureConverter
@@ -22,12 +20,10 @@ import ru.kochkaev.zixamc.api.sql.SQLGroup
 object ChatSyncBotCore {
 
     var vanishInstance: FabricVanishIntegration? = if (FabricLoader.getInstance().isModLoaded("melius-vanish")) FabricVanishIntegration else null
-    lateinit var config: Config.ServerBotDataClass.ServerBotChatSyncDataClass
-    lateinit var lang: Config.ServerBotDataClass.ServerBotChatSyncDataClass.ServerBotChatSyncLangDataClass
-    fun init() {
-        config = ConfigManager.config.serverBot.chatSync
-        lang = ConfigManager.config.serverBot.chatSync.lang
-    }
+    val config: Config
+        get() = Config.config
+    val lang: Config.ChatSyncLang
+        get() = Config.config.lang
     fun registerChatMessageListener(handler: (TBPlayerEventData) -> Boolean) {
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register { message: SignedMessage, sender, params ->
             if (

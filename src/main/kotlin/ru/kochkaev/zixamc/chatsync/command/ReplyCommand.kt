@@ -9,8 +9,8 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.telegram.ServerBot
-import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureData
-import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureType
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureData
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureType
 
 object ReplyCommand {
     private val replyThen = CommandManager.argument("group", StringArgumentType.word())
@@ -36,9 +36,9 @@ object ReplyCommand {
     }
     private fun sendReply(context: CommandContext<ServerCommandSource>, withReply: Boolean) = runBlocking {
         val groupName = StringArgumentType.getString(context, "group")
-        val group = SQLGroup.Companion.get(groupName)
+        val group = SQLGroup.get(groupName)
 //        if (group == null) {
-//            context.source.sendFeedback({ ServerBot.config.integration.group.groupNotFound.getMinecraft(listOf("group" to groupName)) }, false)
+//            context.source.sendFeedback({ ServerBot.config.group.groupNotFound.getMinecraft(listOf("group" to groupName)) }, false)
 //        }
         val messageId =
             if (withReply) IntegerArgumentType.getInteger(context, "message_id")

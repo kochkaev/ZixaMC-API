@@ -7,7 +7,7 @@ import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import net.minecraft.server.command.ServerCommandSource
 import ru.kochkaev.zixamc.api.sql.SQLGroup
-import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureType
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureType
 import java.util.concurrent.CompletableFuture
 
 class GroupNameSuggestionProvider : SuggestionProvider<ServerCommandSource?> {
@@ -16,7 +16,7 @@ class GroupNameSuggestionProvider : SuggestionProvider<ServerCommandSource?> {
         context: CommandContext<ServerCommandSource?>,
         builder: SuggestionsBuilder
     ): CompletableFuture<Suggestions> {
-        SQLGroup.Companion.getAllWithFeature(ChatSyncFeatureType)
+        SQLGroup.getAllWithFeature(ChatSyncFeatureType)
             .filter { it.enabled && it.isMember(context.source?.name?:"") }
             .forEach { builder.suggest(it.name) }
         return builder.buildFuture()

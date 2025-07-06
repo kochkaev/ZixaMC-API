@@ -209,10 +209,10 @@ class SQLCallback<T: CallbackData> private constructor(
         get() = TgCallback(type, data)
     fun drop() {
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             if (exists(callbackId)) {
                 val preparedStatement =
-                    MySQL.Companion.MySQLConnection!!.prepareStatement("DELETE FROM $tableName WHERE callback_id = ?;")
+                    MySQL.MySQLConnection!!.prepareStatement("DELETE FROM $tableName WHERE callback_id = ?;")
                 preparedStatement.setLong(1, callbackId)
                 preparedStatement.executeUpdate()
             }

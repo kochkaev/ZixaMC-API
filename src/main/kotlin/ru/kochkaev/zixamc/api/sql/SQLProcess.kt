@@ -12,9 +12,9 @@ class SQLProcess<T: ProcessData> private constructor(
 ) {
     var data: T?
         get() = try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT data FROM $tableName WHERE chat_id = ? AND type = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("SELECT data FROM $tableName WHERE chat_id = ? AND type = ?;")
             preparedStatement.setLong(1, chatId)
             preparedStatement.setString(2, gson.toJson(type))
             val query = preparedStatement.executeQuery()
@@ -26,9 +26,9 @@ class SQLProcess<T: ProcessData> private constructor(
         }
         set(data) {
             try {
-                MySQL.Companion.reConnect()
+                MySQL.reConnect()
                 val preparedStatement =
-                    MySQL.Companion.MySQLConnection!!.prepareStatement("UPDATE $tableName SET data = ? WHERE chat_id = ? AND type = ?;")
+                    MySQL.MySQLConnection!!.prepareStatement("UPDATE $tableName SET data = ? WHERE chat_id = ? AND type = ?;")
                 preparedStatement.setString(1, gson.toJson(data))
                 preparedStatement.setLong(2, chatId)
                 preparedStatement.setString(2, gson.toJson(type))
@@ -146,10 +146,10 @@ class SQLProcess<T: ProcessData> private constructor(
     }
     fun drop() {
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             if (exists(chatId)) {
                 val preparedStatement =
-                    MySQL.Companion.MySQLConnection!!.prepareStatement("DELETE FROM $tableName WHERE chat_id = ? AND type = ?;")
+                    MySQL.MySQLConnection!!.prepareStatement("DELETE FROM $tableName WHERE chat_id = ? AND type = ?;")
                 preparedStatement.setLong(1, chatId)
                 preparedStatement.setString(2, gson.toJson(type))
                 preparedStatement.executeUpdate()

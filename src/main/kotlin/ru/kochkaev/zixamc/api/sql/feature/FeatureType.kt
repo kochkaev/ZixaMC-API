@@ -38,9 +38,9 @@ open class FeatureType<R: FeatureData>(
             messageId = cbq.message.messageId,
             replyMarkup = TgMenu(listOf(
                 listOf(SQLCallback.of(
-                    display = config.integration.group.confirmSetUpFeature,
+                    display = config.group.confirmSetUpFeature,
                     type = "group",
-                    data = ServerBotGroup.GroupCallback(
+                    data = ServerBotGroup.GroupCallback.of(
                         operation = ServerBotGroup.Operations.CONFIRM_SETUP_FEATURE,
                         name = serializedName
                     ),
@@ -49,7 +49,7 @@ open class FeatureType<R: FeatureData>(
                 listOf(CancelCallbackData(
                     asCallbackSend = CancelCallbackData.CallbackSend(
                         type = "group",
-                        data = ServerBotGroup.GroupCallback(ServerBotGroup.Operations.SEND_FEATURES),
+                        data = ServerBotGroup.GroupCallback.of(ServerBotGroup.Operations.SEND_FEATURES),
                         result = TgCBHandlerResult.DELETE_LINKED,
                     ),
                     canExecute = ServerBotGroup.CAN_EXECUTE_ADMIN,
@@ -78,7 +78,7 @@ open class FeatureType<R: FeatureData>(
             try { bot.editMessageText(
                 chatId = group.chatId,
                 messageId = cbq.message.messageId,
-                text = config.integration.group.settings.featureDescription.formatLang(
+                text = config.group.settings.featureDescription.formatLang(
                     "feature" to tgDisplayName(),
                     "options" to getResolvedOptions(group.features.getCasted(this) as FeatureData)
                 )
@@ -92,12 +92,12 @@ open class FeatureType<R: FeatureData>(
         return TgCBHandlerResult.DELETE_LINKED
     }
     open fun getEditorMarkup(cbq: TgCallbackQuery, group: SQLGroup): ArrayList<List<SQLCallback.Companion.Builder<out CallbackData>>> = arrayListOf()
-    open suspend fun processSetup(cbq: TgCallbackQuery, group: SQLGroup, cbd: ServerBotGroup.FeatureGroupCallback<R>): TgCBHandlerResult {
+    open suspend fun processSetup(cbq: TgCallbackQuery, group: SQLGroup, cbd: ServerBotGroup.GroupCallback<ServerBotGroup.SetupFeatureCallback<R>>): TgCBHandlerResult {
         return  TgCBHandlerResult.SUCCESS
     }
     @Suppress("UNCHECKED_CAST")
     suspend fun uncheckedProcessSetup(cbq: TgCallbackQuery, group: SQLGroup, cbd: Any) =
-        processSetup(cbq, group, cbd as ServerBotGroup.FeatureGroupCallback<R>)
+        processSetup(cbq, group, cbd as ServerBotGroup.GroupCallback<ServerBotGroup.SetupFeatureCallback<R>>)
 
     fun with(data: R, mod: (R) -> R): R =
         GsonManager.gson.let { gson ->

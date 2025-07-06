@@ -19,9 +19,9 @@ open class AbstractSQLMap<T, V>(
 ) {
     open fun getAll() =
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT $column FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("SELECT $column FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
             preparedStatement.setLong(1, uniqueId)
             val query = preparedStatement.executeQuery()
             query.next()
@@ -32,9 +32,9 @@ open class AbstractSQLMap<T, V>(
         }
     open fun get(key: T) =
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT JSON_EXTRACT($column, '$.${keySerializer(key)}') FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
+                MySQL.MySQLConnection!!.prepareStatement("SELECT JSON_EXTRACT($column, '$.${keySerializer(key)}') FROM ${sql.tableName} WHERE $uniqueColumn = ?;")
             preparedStatement.setLong(1, uniqueId)
             val query = preparedStatement.executeQuery()
             query.next()
@@ -49,7 +49,7 @@ open class AbstractSQLMap<T, V>(
 
     open fun setAll(map: Map<T, V>) {
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
                 MySQL.Companion.MySQLConnection!!.prepareStatement("UPDATE ${sql.tableName} SET $column = ? WHERE $uniqueColumn = ?;")
             preparedStatement.setString(1, serializer(map))

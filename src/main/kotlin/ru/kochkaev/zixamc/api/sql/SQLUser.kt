@@ -4,6 +4,7 @@ import com.google.gson.annotations.JsonAdapter
 import kotlinx.coroutines.launch
 import ru.kochkaev.zixamc.api.Initializer
 import ru.kochkaev.zixamc.api.ZixaMC
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLUserAdapter
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
@@ -20,6 +21,7 @@ import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
 import ru.kochkaev.zixamc.api.telegram.BotLogic
+import ru.kochkaev.zixamc.api.telegram.RulesManager
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.requests.RequestsBot
 import ru.kochkaev.zixamc.requests.RequestsBotUpdateManager
@@ -34,7 +36,7 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
         set(nickname) { nicknameField.set(nickname) }
     val nicknames = StringSQLArray(SQLUser, "nicknames", userId, "user_id")
     private val accountTypeField = object: AbstractSQLField<AccountType>(SQLUser, "account_type", userId, "user_id",
-        getter = { rs -> AccountType.Companion.parse(rs.getInt(1)) },
+        getter = { rs -> AccountType.parse(rs.getInt(1)) },
         setter = { ps, it -> ps.setInt(1, accountType.id) }
     ) {
         override fun set(value: AccountType): Boolean {
@@ -206,9 +208,9 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
 
     fun canTakeNickname(nickname: String) =
         try {
-            MySQL.Companion.reConnect()
+            MySQL.reConnect()
             val preparedStatement =
-                MySQL.Companion.MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$'));")
+                MySQL.MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$'));")
             preparedStatement.setLong(1, userId)
             preparedStatement.setString(2, nickname)
             preparedStatement.setString(3, nickname)
@@ -250,23 +252,21 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
         accountType.isHigherThanOrEqual(level)
 
     override suspend fun sendRulesUpdated(capital: Boolean) {
-        val message = RequestsBot.config.user.lang.event.onRulesUpdated
+        val message = ConfigManager.config.general.rules.updated4player
         val menu = TgMenu(
             listOf(
                 listOf(
-                    ServerBot.config.integration.group
-                        .let { if (capital) it.needAgreeWithRules else it.removeAgreeWithRules }
-                        .let {
-                            SQLCallback.of(
-                                display = it,
-                                type = "requests",
-                                data = RequestsBotUpdateManager.RequestCallback(
-                                    if (capital) RequestsBotUpdateManager.Operations.AGREE_WITH_RULES
-                                    else RequestsBotUpdateManager.Operations.REVOKE_AGREE_WITH_RULES
-                                ),
-                                canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
-                            )
-                        }
+                    SQLCallback.of(
+                        display = if (capital) ConfigManager.config.general.rules.agreeButton
+                            else ConfigManager.config.general.rules.removeButton,
+                        type = "rules",
+                        data = RulesManager.RulesCallbackData(
+                            operation = if (capital) RulesManager.RulesOperation.SET_AGREE
+                                else RulesManager.RulesOperation.REMOVE_AGREE,
+                            type = RulesManager.RulesOperationType.RULES_UPDATED
+                        ),
+                        canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
+                    )
                 )))
         for(it in BotLogic.bots) {
             try {

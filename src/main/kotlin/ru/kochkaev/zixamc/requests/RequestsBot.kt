@@ -15,12 +15,11 @@ import ru.kochkaev.zixamc.api.telegram.TelegramBotZixa
 object RequestsBot {
     lateinit var bot: TelegramBotZixa
     val config
-        get() = ConfigManager.config.requestsBot
+        get() = Config.config
     var isInitialized = false
 
     fun startBot() {
-        if (!config.isEnabled) return
-        bot = TelegramBotZixa(config.botAPIURL, config.botToken, ZixaMC.Companion.logger, config.pollTimeout)
+        bot = TelegramBotZixa(config.botAPIURL, config.botToken, ZixaMC.logger, config.pollTimeout)
         runBlocking {
             bot.init()
         }
@@ -49,13 +48,8 @@ object RequestsBot {
         isInitialized = true
     }
     fun stopBot() {
-        if (config.isEnabled) {
-            Initializer.coroutineScope.launch {
-                bot.shutdown()
-//                ZixaMCTGBridge.isRequestsBotLoaded = false
-//                ZixaMCTGBridge.executeStopSQL()
-//                job.cancelAndJoin()
-            }
+        Initializer.coroutineScope.launch {
+            bot.shutdown()
         }
         isInitialized = false
     }

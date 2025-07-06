@@ -19,7 +19,7 @@ class MenuCallbackDataAdapter: JsonDeserializer<Menu.MenuCallbackData<*>>, JsonS
             jsonObject.get("additional"),
             it,
         ) } ?: Menu.MenuCallbackData.DummyAdditional()
-        return Menu.MenuCallbackData.of(operation, (typeClass?.let { typeClass } ?: Menu.MenuCallbackData.DummyAdditional::class.java) as Class<Any>, data)
+        return Menu.MenuCallbackData.of(operation, (typeClass ?: Menu.MenuCallbackData.DummyAdditional::class.java) as Class<Any>, data)
     }
     override fun serialize(
         src: Menu.MenuCallbackData<*>,

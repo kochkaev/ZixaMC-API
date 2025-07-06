@@ -17,6 +17,8 @@ import ru.kochkaev.zixamc.chatsync.parser.Markdown2HTMLParser
 import ru.kochkaev.zixamc.chatsync.parser.TextParser
 import ru.kochkaev.zixamc.api.telegram.model.*
 import ru.kochkaev.zixamc.api.sql.SQLGroup
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncEditPrefixCallbackData
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureType
 import kotlin.plus
 
 
@@ -33,8 +35,8 @@ object ChatSyncBotLogic {
             )
         else {
             ZixaMC.tmp.isSilentRestart = false
-            ConfigManager.update()
-            ConfigManager.load()
+            Config.update()
+            Config.load()
         }
     }
     suspend fun sendServerStoppedMessage() {
@@ -47,6 +49,7 @@ object ChatSyncBotLogic {
     }
 
     fun registerTelegramHandlers() {
+        bot.registerCallbackQueryHandler($$"group$chatsync$editPrefix", ChatSyncEditPrefixCallbackData::class.java, ChatSyncEditPrefixCallbackData::onCallback)
         bot.registerCommandHandler("list", this::onTelegramListCommand)
         bot.registerMessageHandler(this::onTelegramMessage)
     }

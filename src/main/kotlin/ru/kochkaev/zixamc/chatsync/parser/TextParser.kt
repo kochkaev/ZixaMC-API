@@ -11,7 +11,7 @@ import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.telegram.model.TgEntity
 import ru.kochkaev.zixamc.chatsync.ChatSyncBotCore
-import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureType
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureType
 
 object TextParser {
 

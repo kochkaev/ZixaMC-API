@@ -13,6 +13,8 @@ import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.sql.feature.data.PlayersGroupFeatureData
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.chatsync.command.ReplyCommand
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureData
+import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureType
 
 class ChatSync: ModInitializer {
 

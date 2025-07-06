@@ -36,7 +36,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
             chatId = group.chatId,
             messageId = cbq.message.messageId,
             text = ((tgDescription.invoke()) +
-                    if (cbq.message.chat.isForum) "\n\n" + config.integration.group.selectTopicForFeature else "")
+                    if (cbq.message.chat.isForum) "\n\n" + config.group.selectTopicForFeature else "")
                 .formatLang(
                     "groupName" to group.name!!
                 )
@@ -59,7 +59,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
                     cancelProcesses = listOf(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE),
                     asCallbackSend = CancelCallbackData.CallbackSend(
                         type = "group",
-                        data = GroupCallback(
+                        data = GroupCallback.of(
                             operation = Operations.SEND_FEATURES,
                             name = null,
                         ),
@@ -88,9 +88,9 @@ open class TopicFeatureType<R: TopicFeatureData>(
     override fun getEditorMarkup(cbq: TgCallbackQuery, group: SQLGroup): ArrayList<List<SQLCallback.Companion.Builder<out CallbackData>>> {
         val origin = super.getEditorMarkup(cbq, group)
         if (cbq.message.chat.isForum) origin.add(listOf(SQLCallback.of(
-            display = config.integration.group.settings.selectTopic,
+            display = config.group.settings.selectTopic,
             type = "group",
-            data = GroupCallback(
+            data = GroupCallback.of(
                 operation = Operations.TOPIC_RESELECT,
                 name = this.serializedName,
             ),
@@ -100,7 +100,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
             CancelCallbackData(
             asCallbackSend = CancelCallbackData.CallbackSend(
                 type = "group",
-                data = GroupCallback(
+                data = GroupCallback.of(
                     operation = Operations.EDIT_FEATURE,
                     name = this.serializedName,
                 ),

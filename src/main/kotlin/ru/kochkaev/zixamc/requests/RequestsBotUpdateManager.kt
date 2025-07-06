@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.requests
 
 import com.google.gson.annotations.SerializedName
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.telegram.BotLogic
@@ -165,12 +166,12 @@ object RequestsBotUpdateManager {
                     text = config.commonLang.areYouSureRevokeAgreeWithRules.formatLang("nickname" to (user.nickname?:cbq.from.firstName)),
                     replyMarkup = TgMenu(listOf(
                         listOf(SQLCallback.of(
-                            display = ServerBot.config.integration.group.confirm,
+                            display = ConfigManager.config.general.buttons.confirm,
                             type = "requests",
                             data = RequestCallback(Operations.CONFIRM_REVOKE_AGREE_WITH_RULES, user.userId)
                         )),
                         listOf(SQLCallback.of(
-                            display = ServerBot.config.integration.group.cancelConfirm,
+                            display = ConfigManager.config.general.buttons.cancel,
                             type = "requests",
                             data = RequestCallback(Operations.SUCCESS, user.userId)
                         )),
@@ -438,10 +439,7 @@ object RequestsBotUpdateManager {
                     )
                     return TgCBHandlerResult.SUCCESS
                 }
-                bot.deleteMessage(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                )
+                return TgCBHandlerResult.DELETE_MESSAGE
             }
             else -> {}
         }

@@ -15,7 +15,7 @@ class TgMenu(
                 list.mapNotNull {
                     when (it) {
                         is SQLCallback.Companion.Builder<out CallbackData> -> it.inlineAndId(chatId)
-                            .also { ret -> linked.add(SQLCallback.Companion.get(ret.second)!!) }.first
+                            .also { ret -> linked.add(SQLCallback.get(ret.second)!!) }.first
 
                         is TgInlineKeyboardMarkup.TgInlineKeyboardButton -> it
                         else -> null
@@ -35,7 +35,7 @@ class TgMenu(
                 list.mapNotNull {
                     when (it) {
                         is SQLCallback.Companion.Builder<out CallbackData> -> it.inlineAndId(chatId)
-                            .also { ret -> linked.add(SQLCallback.Companion.get(ret.second)!!) }.first
+                            .also { ret -> linked.add(SQLCallback.get(ret.second)!!) }.first
 
                         is TgInlineKeyboardMarkup.TgInlineKeyboardButton -> it
                         else -> null

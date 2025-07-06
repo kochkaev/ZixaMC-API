@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.api.telegram
 
 import com.google.gson.annotations.SerializedName
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLGroup
@@ -18,85 +19,138 @@ import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.sql.feature.TopicFeatureType
 import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
 import ru.kochkaev.zixamc.api.sql.feature.data.TopicFeatureData
-import ru.kochkaev.zixamc.chatsync.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.api.sql.process.GroupSelectTopicProcessData
 import ru.kochkaev.zixamc.api.sql.process.GroupWaitingNameProcessData
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.api.telegram.model.ITgMenuButton
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMemberStatuses
 import ru.kochkaev.zixamc.api.telegram.model.TgChatType
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
-import ru.kochkaev.zixamc.chatsync.ChatSyncFeatureType
-import ru.kochkaev.zixamc.requests.RequestsBot
-import kotlin.collections.get
+import kotlin.collections.contains
 
 object ServerBotGroup {
 
     val CAN_EXECUTE_ADMIN = CallbackCanExecute(
         statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-        display = ServerBot.config.integration.group.memberStatus.administrators,
+        display = ServerBot.config.group.memberStatus.administrators,
     )
     val CAN_EXECUTE_OWNER = CallbackCanExecute(
         statuses = listOf(TgChatMemberStatuses.CREATOR),
-        display = ServerBot.config.integration.group.memberStatus.creator,
+        display = ServerBot.config.group.memberStatus.creator,
     )
-    val SETTINGS = TgMenu(
-        listOf(
+    fun getSettings(group: SQLGroup) = TgMenu(
+        arrayListOf<List<ITgMenuButton>>(
             listOf(
-                SQLCallback.Companion.of(
-                    display = ServerBot.config.integration.group.settings.features,
+                SQLCallback.of(
+                    display = ServerBot.config.group.settings.features,
                     type = "group",
-                    data = GroupCallback(Operations.EDIT_FEATURES),
+                    data = GroupCallback.of(Operations.EDIT_FEATURES),
                     canExecute = CAN_EXECUTE_ADMIN,
                 )
             ),
             listOf(
-                SQLCallback.Companion.of(
-                    display = ServerBot.config.integration.group.settings.changeName,
+                SQLCallback.of(
+                    display = ServerBot.config.group.settings.changeName,
                     type = "group",
-                    data = GroupCallback(Operations.UPDATE_NAME),
+                    data = GroupCallback.of(Operations.UPDATE_NAME),
                     canExecute = CAN_EXECUTE_ADMIN,
                 )
             ),
             listOf(
-                SQLCallback.Companion.of(
-                    display = ServerBot.config.integration.group.settings.aliases,
+                SQLCallback.of(
+                    display = ServerBot.config.group.settings.aliases,
                     type = "group",
-                    data = GroupCallback(Operations.GET_ALIASES),
+                    data = GroupCallback.of(Operations.GET_ALIASES),
                     canExecute = CAN_EXECUTE_ADMIN,
                 )
             ),
-            listOf(
-                SQLCallback.Companion.of(
-                    display = ServerBot.config.integration.group.removeAgreeWithRules,
-                    type = "group",
-                    data = GroupCallback(Operations.REMOVE_AGREE_WITH_RULES),
+        ).apply {
+            addAll(settingsIntegrations.filter { it.filter(group) } .map { it.button })
+            add(listOf(
+                SQLCallback.of(
+                    display = ServerBot.config.group.settings.removeAgreedWithRules,
+                    type = "rules",
+                    data = RulesManager.RulesCallbackData(
+                        operation = RulesManager.RulesOperation.REMOVE_AGREE_GROUP,
+                        type = RulesManager.RulesOperationType.REMOVE_AGREE,
+                    ),
                     canExecute = CAN_EXECUTE_ADMIN,
                 )
-            ),
-            listOf(
-                SQLCallback.Companion.of(
-                    display = ServerBot.config.integration.group.success,
+            ))
+            add(listOf(
+                SQLCallback.of(
+                    display = ConfigManager.config.general.buttons.success,
                     type = "group",
-                    data = GroupCallback(Operations.SUCCESS),
+                    data = GroupCallback.of(Operations.SUCCESS),
                     canExecute = CAN_EXECUTE_ADMIN,
                 )
-            ),
-        )
+            ))
+        }
     )
+
+    private val settingsIntegrations = arrayListOf<Integration>()
+    fun registerSettingsIntegration(integration: Integration) {
+        settingsIntegrations.add(integration)
+    }
+    data class Integration(
+        val button: List<ITgMenuButton>,
+        val callbackProcessor: suspend (TgCallbackQuery, SQLCallback<GroupCallback<*>>) -> TgCBHandlerResult,
+        val filter: (SQLGroup) -> Boolean = { group -> true },
+    ) {
+        companion object {
+            fun of(
+                button: ITgMenuButton,
+                filter: (SQLGroup) -> Boolean = { group -> true },
+            ): Integration = Integration(listOf(button), { _, _ -> TgCBHandlerResult.SUCCESS }, filter)
+            fun of(
+                callbackName: String,
+                menuDisplay: String,
+                processor: suspend (TgCallbackQuery, SQLCallback<GroupCallback<*>>) -> Unit,
+                filter: (SQLGroup) -> Boolean = { group -> true },
+                canExecute: CallbackCanExecute = CAN_EXECUTE_ADMIN
+            ): Integration = of(callbackName, menuDisplay, processor as suspend (TgCallbackQuery, SQLCallback<GroupCallback<GroupCallback.DummyAdditional>>) -> TgCBHandlerResult, GroupCallback.DummyAdditional::class.java, GroupCallback.DummyAdditional(), filter, canExecute)
+            fun <T> of(
+                callbackName: String,
+                menuDisplay: String,
+                processor: suspend (TgCallbackQuery, SQLCallback<GroupCallback<T>>) -> TgCBHandlerResult,
+                customDataType: Class<T>,
+                customDataInitial: T,
+                filter: (SQLGroup) -> Boolean = { group -> true },
+                canExecute: CallbackCanExecute = CAN_EXECUTE_ADMIN
+            ): Integration {
+                return Integration(
+                    button = listOf(
+                        SQLCallback.of(
+                            display = menuDisplay,
+                            type = "menu",
+                            data = GroupCallback.of(callbackName, customDataType, customDataInitial),
+                            canExecute = canExecute,
+                        )),
+                    callbackProcessor = { cbq, sql ->
+                        if (sql.data?.operation == callbackName)
+                            processor(cbq, sql as SQLCallback<GroupCallback<T>>)
+                        else TgCBHandlerResult.SUCCESS
+                    },
+                    filter = filter,
+                )
+            }
+        }
+    }
+
     suspend fun newChatMembers(msg: TgMessage) {
         if (msg.chat.type == TgChatType.CHANNEL) {
             ServerBot.bot.leaveChat(msg.chat.id)
         }
-        val group = SQLGroup.Companion.getOrCreate(msg.chat.id)
+        val group = SQLGroup.getOrCreate(msg.chat.id)
         msg.newChatMembers!!.forEach { member ->
             if (member.id == ServerBot.bot.me.id && msg.from != null) {
                 try {
                     group.deleteProtected(AccountType.UNKNOWN)
                 } catch (_: Exception) {}
-                SQLCallback.Companion.getAll(group.chatId).sortedByDescending { it.messageId }.forEach {
+                SQLCallback.getAll(group.chatId).sortedByDescending { it.messageId }.forEach {
                     it.messageId?.also { messageId -> try {
                         ServerBot.bot.editMessageReplyMarkup(
                             chatId = group.chatId,
@@ -106,11 +160,11 @@ object ServerBotGroup {
                     } catch (_: Exception) { } }
                     it.drop()
                 }
-                val user = SQLUser.Companion.get(msg.from.id)
+                val user = SQLUser.get(msg.from.id)
                 if (user == null || !user.hasProtectedLevel(AccountType.PLAYER)) {
                     ServerBot.bot.sendMessage(
                         chatId = msg.chat.id,
-                        text = ServerBot.config.integration.group.sorryOnlyForPlayer,
+                        text = ServerBot.config.group.sorryOnlyForPlayer,
                     )
                     ServerBot.bot.leaveChat(msg.chat.id)
                     return
@@ -118,26 +172,26 @@ object ServerBotGroup {
                 else if (group.isRestricted) {
                     ServerBot.bot.sendMessage(
                         chatId = msg.chat.id,
-                        text = ServerBot.config.integration.group.restrict,
+                        text = ServerBot.config.group.restrict,
                     )
                     ServerBot.bot.leaveChat(msg.chat.id)
                     return
                 }
                 ServerBot.bot.sendMessage(
                     chatId = msg.chat.id,
-                    text = ServerBot.config.integration.group.hello
+                    text = ServerBot.config.group.hello
                 )
                 if (!group.agreedWithRules) {
                     ServerBot.bot.sendMessage(
                         chatId = msg.chat.id,
-                        text = ServerBot.config.integration.group.needAgreeWithRules,
+                        text = ServerBot.config.group.needAgreeWithRules,
                         replyMarkup = TgMenu(
                             listOf(
                                 listOf(
-                                    SQLCallback.Companion.of(
-                                        display = ServerBot.config.integration.group.agreeWithRules,
+                                    SQLCallback.of(
+                                        display = ConfigManager.config.general.rules.agreeButton,
                                         type = "group",
-                                        data = GroupCallback(Operations.AGREE_WITH_RULES),
+                                        data = GroupCallback.of(Operations.AGREE_WITH_RULES),
                                         canExecute = CAN_EXECUTE_OWNER,
                                     )
                                 )
@@ -150,18 +204,18 @@ object ServerBotGroup {
             else {
                 group.members.add(member.id)
                 if (!member.isBot) {
-                    val user = SQLUser.Companion.getOrCreate(member.id)
-                    group.cleanUpProtected(user.accountType)
+                    val user = SQLUser.getOrCreate(member.id)
+                    user.accountType.levelHigh?.let { group.deleteProtected(it) }
                     if (group.data.getCasted(ChatDataTypes.GREETING_ENABLE)?:false) ServerBot.bot.sendMessage(
                         chatId = group.chatId,
-                        text = ServerBot.config.integration.group.protectedWasDeleted
+                        text = ServerBot.config.group.protectedWasDeleted
                     )
                 }
             }
         }
     }
     suspend fun newChatMembersRequests(msg: TgMessage) {
-        val user = msg.from?.let { SQLUser.Companion.get(it.id) } ?: return
+        val user = msg.from?.let { SQLUser.get(it.id) } ?: return
         val ids = msg.newChatMembers?.map { it.id } ?: return
         BotLogic.bots.forEach {
             if (ids.contains(it.me.id) && !user.hasProtectedLevel(it.canAddToGroups))
@@ -182,19 +236,16 @@ object ServerBotGroup {
         }
     }
 
-    suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<GroupCallback>): TgCBHandlerResult {
+    suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<GroupCallback<*>>): TgCBHandlerResult {
         if (sql.data == null) return TgCBHandlerResult.Companion.SUCCESS
         val group = SQLGroup.Companion.get(cbq.message.chat.id) ?: return TgCBHandlerResult.Companion.SUCCESS
-        if (sql.canExecute?.let {
-                !(it.statuses?.contains(ServerBot.bot.getChatMember(group.chatId, cbq.from.id).status) == true || it.users?.contains(cbq.from.id) == true)
-        } != false) return answerHaventRights(cbq.id, sql.canExecute?.display?:"")
-        when (sql.data!!.operation) {
+        when (Operations.deserialize(sql.data!!.operation)) {
             Operations.AGREE_WITH_RULES -> {
                 group.agreedWithRules = true
                 if (group.name == null) {
                     val message = ServerBot.bot.sendMessage(
                         chatId = group.chatId,
-                        text = ServerBot.config.integration.group.thinkOfName,
+                        text = ServerBot.config.group.thinkOfName,
                         replyMarkup = TgMenu(
                             listOf(
                                 cbq.message.chat.title.let { escapeName(it) }.let {
@@ -202,7 +253,7 @@ object ServerBotGroup {
                                         SQLCallback.Companion.of(
                                             display = it,
                                             type = "group",
-                                            data = GroupCallback(
+                                            data = GroupCallback.of(
                                                 operation = Operations.SET_NAME,
                                                 name = it
                                             ),
@@ -215,7 +266,7 @@ object ServerBotGroup {
                                         SQLCallback.Companion.of(
                                             display = it,
                                             type = "group",
-                                            data = GroupCallback(
+                                            data = GroupCallback.of(
                                                 operation = Operations.SET_NAME,
                                                 name = it
                                             ),
@@ -246,14 +297,14 @@ object ServerBotGroup {
 //                } else {
 //                    bot.answerCallbackQuery(
 //                        callbackQueryId = cbq.id,
-//                        text = config.integration.group.needAgreeOwner,
+//                        text = config.group.needAgreeOwner,
 //                        showAlert = true
 //                    )
 //                    return SUCCESS
 //                }
             }
             Operations.SET_NAME -> {
-                group.name = sql.data!!.name
+                group.name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name
                 SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
                     this.data?.messageId?.also { try {
                         ServerBot.bot.editMessageReplyMarkup(
@@ -286,7 +337,7 @@ object ServerBotGroup {
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.thinkOfName,
+                    text = ServerBot.config.group.thinkOfName,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = group.chatId,
@@ -297,7 +348,7 @@ object ServerBotGroup {
                                 CancelCallbackData(
                                     asCallbackSend = CancelCallbackData.CallbackSend(
                                         type = "group",
-                                        data = GroupCallback(Operations.SETTINGS),
+                                        data = GroupCallback.of(Operations.SETTINGS),
                                         result = TgCBHandlerResult.Companion.DELETE_LINKED
                                     ),
                                     canExecute = CAN_EXECUTE_ADMIN,
@@ -328,7 +379,7 @@ object ServerBotGroup {
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.thinkOfName,
+                    text = ServerBot.config.group.thinkOfName,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = group.chatId,
@@ -339,7 +390,7 @@ object ServerBotGroup {
                                 CancelCallbackData(
                                     asCallbackSend = CancelCallbackData.CallbackSend(
                                         type = "group",
-                                        data = GroupCallback(Operations.GET_ALIASES),
+                                        data = GroupCallback.of(Operations.GET_ALIASES),
                                         result = TgCBHandlerResult.Companion.DELETE_LINKED
                                     ),
                                     canExecute = CAN_EXECUTE_ADMIN,
@@ -354,7 +405,7 @@ object ServerBotGroup {
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.settings.aliasesDescription,
+                    text = ServerBot.config.group.settings.aliasesDescription,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = group.chatId,
@@ -365,11 +416,11 @@ object ServerBotGroup {
                                 acc.add(
                                     listOf(
                                         SQLCallback.Companion.of(
-                                            display = ServerBot.config.integration.group.settings.removeAlias.formatLang(
+                                            display = ServerBot.config.group.settings.removeAlias.formatLang(
                                                 "alias" to a
                                             ),
                                             type = "group",
-                                            data = GroupCallback(
+                                            data = GroupCallback.of(
                                                 operation = Operations.REMOVE_ALIAS,
                                                 name = a
                                             ),
@@ -383,9 +434,9 @@ object ServerBotGroup {
                             this.add(
                                 listOf(
                                     SQLCallback.Companion.of(
-                                        display = ServerBot.config.integration.group.settings.addAlias,
+                                        display = ServerBot.config.group.settings.addAlias,
                                         type = "group",
-                                        data = GroupCallback(Operations.ADD_ALIAS),
+                                        data = GroupCallback.of(Operations.ADD_ALIAS),
                                         canExecute = CAN_EXECUTE_ADMIN,
                                     )
                                 )
@@ -395,7 +446,7 @@ object ServerBotGroup {
                                     CancelCallbackData(
                                         asCallbackSend = CancelCallbackData.CallbackSend(
                                             type = "group",
-                                            data = GroupCallback(Operations.SETTINGS),
+                                            data = GroupCallback.of(Operations.SETTINGS),
                                             result = TgCBHandlerResult.Companion.DELETE_LINKED
                                         ),
                                         canExecute = CAN_EXECUTE_ADMIN,
@@ -408,13 +459,14 @@ object ServerBotGroup {
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.REMOVE_ALIAS -> {
-                if (sql.data!!.name == null) return TgCBHandlerResult.Companion.SUCCESS
-                group.aliases.remove(sql.data!!.name!!)
+                if ((sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name == null) return TgCBHandlerResult.Companion.SUCCESS
+                val name = (sql.data!!.additional as GroupCallback.AdditionalWithName).name!!
+                group.aliases.remove(name)
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.settings.aliasDeleted.formatLang(
-                        "alias" to sql.data!!.name!!
+                    text = ServerBot.config.group.settings.aliasDeleted.formatLang(
+                        "alias" to name
                     ),
                 )
                 ServerBot.bot.editMessageReplyMarkup(
@@ -426,7 +478,7 @@ object ServerBotGroup {
                                 CancelCallbackData(
                                     asCallbackSend = CancelCallbackData.CallbackSend(
                                         type = "group",
-                                        data = GroupCallback(Operations.GET_ALIASES),
+                                        data = GroupCallback.of(Operations.GET_ALIASES),
                                         result = TgCBHandlerResult.Companion.DELETE_LINKED
                                     ),
                                     canExecute = CAN_EXECUTE_ADMIN,
@@ -438,7 +490,8 @@ object ServerBotGroup {
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.SELECT_FEATURE -> {
-                val feature = FeatureTypes.entries[sql.data!!.name] ?: return TgCBHandlerResult.Companion.DELETE_MARKUP
+                val name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name
+                val feature = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.DELETE_MARKUP
                 return feature.setUp(cbq, group)
             }
             Operations.SEND_FEATURES -> {
@@ -449,7 +502,7 @@ object ServerBotGroup {
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.settings.featuresDescription,
+                    text = ServerBot.config.group.settings.featuresDescription,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = group.chatId,
@@ -462,7 +515,7 @@ object ServerBotGroup {
                                         SQLCallback.Companion.of(
                                             display = feature.tgDisplayName(),
                                             type = "group",
-                                            data = GroupCallback(
+                                            data = GroupCallback.of(
                                                 operation = Operations.EDIT_FEATURE,
                                                 name = feature.serializedName,
                                             ),
@@ -476,9 +529,9 @@ object ServerBotGroup {
                             this.add(
                                 listOf(
                                     SQLCallback.Companion.of(
-                                        display = ServerBot.config.integration.group.settings.addFeature,
+                                        display = ServerBot.config.group.settings.addFeature,
                                         type = "group",
-                                        data = GroupCallback(Operations.SEND_FEATURES),
+                                        data = GroupCallback.of(Operations.SEND_FEATURES),
                                         canExecute = CAN_EXECUTE_ADMIN,
                                     )
                                 )
@@ -488,7 +541,7 @@ object ServerBotGroup {
                                     CancelCallbackData(
                                         asCallbackSend = CancelCallbackData.CallbackSend(
                                             type = "group",
-                                            data = GroupCallback(Operations.SETTINGS),
+                                            data = GroupCallback.of(Operations.SETTINGS),
                                             result = TgCBHandlerResult.Companion.DELETE_LINKED
                                         ),
                                         canExecute = CAN_EXECUTE_ADMIN,
@@ -500,13 +553,13 @@ object ServerBotGroup {
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.EDIT_FEATURE -> {
-                if (sql.data!!.name == null) return TgCBHandlerResult.Companion.SUCCESS
-                val type = FeatureTypes.entries[sql.data!!.name!!] ?: return TgCBHandlerResult.Companion.SUCCESS
+                val name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name ?: TgCBHandlerResult.Companion.SUCCESS
+                val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 val data = group.features.getCasted(type) ?: return TgCBHandlerResult.Companion.SUCCESS
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.settings.featureDescription.formatLang(
+                    text = ServerBot.config.group.settings.featureDescription.formatLang(
                         "feature" to type.tgDisplayName(),
                         "options" to type.getResolvedOptions(data),
                     ),
@@ -518,9 +571,9 @@ object ServerBotGroup {
                         listOf(
                             listOf(
                                 SQLCallback.Companion.of(
-                                    display = ServerBot.config.integration.group.settings.editFeature,
+                                    display = ServerBot.config.group.settings.editFeature,
                                     type = "group",
-                                    data = GroupCallback(
+                                    data = GroupCallback.of(
                                         operation = Operations.EDIT_FEATURE_DATA,
                                         name = type.serializedName,
                                     ),
@@ -529,9 +582,9 @@ object ServerBotGroup {
                             ),
                             listOf(
                                 SQLCallback.Companion.of(
-                                    display = ServerBot.config.integration.group.settings.removeFeature,
+                                    display = ServerBot.config.group.settings.removeFeature,
                                     type = "group",
-                                    data = GroupCallback(
+                                    data = GroupCallback.of(
                                         operation = Operations.REMOVE_FEATURE,
                                         name = type.serializedName,
                                     ),
@@ -542,7 +595,7 @@ object ServerBotGroup {
                                 CancelCallbackData(
                                     asCallbackSend = CancelCallbackData.CallbackSend(
                                         type = "group",
-                                        data = GroupCallback(Operations.EDIT_FEATURES),
+                                        data = GroupCallback.of(Operations.EDIT_FEATURES),
                                         result = TgCBHandlerResult.Companion.DELETE_LINKED
                                     ),
                                     canExecute = CAN_EXECUTE_ADMIN,
@@ -554,23 +607,23 @@ object ServerBotGroup {
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.EDIT_FEATURE_DATA -> {
-                if (sql.data!!.name == null) return TgCBHandlerResult.Companion.SUCCESS
-                val type = FeatureTypes.entries[sql.data!!.name!!] ?: return TgCBHandlerResult.Companion.SUCCESS
+                val name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name ?: TgCBHandlerResult.Companion.SUCCESS
+                val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 return type.sendEditor(cbq, group)
             }
             Operations.CONFIRM_SETUP_FEATURE -> {
-                if (sql.data!!.name == null) return TgCBHandlerResult.Companion.SUCCESS
-                val type = FeatureTypes.entries[sql.data!!.name!!] ?: return TgCBHandlerResult.Companion.SUCCESS
+                val name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name ?: TgCBHandlerResult.Companion.SUCCESS
+                val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 return type.finishSetUp(group, cbq.message.messageId)
             }
             Operations.REMOVE_FEATURE -> {
-                if (sql.data!!.name == null) return TgCBHandlerResult.Companion.SUCCESS
-                val type = FeatureTypes.entries[sql.data!!.name!!] ?: return TgCBHandlerResult.Companion.SUCCESS
+                val name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name ?: TgCBHandlerResult.Companion.SUCCESS
+                val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 group.features.remove(type)
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.settings.featureRemoved.formatLang(
+                    text = ServerBot.config.group.settings.featureRemoved.formatLang(
                         "feature" to type.tgDisplayName()
                     ),
                 )
@@ -583,7 +636,7 @@ object ServerBotGroup {
                                 CancelCallbackData(
                                     asCallbackSend = CancelCallbackData.CallbackSend(
                                         type = "group",
-                                        data = GroupCallback(Operations.EDIT_FEATURES),
+                                        data = GroupCallback.of(Operations.EDIT_FEATURES),
                                         result = TgCBHandlerResult.Companion.DELETE_LINKED
                                     ),
                                     canExecute = CAN_EXECUTE_ADMIN,
@@ -603,17 +656,17 @@ object ServerBotGroup {
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    replyMarkup = SETTINGS
+                    replyMarkup = getSettings(group)
                 )
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.TOPIC_RESELECT -> {
-                if (sql.data!!.name == null) return TgCBHandlerResult.Companion.SUCCESS
-                val type = FeatureTypes.entries[sql.data!!.name!!] ?: return TgCBHandlerResult.Companion.SUCCESS
+                val name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name ?: TgCBHandlerResult.Companion.SUCCESS
+                val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 ServerBot.bot.editMessageText(
                     chatId = group.chatId,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.group.selectTopicForFeature
+                    text = ServerBot.config.group.selectTopicForFeature
                 )
                 SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_SELECT_TOPIC_FEATURE)?.run {
                     this.data?.also { ServerBot.bot.deleteMessage(group.chatId, it.messageId) }
@@ -633,7 +686,7 @@ object ServerBotGroup {
                                     cancelProcesses = listOf(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE),
                                     asCallbackSend = CancelCallbackData.CallbackSend(
                                         type = "group",
-                                        data = GroupCallback(
+                                        data = GroupCallback.of(
                                             operation = Operations.EDIT_FEATURE_DATA,
                                             name = type.serializedName,
                                         ),
@@ -647,87 +700,9 @@ object ServerBotGroup {
                 )
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
-            Operations.EDIT_PREFIX -> {
-                if (sql.data!!.name == null) return TgCBHandlerResult.Companion.SUCCESS
-//                val type = FeatureTypes.entries[sql.data!!.name!!] ?: return SUCCESS
-                ChatSyncFeatureType.sendNeedPrefix(
-                    group = group,
-                    replyTo = cbq.message.messageId,
-                    topicId = null,
-                    prefixType = GroupChatSyncWaitPrefixProcessData.PrefixTypes.valueOf(sql.data!!.name!!)
-                )
-            }
-            Operations.REMOVE_AGREE_WITH_RULES -> {
-                ServerBot.bot.sendMessage(
-                    chatId = group.chatId,
-                    text = ServerBot.config.integration.group.removeAgreeWithRulesAreYouSure,
-                    replyParameters = TgReplyParameters(cbq.message.messageId),
-                    replyMarkup = TgMenu(
-                        listOf(
-                            listOf(
-                                SQLCallback.Companion.of(
-                                    display = ServerBot.config.integration.group.confirm,
-                                    type = "group",
-                                    data = GroupCallback(Operations.CONFIRM_REMOVE_AGREE_WITH_RULES),
-                                    canExecute = CAN_EXECUTE_OWNER
-                                )
-                            ),
-                            listOf(
-                                SQLCallback.Companion.of(
-                                    display = ServerBot.config.integration.group.cancelConfirm,
-                                    type = "group",
-                                    data = GroupCallback(Operations.CANCEL_REMOVE_AGREE_WITH_RULES),
-                                    canExecute = CAN_EXECUTE_OWNER
-                                )
-                            ),
-                        )
-                    )
-                )
-                return TgCBHandlerResult.Companion.SUCCESS
-            }
-            Operations.CONFIRM_REMOVE_AGREE_WITH_RULES -> {
-                ServerBot.bot.sendMessage(
-                    chatId = group.chatId,
-                    text = ServerBot.config.integration.group.wait,
-                    replyParameters = TgReplyParameters(cbq.message.messageId)
-                )
-                ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgReplyMarkup()
-                )
-                val sanitized = arrayListOf<Int>()
-                SQLCallback.Companion.getAll(group.chatId).sortedByDescending { it.messageId } .forEach {
-                    it.messageId?.also { messageId -> if (!sanitized.contains(messageId)) try {
-                        ServerBot.bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
-                            messageId = messageId,
-                            replyMarkup = TgReplyMarkup()
-                        )
-                        sanitized.add(messageId)
-                    } catch (_: Exception) { } }
-                    it.drop()
-                }
-                try {
-                    group.deleteProtected(AccountType.UNKNOWN)
-                } catch (_: Exception) {}
-                group.members.set(listOf())
-                group.features.setAll(mapOf())
-                group.agreedWithRules = false
-                ServerBot.bot.leaveChat(group.chatId)
-                return TgCBHandlerResult.Companion.SUCCESS
-            }
-            Operations.CANCEL_REMOVE_AGREE_WITH_RULES -> {
-                ServerBot.bot.deleteMessage(
-                    chatId = group.chatId,
-                    messageId = cbq.message.messageId,
-                )
-            }
             Operations.SETUP_FEATURE -> {
                 val data = sql.data!!
-                if (data is FeatureGroupCallback<out FeatureData>) {
-                    return data.data.feature.uncheckedProcessSetup(cbq, group, data)
-                } else return TgCBHandlerResult.Companion.SUCCESS
+                return (data.additional as? SetupFeatureCallback<out FeatureData>)?.feature?.uncheckedProcessSetup(cbq, group, data) ?: TgCBHandlerResult.Companion.SUCCESS
             }
             Operations.SUCCESS -> {
                 ServerBot.bot.deleteMessage(
@@ -735,6 +710,12 @@ object ServerBotGroup {
                     messageId = cbq.message.messageId,
                 )
                 return TgCBHandlerResult.Companion.DELETE_LINKED
+            }
+            null -> {
+                settingsIntegrations.forEach { integration ->
+                    val result = integration.callbackProcessor(cbq, sql)
+                    if (result != TgCBHandlerResult.Companion.SUCCESS) return result
+                }
             }
         }
         return TgCBHandlerResult.Companion.DELETE_MARKUP
@@ -754,7 +735,7 @@ object ServerBotGroup {
             if (name.length !in 1..16 || !name.matches(Regex("[а-яa-z0-9_\\-]+", RegexOption.IGNORE_CASE))) {
                 ServerBot.bot.sendMessage(
                     chatId = group.chatId,
-                    text = ServerBot.config.integration.group.incorrectName,
+                    text = ServerBot.config.group.incorrectName,
                     replyParameters = TgReplyParameters(
                         msg.messageId
                     )
@@ -762,7 +743,7 @@ object ServerBotGroup {
             } else if (!group.canTakeName(name)) {
                 ServerBot.bot.sendMessage(
                     chatId = group.chatId,
-                    text = ServerBot.config.integration.group.nameIsTaken,
+                    text = ServerBot.config.group.nameIsTaken,
                     replyParameters = TgReplyParameters(
                         msg.messageId
                     )
@@ -789,7 +770,7 @@ object ServerBotGroup {
     suspend fun answerHaventRights(id: String, display: String): TgCBHandlerResult {
         ServerBot.bot.answerCallbackQuery(
             callbackQueryId = id,
-            text = ServerBot.config.integration.group.haveNotPermission.formatLang(
+            text = ServerBot.config.group.haveNotPermission.formatLang(
                 "placeholder" to display
             ),
             showAlert = true
@@ -821,7 +802,7 @@ object ServerBotGroup {
                         ServerBot.bot.sendMessage(
                             chatId = group.chatId,
                             text = getSettingsText(group),
-                            replyMarkup = SETTINGS,
+                            replyMarkup = getSettings(group),
                             replyParameters = TgReplyParameters(
                                 msg.messageId
                             ),
@@ -852,12 +833,12 @@ object ServerBotGroup {
             chatId = group.chatId,
             text = getSettingsText(group),
             replyParameters = TgReplyParameters(msg.messageId),
-            replyMarkup = SETTINGS
+            replyMarkup = getSettings(group)
         )
     }
 
     suspend fun sendFeatures(group: SQLGroup, replyTo: Int? = null, withDone: Boolean = false, edit: Int? = null) {
-        val message = (if (withDone) ServerBot.config.integration.group.done + "\n" else "") + resolveFeaturesSettingsMessage(group)
+        val message = (if (withDone) ServerBot.config.group.done + "\n" else "") + resolveFeaturesSettingsMessage(group)
         val menu = TgMenu(
             FeatureTypes.entries
                 .map { it.value }
@@ -867,7 +848,7 @@ object ServerBotGroup {
                     SQLCallback.Companion.of(
                         display = it.tgDisplayName(),
                         type = "group",
-                        data = GroupCallback(
+                        data = GroupCallback.of(
                             operation = Operations.SELECT_FEATURE,
                             name = it.serializedName
                         ),
@@ -896,20 +877,49 @@ object ServerBotGroup {
         }
     }
     fun getSettingsText(group: SQLGroup) =
-        ServerBot.config.integration.group.settings.text.formatLang(
-            "groupName" to (group.name ?: ServerBot.config.integration.group.settings.nullPlaceholder)
+        ServerBot.config.group.settings.text.formatLang(
+            "groupName" to (group.name ?: ServerBot.config.group.settings.nullPlaceholder)
         )
 
     fun escapeName(current: String) =
         current.replace(" ", "_").replace(Regex("[^а-яa-z0-9_\\-]", RegexOption.IGNORE_CASE), "")
     suspend fun resolveFeaturesSettingsMessage(group: SQLGroup) =
-        ServerBot.config.integration.group.groupHasNoOnlyPlayers.let { if (!group.hasProtectedLevel(AccountType.PLAYER)) it else "" } +
-        "\n" + ServerBot.config.integration.group.selectFeature
+        ServerBot.config.group.groupHasNoOnlyPlayers.let { if (!group.hasProtectedLevel(AccountType.PLAYER)) it else "" } +
+        "\n" + ServerBot.config.group.selectFeature
 
-    open class GroupCallback(
-        var operation: Operations,
-        var name: String? = null,
-    ): CallbackData
+    val integrationTypes = hashMapOf<String, Class<*>>(
+        "dummy" to GroupCallback.DummyAdditional::class.java,
+        "withName" to GroupCallback.AdditionalWithName::class.java,
+    )
+    open class GroupCallback<T> private constructor(
+        var operation: String,
+        val additionalType: String,
+        val additional: T,
+    ): CallbackData {
+        open class DummyAdditional()
+        open class AdditionalWithName(
+            val name: String? = null
+        )
+        companion object {
+            fun of(operation: String): GroupCallback<DummyAdditional> =
+                GroupCallback(operation, "dummy", DummyAdditional())
+            fun of(operation: Operations): GroupCallback<DummyAdditional> =
+                GroupCallback(operation.serialized(), "dummy", DummyAdditional())
+            fun of(operation: String, name: String?): GroupCallback<AdditionalWithName> =
+                GroupCallback(operation, "withName", AdditionalWithName(name))
+            fun of(operation: Operations, name: String?): GroupCallback<AdditionalWithName> =
+                GroupCallback(operation.serialized(), "withName", AdditionalWithName(name))
+            fun <T> of(operation: String, additionalType: Class<T>, additional: T): GroupCallback<T> {
+                val type = additionalType.name
+                if (!integrationTypes.contains(type))
+                    integrationTypes[type] = additionalType
+                return GroupCallback(operation, type, additional)
+            }
+            fun <T> of(operation: Operations, additionalType: Class<T>, additional: T): GroupCallback<T> {
+                return of(operation.serialized(), additionalType, additional)
+            }
+        }
+    }
     enum class Operations {
         @SerializedName("agree_with_rules")
         AGREE_WITH_RULES,
@@ -939,20 +949,17 @@ object ServerBotGroup {
         SETTINGS,
         @SerializedName("topic_reselect")
         TOPIC_RESELECT,
-        @SerializedName("edit_prefix")
-        EDIT_PREFIX,
         @SerializedName("confirm_setup_feature")
         CONFIRM_SETUP_FEATURE,
-        @SerializedName("remove_agree_with_rules")
-        REMOVE_AGREE_WITH_RULES,
-        @SerializedName("confirm_remove_agree_with_rules")
-        CONFIRM_REMOVE_AGREE_WITH_RULES,
-        @SerializedName("cancel_remove_agree_with_rules")
-        CANCEL_REMOVE_AGREE_WITH_RULES,
         @SerializedName("setup_feature")
         SETUP_FEATURE,
         @SerializedName("success")
-        SUCCESS,
+        SUCCESS;
+
+        open fun serialized(): String = this.name.lowercase()
+        companion object {
+            fun deserialize(name: String): Operations? = entries.firstOrNull { it.serialized() == name }
+        }
     }
     data class SetupFeatureCallback<T: FeatureData>(
         val feature: FeatureType<T>,
@@ -960,8 +967,4 @@ object ServerBotGroup {
         val field: String,
         val arg: String,
     )
-    class FeatureGroupCallback<T: FeatureData>(
-        val data: SetupFeatureCallback<T>,
-        name: String? = null,
-    ): GroupCallback(Operations.SETUP_FEATURE, name)
 }

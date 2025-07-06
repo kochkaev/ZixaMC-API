@@ -1,6 +1,5 @@
-package ru.kochkaev.zixamc.chatsync
+package ru.kochkaev.zixamc.chatsync.settings
 
-import ru.kochkaev.zixamc.chatsync.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.api.sql.process.ProcessType
 import ru.kochkaev.zixamc.api.sql.process.ProcessorType
 

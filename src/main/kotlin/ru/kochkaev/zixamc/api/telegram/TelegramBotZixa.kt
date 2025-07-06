@@ -20,6 +20,7 @@ import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLProcess
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.process.ProcessorType
+import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.answerHaventRights
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.time.Duration
@@ -180,8 +181,19 @@ class TelegramBotZixa(
                                 SQLCallback.get(it)
                             }
                             if (sql != null) {
-                                typedCallbackQueryHandlers[sql.type]?.invoke(this, sql)?.also { result ->
-                                    if (result.deleteMarkup) try {
+                                var result: TgCBHandlerResult? = null
+                                if (sql.canExecute?.let { canExecute ->
+                                        !(canExecute.statuses?.contains(ServerBot.bot.getChatMember(this.message.chat.id, this.from.id).status) == true || canExecute.users?.contains(this.from.id) == true)
+                                    } != false) result = answerHaventRights(this.id, sql.canExecute?.display?:"")
+                                result = typedCallbackQueryHandlers[sql.type]?.invoke(this, sql)
+                                if (result!=null) {
+                                    if (result.deleteMessage) try {
+                                        deleteMessage(
+                                            chatId = this.message.chat.id,
+                                            messageId = this.message.messageId,
+                                        )
+                                    } catch (_: Exception) {}
+                                    else if (result.deleteMarkup) try {
                                         editMessageReplyMarkup(
                                             chatId = this.message.chat.id,
                                             messageId = this.message.messageId,

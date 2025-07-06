@@ -32,8 +32,8 @@ enum class FormatTypes : FormatType {
                 val len = value.length
                 if (value.startsWith("[")) {
                     val sn: ArrayList<Node> = if (haveSubs) it.subNode else arrayListOf(it)
-                    val allInRegular = FormatType.Companion.isAllInRegular(sn, i, len)
-                    val allInOneRegular = FormatType.Companion.isAllInOneRegular(sn, i, len)
+                    val allInRegular = FormatType.isAllInRegular(sn, i, len)
+                    val allInOneRegular = FormatType.isAllInOneRegular(sn, i, len)
                     val displayMath = displayRegex.find(value)
                     val urlMath = linkRegex.find(value)
                     var url: String? = null
