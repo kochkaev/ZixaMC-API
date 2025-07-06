@@ -6,9 +6,10 @@ import ru.kochkaev.zixamc.api.sql.SQLProcess
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 
 @JsonAdapter(ProcessTypeAdapter::class)
-data class ProcessType<R: ProcessData>(
+open class ProcessType<R: ProcessData>(
     val model: Class<R>,
     val serializedName: String,
     val processorType: ProcessorType = ProcessorType.NONE,
     val processor: (suspend (TgMessage, SQLProcess<R>, R) -> Unit)? = null,
+    val cancelOnMenuSend: Boolean = false,
 )

@@ -1,7 +1,5 @@
 package ru.kochkaev.zixamc.api.telegram
 
-import okhttp3.internal.toImmutableList
-import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.api.config.ConfigManager.config
 import ru.kochkaev.zixamc.api.formatLang
@@ -34,7 +32,7 @@ object BotLogic {
     ) : TgMessage {
         val newMessage = bot.sendMessage(
             chatId = chat.id,
-            text = escapePlaceholders(config.general.lang.infoMessage),
+            text = config.general.lang.infoMessage,
             replyParameters = replyParameters,
             replyMarkup = replyMarkup,
             protectContent = true,
@@ -48,11 +46,20 @@ object BotLogic {
         return newMessage
     }
 
-    fun escapePlaceholders(text: String, nickname: String? = null, group: SQLGroup = ChatSyncBotLogic.DEFAULT_GROUP) : String {
-        return text.formatLang(
-            "nickname" to (nickname?:""),
-            "mentionAll" to group.mentionAll(),
-            "serverIP" to config.general.serverIP,
-        )
+    /** Supplier: (chatId) -> String */
+    private val globalPlaceholders: ArrayList<Pair<String, (Long) -> String>> = arrayListOf(
+        "mentionAll" to { SQLGroup.get(it)?.mentionAll()?:"" },
+        "serverIP" to { config.general.serverIP }
+    )
+    /** Supplier: (chatId) -> String */
+    fun registerGlobalPlaceholders(vararg placeholders: Pair<String, (Long) -> String>) {
+        globalPlaceholders.addAll(placeholders)
+    }
+    /** Supplier: (chatId) -> String */
+    fun registerGlobalPlaceholders(placeholders: List<Pair<String, (Long) -> String>>) {
+        globalPlaceholders.addAll(placeholders)
+    }
+    fun processGlobalPlaceholders(text: String, chatId: Long): String {
+        return text.formatLang(args = globalPlaceholders.map { Pair(it.first, it.second(chatId)) } .toTypedArray())
     }
 }

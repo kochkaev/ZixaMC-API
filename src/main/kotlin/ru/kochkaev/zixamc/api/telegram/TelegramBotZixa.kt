@@ -332,7 +332,7 @@ class TelegramBotZixa(
         val result = client.sendMessage(TgSendMessageRequest(
             chatId = chatId,
             messageThreadId = messageThreadId,
-            text = text,
+            text = BotLogic.processGlobalPlaceholders(text, chatId),
             parseMode = parseMode,
             entities = entities,
             replyParameters = replyParameters,
@@ -436,7 +436,7 @@ class TelegramBotZixa(
             TgEditMessageRequest(
                 chatId,
                 messageId,
-                text,
+                BotLogic.processGlobalPlaceholders(text, chatId),
                 parseMode,
                 disableWebPagePreview,
                 entities = entities

@@ -32,9 +32,7 @@ data class CancelCallbackData(
     companion object {
         val ON_SERVER_CALLBACK: suspend (TgCallbackQuery, SQLCallback<CancelCallbackData>) -> TgCBHandlerResult =
             { cbq, sql -> onCallback(cbq, sql, ServerBot.bot) }
-        val ON_REQUESTS_CALLBACK: suspend (TgCallbackQuery, SQLCallback<CancelCallbackData>) -> TgCBHandlerResult =
-            { cbq, sql -> onCallback(cbq, sql, RequestsBot.bot) }
-        private suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<CancelCallbackData>, bot: TelegramBotZixa): TgCBHandlerResult {
+        suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<CancelCallbackData>, bot: TelegramBotZixa): TgCBHandlerResult {
             if (sql.canExecute?.statuses?.contains(bot.getChatMember(cbq.message.chat.id, cbq.from.id).status) == true) {
                 sql.data?.run {
                     this.cancelProcesses.forEach { SQLProcess.Companion.get(cbq.message.chat.id, it)?.drop() }

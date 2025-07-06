@@ -9,11 +9,14 @@ import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.process.ProcessType
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.api.telegram.model.ITgMenuButton
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMemberStatuses
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.audioplayerintegration.AudioPlayerUploadProcess
+import ru.kochkaev.zixamc.fabrictailorintegration.FabricTailorUploadProcess
 
 object Menu {
 
@@ -85,23 +88,23 @@ object Menu {
     suspend fun sendMenu(chatId: Long, userId: Long?, threadId: Int? = null) {
         val chat = SQLChat.Companion.get(chatId)
         val user = userId?.let { SQLUser.Companion.get(it) }
-        listOfNotNull(
-            SQLProcess.Companion.get(chatId, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD),
-            SQLProcess.Companion.get(chatId, ProcessTypes.MENU_FABRIC_TAILOR_UPLOAD),
-        ).forEach { process ->
-            process.data?.run {
-                try {
-                    ServerBot.bot.editMessageReplyMarkup(
-                        chatId = process.chatId,
-                        messageId = this.messageId,
-                        replyMarkup = TgReplyMarkup()
-                    )
-                } catch (_: Exception) {
+        ProcessTypes.entries.values
+            .filter { it.cancelOnMenuSend }
+            .mapNotNull { SQLProcess.get(chatId, it) }
+            .forEach { process ->
+                process.data?.run {
+                    try {
+                        ServerBot.bot.editMessageReplyMarkup(
+                            chatId = process.chatId,
+                            messageId = this.messageId,
+                            replyMarkup = TgReplyMarkup()
+                        )
+                    } catch (_: Exception) {
+                    }
+                    SQLCallback.Companion.dropAll(process.chatId, this.messageId)
                 }
-                SQLCallback.Companion.dropAll(process.chatId, this.messageId)
+                process.drop()
             }
-            process.drop()
-        }
         if (user != null && chat != null && user.hasProtectedLevel(AccountType.PLAYER)) {
             ServerBot.bot.sendMessage(
                 chatId = chatId,

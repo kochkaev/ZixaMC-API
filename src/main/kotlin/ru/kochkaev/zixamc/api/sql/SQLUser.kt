@@ -6,12 +6,12 @@ import ru.kochkaev.zixamc.api.Initializer
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLUserAdapter
+import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountData
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.api.sql.data.RequestData
-import ru.kochkaev.zixamc.api.sql.data.UserData
 import ru.kochkaev.zixamc.api.sql.util.AbstractSQLField
 import ru.kochkaev.zixamc.api.sql.util.BooleanSQLField
 import ru.kochkaev.zixamc.api.sql.util.NullableStringSQLField
@@ -19,7 +19,10 @@ import ru.kochkaev.zixamc.api.sql.util.StringSQLArray
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
-import ru.kochkaev.zixamc.requests.RequestsChatDataType
+import ru.kochkaev.zixamc.api.telegram.BotLogic
+import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
+import ru.kochkaev.zixamc.requests.RequestsBot
+import ru.kochkaev.zixamc.requests.RequestsBotUpdateManager
 import java.sql.SQLException
 
 @JsonAdapter(SQLUserAdapter::class)
@@ -101,7 +104,7 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
             if (!exists(userId)) createDefault(userId)
             return SQLUser(userId)
         }
-        fun create(userId: Long, nickname: String?, nicknames: List<String>?, accountType: Int?, data: String?): Boolean {
+        fun create(userId: Long, nickname: String?, nicknames: List<String>?, accountType: Int?, data: Map<ChatDataType<*>, *> = mapOf<ChatDataType<*>, Any>()): Boolean {
             try {
                 reConnect()
                 if (!exists(userId) && (nickname == null || !exists(nickname)) && (nicknames?.any{ exists(it) } != true)) {
@@ -112,7 +115,7 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
                     preparedStatement.setString(3, gson.toJson(nicknames?:listOf<String>()))
                     preparedStatement.setInt(4, accountType?:3)
                     preparedStatement.setString(5, gson.toJson(listOf<String>()))
-                    preparedStatement.setString(6, data)
+                    preparedStatement.setString(6, gson.toJson(data))
                     preparedStatement.executeUpdate()
                     return true
                 }
@@ -127,7 +130,6 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
                 nickname = null,
                 nicknames = listOf(),
                 accountType = AccountType.UNKNOWN.id,
-                data = gson.toJson(UserData())
             )
         
         fun exists(userId: Long) = try {
@@ -243,19 +245,39 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
         accounts.add(matched)
         data.set(ChatDataTypes.MINECRAFT_ACCOUNTS, accounts)
     }
-    fun addRequest(requestData: RequestData) {
-        if (accountType == AccountType.UNKNOWN) accountType = AccountType.REQUESTER
-        val requests = data.getCasted(RequestsChatDataType) ?: arrayListOf()
-        requests.add(requestData)
-        data.set(RequestsChatDataType, requests)
-    }
-    fun editRequest(requestData: RequestData) {
-        val requests = data.getCasted(RequestsChatDataType) ?: return
-        requests.removeIf { it.user_request_id == requestData.user_request_id }
-        requests.add(requestData)
-        data.set(RequestsChatDataType, requests)
-    }
 
     override suspend fun hasProtectedLevel(level: AccountType): Boolean =
         accountType.isHigherThanOrEqual(level)
+
+    override suspend fun sendRulesUpdated(capital: Boolean) {
+        val message = RequestsBot.config.user.lang.event.onRulesUpdated
+        val menu = TgMenu(
+            listOf(
+                listOf(
+                    ServerBot.config.integration.group
+                        .let { if (capital) it.needAgreeWithRules else it.removeAgreeWithRules }
+                        .let {
+                            SQLCallback.of(
+                                display = it,
+                                type = "requests",
+                                data = RequestsBotUpdateManager.RequestCallback(
+                                    if (capital) RequestsBotUpdateManager.Operations.AGREE_WITH_RULES
+                                    else RequestsBotUpdateManager.Operations.REVOKE_AGREE_WITH_RULES
+                                ),
+                                canExecute = ServerBotGroup.CAN_EXECUTE_OWNER
+                            )
+                        }
+                )))
+        for(it in BotLogic.bots) {
+            try {
+                it.sendMessage(
+                    chatId = userId,
+                    text = message,
+                    replyMarkup = menu,
+                )
+                break
+            } catch (_: Exception) { }
+        }
+        if (capital) agreedWithRules = false
+    }
 }

@@ -1,4 +1,6 @@
-package ru.kochkaev.zixamc.api.sql.process
+package ru.kochkaev.zixamc.chatsync
+
+import ru.kochkaev.zixamc.api.sql.process.ProcessData
 
 class GroupChatSyncWaitPrefixProcessData(
     val topicId: Int?,

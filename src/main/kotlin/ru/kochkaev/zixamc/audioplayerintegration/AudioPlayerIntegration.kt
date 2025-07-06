@@ -80,7 +80,7 @@ object AudioPlayerIntegration {
                 listOf(
                     listOf(
                         if (isModLoaded) Menu.BACK_BUTTON else CancelCallbackData(
-                            cancelProcesses = listOf(ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD),
+                            cancelProcesses = listOf(AudioPlayerUploadProcess),
                             asCallbackSend = CancelCallbackData.CallbackSend(
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of("back"),
@@ -98,7 +98,7 @@ object AudioPlayerIntegration {
             messageThreadId = cbq.message.messageThreadId,
         )
         if (isModLoaded) {
-            SQLProcess.Companion.get(cbq.message.chat.id, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD)?.also {
+            SQLProcess.Companion.get(cbq.message.chat.id, AudioPlayerUploadProcess)?.also {
                 it.data?.run {
                     try { ServerBot.bot.editMessageReplyMarkup(
                         chatId = cbq.message.chat.id,
@@ -109,7 +109,7 @@ object AudioPlayerIntegration {
                 }
             } ?.drop()
             SQLProcess.Companion.of(
-                type = ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD,
+                type = AudioPlayerUploadProcess,
                 data = ProcessData(message.messageId)
             ).pull(cbq.message.chat.id)
         }

@@ -1,7 +1,6 @@
 package ru.kochkaev.zixamc.requests
 
-import ru.kochkaev.zixamc.api.sql.data.RequestData
-import ru.kochkaev.zixamc.api.sql.data.RequestType
+import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.data.AccountType
@@ -18,12 +17,12 @@ import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
 
 object RequestsLogic {
 
-    suspend fun cancelRequest(entity: SQLUser): Boolean {
-        val request = entity.data.getCasted(RequestsChatDataType)?.firstOrNull { RequestType.getAllPending().contains(it.request_status) } ?: return false
-        entity.editRequest(request.apply { this.request_status = RequestType.CANCELED })
+    suspend fun cancelRequest(user: SQLUser): Boolean {
+        val request = user.data.getCasted(RequestsChatDataType)?.firstOrNull { RequestStatus.getAllPending().contains(it.status) } ?: return false
+        RequestsChatDataType.editRequest(request.apply { this.status = RequestStatus.CANCELED }, user)
         bot.sendMessage(
-            chatId = entity.userId,
-            text = BotLogic.escapePlaceholders(config.user.lang.event.onCanceled, entity.nickname),
+            chatId = user.userId,
+            text = config.user.lang.event.onCanceled.formatLang("nickname" to (user.nickname?:"")),
             replyMarkup = TgMenu(listOf(listOf(
                 SQLCallback.of(
                     display = config.user.lang.button.createRequest,
@@ -32,43 +31,43 @@ object RequestsLogic {
                 )
             )))
         )
-        if (request.message_id_in_target_chat != null) bot.sendMessage(
+        if (request.inTargetMessageId != null) bot.sendMessage(
             chatId = config.target.chatId,
             messageThreadId = config.target.topicId,
-            text = BotLogic.escapePlaceholders(config.target.lang.event.onCanceled, entity.nickname),
+            text = config.target.lang.event.onCanceled.formatLang("nickname" to (user.nickname?:"")),
             replyParameters = TgReplyParameters(
-                message_id = request.message_id_in_target_chat!!.toInt()
+                message_id = request.inTargetMessageId!!.toInt()
             )
         )
-        if (request.poll_message_id != null) bot.stopPoll(
+        if (request.pollMessageId != null) bot.stopPoll(
             chatId = config.target.chatId,
-            messageId = request.poll_message_id!!.toInt()
+            messageId = request.pollMessageId!!.toInt()
         )
-        if (request.message_id_in_moderators_chat != null) {
+        if (request.moderationMessageId != null) {
             bot.editMessageReplyMarkup(
                 chatId = config.forModerator.chatId,
-                messageId = request.message_id_in_moderators_chat!!.toInt(),
+                messageId = request.moderationMessageId!!.toInt(),
                 replyMarkup = TgReplyMarkup()
             )
             bot.editMessageText(
                 chatId = config.forModerator.chatId,
-                messageId = request.message_id_in_moderators_chat!!.toInt(),
-                text = BotLogic.escapePlaceholders(config.forModerator.lang.event.onCancel, request.request_nickname)
+                messageId = request.moderationMessageId!!.toInt(),
+                text = config.forModerator.lang.event.onCancel.formatLang("nickname" to (request.nickname?:""))
             )
-            SQLCallback.getAll(config.forModerator.chatId, request.message_id_in_moderators_chat!!.toInt()).forEach { it.drop() }
+            SQLCallback.getAll(config.forModerator.chatId, request.moderationMessageId!!.toInt()).forEach { it.drop() }
         }
-        entity.tempArray.set(listOf())
+        user.tempArray.set(listOf())
         return true
     }
-    suspend fun cancelSendingRequest(entity: SQLUser): Boolean {
-        val requests = entity.data.getCasted(RequestsChatDataType)?:listOf()
-        entity.data.set(RequestsChatDataType, requests.filter { it.request_status == RequestType.CREATING })
+    suspend fun cancelSendingRequest(user: SQLUser): Boolean {
+        val requests = user.data.getCasted(RequestsChatDataType)?:listOf()
+        user.data.set(RequestsChatDataType, requests.filter { it.status == RequestStatus.CREATING })
         bot.sendMessage(
-            chatId = entity.userId,
+            chatId = user.userId,
             text = config.user.lang.event.onCanceled,
             replyMarkup = TgMenu(listOf(listOf(
                 SQLCallback.of(
-                    display = BotLogic.escapePlaceholders(config.user.lang.button.createRequest),
+                    display = config.user.lang.button.createRequest,
                     type = "requests",
                     data = RequestsBotUpdateManager.RequestCallback(RequestsBotUpdateManager.Operations.CREATE_REQUEST),
                 )
@@ -76,12 +75,12 @@ object RequestsLogic {
         )
         return true
     }
-    suspend fun newRequest(entity: SQLUser): Boolean {
-        when (entity.data.getCasted(RequestsChatDataType)?.firstOrNull { RequestType.getAllPendingAndCreating().contains(it.request_status) }?.request_status) {
-            RequestType.CREATING -> {
+    suspend fun newRequest(user: SQLUser): Boolean {
+        when (user.data.getCasted(RequestsChatDataType)?.firstOrNull { RequestStatus.getAllPendingAndCreating().contains(it.status) }?.status) {
+            RequestStatus.CREATING -> {
                 bot.sendMessage(
-                    chatId = entity.userId,
-                    text = BotLogic.escapePlaceholders(config.user.lang.creating.youAreNowCreatingRequest),
+                    chatId = user.userId,
+                    text = config.user.lang.creating.youAreNowCreatingRequest,
                     replyMarkup = TgMenu(listOf(listOf(
                         SQLCallback.of(
                             display = config.user.lang.button.redrawRequest,
@@ -92,10 +91,10 @@ object RequestsLogic {
                 )
                 return false
             }
-            RequestType.MODERATING, RequestType.PENDING -> {
+            RequestStatus.MODERATING, RequestStatus.PENDING -> {
                 bot.sendMessage(
-                    chatId = entity.userId,
-                    text = BotLogic.escapePlaceholders(config.user.lang.creating.youHavePendingRequest, entity.nickname),
+                    chatId = user.userId,
+                    text = config.user.lang.creating.youHavePendingRequest.formatLang("nickname" to (user.nickname?:"")),
                     replyMarkup = TgMenu(listOf(listOf(
                         SQLCallback.of(
                             display = config.user.lang.button.cancelRequest,
@@ -108,15 +107,15 @@ object RequestsLogic {
             }
             else -> {}
         }
-        if (entity.accountType.isPlayer) {
+        if (user.accountType.isPlayer) {
             bot.sendMessage(
-                chatId = entity.userId,
-                text = BotLogic.escapePlaceholders(config.user.lang.creating.youAreNowPlayer, entity.nickname),
+                chatId = user.userId,
+                text = config.user.lang.creating.youAreNowPlayer.formatLang("nickname" to (user.nickname?:"")),
             )
             return false
         }
-        val forReplyMessage = if (entity.agreedWithRules) bot.sendMessage(
-            chatId = entity.userId,
+        val forReplyMessage = if (user.agreedWithRules) bot.sendMessage(
+            chatId = user.userId,
             text = config.user.lang.creating.needNickname,
             replyMarkup = TgForceReply(
                 true,
@@ -124,8 +123,8 @@ object RequestsLogic {
             )
         )
         else bot.sendMessage(
-            chatId = entity.userId,
-            text = BotLogic.escapePlaceholders(config.user.lang.creating.needAgreeWithRules),
+            chatId = user.userId,
+            text = config.user.lang.creating.needAgreeWithRules,
             replyMarkup = TgMenu(listOf(listOf(
                 SQLCallback.of(
                     display = config.user.lang.button.agreeWithRules,
@@ -134,23 +133,25 @@ object RequestsLogic {
                 )
             )))
         )
-        entity.addRequest(
-            RequestData(
-                (entity.data.getCasted(RequestsChatDataType)?.maxOfOrNull { it.user_request_id } ?: -1) + 1,
+        RequestsChatDataType.addRequest(
+            requestData = RequestData(
+                (user.data.getCasted(RequestsChatDataType)?.maxOfOrNull { it.requestId } ?: -1) + 1,
                 null,
                 forReplyMessage.messageId.toLong(),
                 null,
                 null,
                 null,
-                RequestType.CREATING,
+                RequestStatus.CREATING,
                 null,
-            ))
-        if (entity.accountType == AccountType.UNKNOWN) entity.accountType = AccountType.REQUESTER
+            ),
+            user = user
+        )
+        if (user.accountType == AccountType.UNKNOWN) user.accountType = AccountType.REQUESTER
         return true
     }
 
-    fun promoteUser(argEntity: SQLUser? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null, argTarget: AccountType? = null): Boolean {
-        val entity = argEntity ?:
+    fun promoteUser(argUser: SQLUser? = null, userId: Long? = null, nickname: String? = null, targetName: String? = null, argTargetId: Int? = null, argTarget: AccountType? = null): Boolean {
+        val user = argUser ?:
             if (userId != null) SQLUser.get(userId) ?: return false
             else if (nickname != null) SQLUser.get(nickname) ?: return false
             else return false
@@ -158,17 +159,17 @@ object RequestsLogic {
             if (argTargetId!=null) AccountType.parse(argTargetId)
             else if (targetName!=null) AccountType.parse(targetName)
             else AccountType.UNKNOWN
-        entity.accountType = target
-        return entity.accountType==target
+        user.accountType = target
+        return user.accountType==target
     }
 
     fun checkPermissionToExecute(
         message: TgMessage?,
-        entity: SQLUser = SQLUser.getOrCreate(message?.from!!.id),
+        user: SQLUser = SQLUser.getOrCreate(message?.from!!.id),
         allowedAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedIfSpendByItself: Boolean = false,
     ): Boolean =
-        (entity.accountType in allowedAccountTypes || (allowedIfSpendByItself && message?.from?.id==entity.userId))
+        (user.accountType in allowedAccountTypes || (allowedIfSpendByItself && message?.from?.id==user.userId))
 
     fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage?, allowedIfSpendByItself: Boolean = false): SQLUser? {
         if (msg == null) return null
@@ -176,7 +177,7 @@ object RequestsLogic {
         val isArgUserId = if (args.size > 1) args[1].matches("[0-9]+".toRegex()) && args[1].length == 10 else false
         val isReplyToMessage = msg.replyToMessage != null
         val isItLegalReply = isReplyToMessage && msg.replyToMessage!!.messageId != config.target.topicId
-        val entity =
+        val user =
             if (isArgUserId)
                 SQLUser.get(args[1].toLong())
             else if (isItLegalReply)
@@ -186,11 +187,11 @@ object RequestsLogic {
             else if (allowedIfSpendByItself)
                 SQLUser.get(msg.from!!.id)
             else null
-        return entity
+        return user
     }
 
     fun updateServerPlayerStatus(
-        entity: SQLUser,
+        user: SQLUser,
         applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
         targetAccountStatus: MinecraftAccountType = MinecraftAccountType.PLAYER,
         targetAccountType: AccountType = targetAccountStatus.toAccountType(),
@@ -198,12 +199,12 @@ object RequestsLogic {
     ) : Boolean {
         val isTargetPlayer = targetAccountType.isPlayer
         if (!promoteUser(
-                argEntity = entity,
+                argUser = user,
                 argTarget = targetAccountType,
             )
         ) return false
         else {
-            entity.data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS)
+            user.data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS)
                 ?.filter { applyAccountStatuses.contains(it.accountStatus) }
                 ?.map { it.nickname }
                 ?.forEach {
@@ -211,7 +212,7 @@ object RequestsLogic {
                         if (isTargetPlayer) WhitelistManager.add(it)
                         else WhitelistManager.remove(it)
                     }
-                    entity.editMinecraftAccount(it, targetAccountStatus)
+                    user.editMinecraftAccount(it, targetAccountStatus)
                 }
             return true
         }
@@ -241,8 +242,8 @@ object RequestsLogic {
 
     suspend fun executeCheckPermissionsAndExceptions(
         message: TgMessage?,
-        entity: SQLUser?,
-        entityExecutor: SQLUser? = if (message!=null) SQLUser.get(message.from!!.id) else null,
+        user: SQLUser?,
+        executor: SQLUser? = if (message!=null) SQLUser.get(message.from!!.id) else null,
         allowedExecutionAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedExecutionIfSpendByItself: Boolean = false,
         applyAccountStatuses: List<MinecraftAccountType> = MinecraftAccountType.getAll(),
@@ -253,16 +254,16 @@ object RequestsLogic {
     ) : Boolean {
         var errorDueExecuting = false
         var havePermission = true
-        if (entityExecutor == null || entity == null) errorDueExecuting = true
+        if (executor == null || user == null) errorDueExecuting = true
         else havePermission = checkPermissionToExecute(
             message = message,
-            entity = entityExecutor,
+            user = executor,
             allowedAccountTypes = allowedExecutionAccountTypes,
             allowedIfSpendByItself = allowedExecutionIfSpendByItself,
         )
         if (!havePermission) errorDueExecuting = true
         if (!errorDueExecuting && !updateServerPlayerStatus(
-                entity = entity!!,
+                user = user!!,
                 applyAccountStatuses = applyAccountStatuses,
                 targetAccountStatus = targetAccountStatus,
                 targetAccountType = targetAccountType,
@@ -272,110 +273,44 @@ object RequestsLogic {
         if (errorDueExecuting && message!=null && helpText != null) {
             bot.sendMessage(
                 chatId = message.chat.id,
-                text =
-                    if (!havePermission) BotLogic.escapePlaceholders(
-                        config.commonLang.command.permissionDenied,
-                        entity?.nickname
-                    )
-                    else BotLogic.escapePlaceholders(helpText, entity?.nickname),
+                text = (if (!havePermission) config.commonLang.command.permissionDenied else helpText).formatLang("nickname" to (user?.nickname?:"")),
                 replyParameters = TgReplyParameters(message.messageId),
             )
         }
         return errorDueExecuting
     }
     suspend fun executeRequestFinalAction(
-        entity: SQLUser,
+        user: SQLUser,
         isAccepted: Boolean,
     ) : Boolean {
-        val request = entity.data.getCasted(RequestsChatDataType)?.firstOrNull {it.request_status == RequestType.PENDING} ?: return false
-        val message4User = BotLogic.escapePlaceholders(
-            text = if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject,
-            nickname = request.request_nickname,
-        )
-        val message4Target = BotLogic.escapePlaceholders(
-            text = if (isAccepted) config.target.lang.event.onAccept else config.target.lang.event.onReject,
-            nickname = request.request_nickname,
-        )
+        val request = user.data.getCasted(RequestsChatDataType)?.firstOrNull {it.status == RequestStatus.PENDING} ?: return false
+        val message4User = (if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject).formatLang("nickname" to (request.nickname?:""))
+        val message4Target = (if (isAccepted) config.target.lang.event.onAccept else config.target.lang.event.onReject).formatLang("nickname" to (request.nickname?:""))
         bot.sendMessage(
             chatId = config.target.chatId,
             text = message4Target,
-            replyParameters = TgReplyParameters(request.poll_message_id!!.toInt()),
+            replyParameters = TgReplyParameters(request.pollMessageId!!.toInt()),
         )
         val newMessage = bot.sendMessage(
-            chatId = entity.userId,
+            chatId = user.userId,
             text = message4User,
-            replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
+            replyParameters = TgReplyParameters(request.messageId.toInt()),
             protectContent = false,
         )
         bot.editMessageReplyMarkup(
-            chatId = entity.userId,
-            messageId = request.message_id_in_chat_with_user.toInt(),
+            chatId = user.userId,
+            messageId = request.messageId.toInt(),
             replyMarkup = TgReplyMarkup()
         )
-        request.request_status = if (isAccepted) RequestType.ACCEPTED else RequestType.REJECTED
-        request.message_id_in_chat_with_user = newMessage.messageId.toLong()
-        entity.editRequest(request)
-        entity.tempArray.set(listOf())
+        request.status = if (isAccepted) RequestStatus.ACCEPTED else RequestStatus.REJECTED
+        request.messageId = newMessage.messageId.toLong()
+        RequestsChatDataType.editRequest(request, user)
+        user.tempArray.set(listOf())
         if (isAccepted) {
-            sendOnJoinInfoMessage(entity, newMessage.messageId)
-            entity.accountType = AccountType.PLAYER
-            entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, MinecraftAccountType.PLAYER))
-            try { WhitelistManager.add(request.request_nickname!!) } catch (_:Exception) {}
-        }
-        return true
-    }
-    suspend fun updateRules(
-        entity: SQLUser,
-        toReplyMessageId: Int? = null,
-        revokeAccepts: Boolean = false,
-    ): Boolean {
-        if (!checkPermissionToExecute(
-                null, entity, listOf(AccountType.ADMIN), false
-            )) return true
-//        bot.sendMessage(
-//            chatId = config.target.chatId,
-//            text = BotLogic.escapePlaceholders(config.target.lang.event.onRulesUpdated),
-//            replyMarkup = TgMenu(listOf(listOf(
-//                if (revokeAccepts)
-//                    SQLCallback.of(
-//                        display = config.user.lang.button.agreeWithRules,
-//                        type = "requests",
-//                        data = RequestCallback(Operations.AGREE_WITH_RULES),
-//                    )
-//                else
-//                    SQLCallback.of(
-//                        display = config.user.lang.button.revokeAgreeWithRules,
-//                        type = "requests",
-//                        data = RequestCallback(Operations.REVOKE_AGREE_WITH_RULES),
-//                    )
-//            ))),
-//            replyParameters = if (toReplyMessageId!=null) TgReplyParameters(
-//                toReplyMessageId
-//            ) else null,
-//        )
-        SQLGroup.groups.forEach { it.sendRulesUpdated(revokeAccepts) }
-        SQLUser.users.filter { it.agreedWithRules } .forEach {
-            if (revokeAccepts) it.agreedWithRules = false
-            try {
-                bot.sendMessage(
-                    chatId = it.userId,
-                    text = BotLogic.escapePlaceholders(config.user.lang.event.onRulesUpdated),
-                    replyMarkup = TgMenu(listOf(listOf(
-                        if (revokeAccepts)
-                            SQLCallback.of(
-                                display = config.user.lang.button.agreeWithRules,
-                                type = "requests",
-                                data = RequestsBotUpdateManager.RequestCallback(RequestsBotUpdateManager.Operations.AGREE_WITH_RULES),
-                            )
-                        else
-                            SQLCallback.of(
-                                display = config.user.lang.button.revokeAgreeWithRules,
-                                type = "requests",
-                                data = RequestsBotUpdateManager.RequestCallback(RequestsBotUpdateManager.Operations.REVOKE_AGREE_WITH_RULES),
-                            )
-                    ))),
-                )
-            } catch (_: Exception) {}
+            sendOnJoinInfoMessage(user, newMessage.messageId)
+            user.accountType = AccountType.PLAYER
+            user.addMinecraftAccount(MinecraftAccountData(request.nickname!!, MinecraftAccountType.PLAYER))
+            try { WhitelistManager.add(request.nickname!!) } catch (_:Exception) {}
         }
         return true
     }

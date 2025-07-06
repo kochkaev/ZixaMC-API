@@ -14,10 +14,9 @@ import ru.kochkaev.zixamc.api.config.ConfigManager.config
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLGroupAdapter
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
-import ru.kochkaev.zixamc.api.sql.data.ChatData
-import ru.kochkaev.zixamc.api.sql.data.GroupData
 import ru.kochkaev.zixamc.api.sql.util.AbstractSQLField
 import ru.kochkaev.zixamc.api.sql.util.BooleanSQLField
 import ru.kochkaev.zixamc.api.sql.util.FeaturesSQLMap
@@ -81,39 +80,6 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                 config.database,
                 config.groupsTable
             )
-        override fun afterCreateTable() {
-            val config = ConfigManager.config.serverBot.chatSync
-            create(
-                chatId = config.defaultGroup.chatId,
-                name = config.defaultGroup.name,
-                aliases = config.defaultGroup.aliases,
-                members = SQLUser.users.map { it.id.toString() },
-                agreedWithRules = true,
-                isRestricted = false,
-                features = mapOf(
-                    ChatSyncFeatureType to ChatSyncFeatureData(
-                        enabled = true,
-                        topicId = config.defaultGroup.topicId,
-//                        name = config.defaultGroup.name,
-//                        aliases = ArrayList(config.defaultGroup.aliases),
-                        prefix = config.defaultGroup.prefix,
-                        fromMcPrefix = config.defaultGroup.fromMcPrefix,
-                        group = null
-                    ),
-                    FeatureTypes.PLAYERS_GROUP to PlayersGroupFeatureData(
-                        autoAccept = true,
-                        autoRemove = true,
-                        group = null,
-                    )
-                ),
-                data = gson.toJson(
-                    GroupData(
-                        isPrivate = true,
-                        greetingEnable = false
-                    )
-                )
-            )
-        }
 
         fun get(chatId: Long) =
             if (exists(chatId)) SQLGroup(chatId)
@@ -125,7 +91,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         }
         fun getOrCreate(chatId: Long): SQLGroup {
             if (!exists(chatId))
-                create(chatId, null, listOf(), listOf(), false, false, mapOf(), gson.toJson(ChatData()))
+                create(chatId, null, listOf(), listOf(), false, false, mapOf())
             return SQLGroup(chatId)
         }
         fun getAllWithUser(userId: Long) = try {
@@ -155,7 +121,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
             ZixaMC.logger.error("getGroupData error", e)
             listOf()
         }
-        fun create(chatId: Long, name:String?, aliases: List<String>?, members: List<String>?, agreedWithRules: Boolean, isRestricted: Boolean, features: Map<FeatureType<out FeatureData>, FeatureData>, data:String?): Boolean {
+        fun create(chatId: Long, name:String?, aliases: List<String>?, members: List<String>?, agreedWithRules: Boolean, isRestricted: Boolean, features: Map<FeatureType<out FeatureData>, FeatureData>, data: Map<ChatDataType<*>, *> = mapOf<ChatDataType<*>, Any>()): Boolean {
             try {
                 reConnect()
                 if (!exists(chatId) && (name == null || !exists(name))) {
@@ -168,7 +134,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                     preparedStatement.setBoolean(5, agreedWithRules)
                     preparedStatement.setBoolean(6, isRestricted)
                     preparedStatement.setString(7, gson.toJson(features))
-                    preparedStatement.setString(8, data?:gson.toJson(ChatData()))
+                    preparedStatement.setString(8, gson.toJson(data))
                     preparedStatement.executeUpdate()
                     return true
                 }
@@ -350,19 +316,18 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         } catch (_: Exception) {}
     }
 
-    suspend fun sendRulesUpdated(capital: Boolean = false) {
-        val isMain = ChatSyncBotLogic.DEFAULT_GROUP.chatId == chatId
-        val message = BotLogic.escapePlaceholders(
-            if (isMain)
+    override suspend fun sendRulesUpdated(capital: Boolean) {
+        val isPlayers = features.contains(FeatureTypes.PLAYERS_GROUP)
+        val message = if (isPlayers)
                 RequestsBot.config.target.lang.event.onRulesUpdated
-            else ServerBot.config.integration.group.rulesUpdated)
+            else ServerBot.config.integration.group.rulesUpdated
         val menu = TgMenu(
             listOf(
             listOf(
             ServerBot.config.integration.group
                 .let { if (capital) it.needAgreeWithRules else it.removeAgreeWithRules }
                 .let {
-                    if (isMain) SQLCallback.of(
+                    if (isPlayers) SQLCallback.of(
                         display = it,
                         type = "requests",
                         data = RequestsBotUpdateManager.RequestCallback(
@@ -382,20 +347,15 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
                     )
                 }
         )))
-        try {
-            RequestsBot.bot.sendMessage(
-                chatId = chatId,
-                text = message,
-                replyMarkup = menu,
-            )
-        } catch (_: Exception) {
+        for(it in BotLogic.bots) {
             try {
-                bot.sendMessage(
+                it.sendMessage(
                     chatId = chatId,
                     text = message,
                     replyMarkup = menu,
                 )
-            } catch (_: Exception) {}
+                break
+            } catch (_: Exception) { }
         }
         if (capital) agreedWithRules = false
     }

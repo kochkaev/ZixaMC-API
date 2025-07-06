@@ -61,4 +61,6 @@ abstract class SQLChat(
         data.set(ChatDataTypes.PROTECTED, protected)
     }
     abstract suspend fun hasProtectedLevel(level: AccountType): Boolean
+    abstract suspend fun sendRulesUpdated(capital: Boolean)
+    open suspend fun sendRulesUpdated() = sendRulesUpdated(false)
 }

@@ -1,7 +1,6 @@
 package ru.kochkaev.zixamc.api.telegram
 
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLChat
@@ -10,7 +9,6 @@ import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.telegram.ServerBot.config
 import ru.kochkaev.zixamc.api.telegram.model.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
-import ru.kochkaev.zixamc.requests.RequestsBotUpdateManager
 
 object ServerBotLogic {
 
@@ -31,10 +29,6 @@ object ServerBotLogic {
         )
 
     fun registerTelegramHandlers() {
-        ChatSyncBotLogic.registerTelegramHandlers()
-        ChatSyncBotLogic.registerMinecraftHandlers()
-
-        bot.registerCallbackQueryHandler(ServerBotUpdateManager::onTelegramCallbackQuery)
         bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id, it.from?.id, it.messageThreadId) }
         bot.registerCommandHandler("menu") { Menu.sendMenu(it.chat.id, it.from?.id, it.messageThreadId) }
         bot.registerCommandHandler("mentionAll") { SQLGroup.get(it.chat.id)?.also { group ->
@@ -47,9 +41,19 @@ object ServerBotLogic {
             )
             try { bot.deleteMessage(it.chat.id, it.messageId) } catch (_: Exception) {}
         } }
-//        bot.registerMessageHandler(Menu::onMessage)
+        bot.registerCommandHandler("rulesUpdated") {
+            val executor = SQLUser.get(it.from?.id?:return@registerCommandHandler)?:return@registerCommandHandler
+            updateRules(executor, false)
+        }
+        bot.registerCommandHandler("rulesUpdatedWithRevoke") {
+            val executor = SQLUser.get(it.from?.id?:return@registerCommandHandler)?:return@registerCommandHandler
+            updateRules(executor, true)
+        }
+        bot.registerCommandHandler("selectTopic", ServerBotGroup::selectTopicCommand)
+        bot.registerCommandHandler("settings", ServerBotGroup::settingsCommand)
 
         bot.registerCallbackQueryHandler("menu", Menu.MenuCallbackData::class.java, Menu::onCallback)
+        bot.registerCallbackQueryHandler("group", ServerBotGroup.GroupCallback::class.java, ServerBotGroup::onCallback)
 
         Menu.addIntegration(Menu.Integration.of(
             callbackName = "info",
@@ -68,14 +72,21 @@ object ServerBotLogic {
             filter = { chatId, userId -> chatId == userId },
         ))
 
-//        bot.registerBotChatMemberUpdatedHandler(ServerBotGroup::addedToGroup)
         bot.registerChatJoinRequestHandler(ServerBotUpdateManager::onTelegramChatJoinRequest)
         bot.registerNewChatMembersHandler(ServerBotGroup::newChatMembers)
         bot.registerLeftChatMemberHandler(ServerBotGroup::leftChatMember)
-        bot.registerCallbackQueryHandler("group", ServerBotGroup.GroupCallback::class.java, ServerBotGroup::onCallback)
+
 //        bot.registerMessageHandler(ServerBotGroup::onMessage)
-        bot.registerCommandHandler("selectTopic", ServerBotGroup::selectTopicCommand)
-        bot.registerCommandHandler("settings", ServerBotGroup::settingsCommand)
+//        bot.registerMessageHandler(Menu::onMessage)
     }
 
+    suspend fun updateRules(
+        executor: SQLUser,
+        revokeAccepts: Boolean = false,
+    ): Boolean {
+        if (!executor.hasProtectedLevel(AccountType.ADMIN)) return false
+        SQLGroup.groups.forEach { it.sendRulesUpdated(revokeAccepts) }
+        SQLUser.users.filter { it.agreedWithRules } .forEach { it.sendRulesUpdated(revokeAccepts) }
+        return true
+    }
 }

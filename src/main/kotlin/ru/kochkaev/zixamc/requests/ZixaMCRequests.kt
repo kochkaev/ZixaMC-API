@@ -10,7 +10,6 @@ class ZixaMCRequests: ModInitializer {
     override fun onInitialize() {
         ChatDataTypes.registerType(RequestsChatDataType)
         RequestsBot.startBot()
-        RequestsBot.bot.registerCallbackQueryHandler("cancel", CancelCallbackData::class.java, CancelCallbackData.ON_REQUESTS_CALLBACK)
         Initializer.registerBeforeSQLStopEvent {
             RequestsBot.stopBot()
             RequestsBot.bot.pollTask?.join()

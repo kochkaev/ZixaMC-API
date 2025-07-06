@@ -18,7 +18,7 @@ import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.sql.feature.TopicFeatureType
 import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
 import ru.kochkaev.zixamc.api.sql.feature.data.TopicFeatureData
-import ru.kochkaev.zixamc.api.sql.process.GroupChatSyncWaitPrefixProcessData
+import ru.kochkaev.zixamc.chatsync.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.api.sql.process.GroupSelectTopicProcessData
 import ru.kochkaev.zixamc.api.sql.process.GroupWaitingNameProcessData
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes

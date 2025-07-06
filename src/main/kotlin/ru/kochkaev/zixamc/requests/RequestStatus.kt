@@ -1,8 +1,8 @@
-package ru.kochkaev.zixamc.api.sql.data
+package ru.kochkaev.zixamc.requests
 
 import com.google.gson.annotations.SerializedName
 
-enum class RequestType {
+enum class RequestStatus {
     @SerializedName("creating")
     CREATING {
         override fun getName(): String = "creating"
@@ -43,17 +43,18 @@ enum class RequestType {
     abstract fun shouldBeSingleActive():Boolean
 
     companion object {
-        fun parse(name: String): RequestType? = when (name) {
+        fun parse(name: String): RequestStatus? = when (name) {
             "creating" -> CREATING
             "moderating" -> MODERATING
             "pending" -> PENDING
             "accepted" -> ACCEPTED
             "rejected" -> REJECTED
             "canceled" -> CANCELED
+            "denied" -> DENIED
             else -> null
         }
-        fun getAllPending():List<RequestType> = listOf(MODERATING, PENDING)
-        fun getAllPendingAndCreating():List<RequestType> = listOf(CREATING, MODERATING, PENDING)
-        fun getAllDone():List<RequestType> = listOf(ACCEPTED, REJECTED, CANCELED)
+        fun getAllPending():List<RequestStatus> = listOf(MODERATING, PENDING)
+        fun getAllPendingAndCreating():List<RequestStatus> = listOf(CREATING, MODERATING, PENDING)
+        fun getAllDone():List<RequestStatus> = listOf(ACCEPTED, REJECTED, CANCELED, DENIED)
     }
 }

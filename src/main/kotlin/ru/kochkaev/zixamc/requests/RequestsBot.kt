@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import ru.kochkaev.zixamc.api.Initializer
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.ConfigManager
+import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.api.telegram.TelegramBotZixa
 
@@ -25,7 +26,10 @@ object RequestsBot {
         }
         bot.registerMessageHandler(RequestsBotUpdateManager::onTelegramMessage)
         bot.registerNewChatMembersHandler(ServerBotGroup::newChatMembersRequests)
+
+        bot.registerCallbackQueryHandler("cancel", CancelCallbackData::class.java) { cbq, sql -> CancelCallbackData.onCallback(cbq, sql, bot) }
         bot.registerCallbackQueryHandler("requests", RequestsBotUpdateManager.RequestCallback::class.java, RequestsBotUpdateManager::onTelegramCallbackQuery)
+
         bot.registerCommandHandler("accept", RequestsBotCommands::onTelegramAcceptCommand)
         bot.registerCommandHandler("reject", RequestsBotCommands::onTelegramRejectCommand)
         bot.registerCommandHandler("promote", RequestsBotCommands::onTelegramPromoteCommand)
@@ -33,11 +37,10 @@ object RequestsBot {
         bot.registerCommandHandler("restrict", RequestsBotCommands::onTelegramRestrictCommand)
         bot.registerCommandHandler("leave", RequestsBotCommands::onTelegramLeaveCommand)
         bot.registerCommandHandler("return", RequestsBotCommands::onTelegramReturnCommand)
-        bot.registerCommandHandler("rulesUpdated", RequestsBotCommands::onTelegramRulesUpdatedCommand)
-        bot.registerCommandHandler("rulesUpdatedWithRevoke", RequestsBotCommands::onTelegramRulesUpdatedWithRevokeCommand)
         bot.registerCommandHandler("start", RequestsBotCommands::onTelegramStartCommand)
         bot.registerCommandHandler("new", RequestsBotCommands::onTelegramNewCommand)
         bot.registerCommandHandler("cancel", RequestsBotCommands::onTelegramCancelCommand)
+
         Initializer.coroutineScope.launch {
             bot.startPosting(Initializer.coroutineScope)
             bot.startPolling(Initializer.coroutineScope)

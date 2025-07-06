@@ -1,12 +1,12 @@
 package ru.kochkaev.zixamc.requests
 
+import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.requests.RequestsBot.bot
 import ru.kochkaev.zixamc.requests.RequestsBot.config
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.api.sql.data.RequestType
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.requests.RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand
 import ru.kochkaev.zixamc.api.sql.SQLUser
@@ -22,45 +22,37 @@ object RequestsBotCommands {
     suspend fun onTelegramAcceptCommand(msg: TgMessage): Boolean {
 //        RequestsCommandLogic.executeRequestFinalAction(msg, true)
         return RequestsLogic.executeRequestFinalAction(
-            entity = SQLUser.get(msg.from?.id ?: return false) ?: return false,
+            user = SQLUser.get(msg.from?.id ?: return false) ?: return false,
             isAccepted = true,
         )
     }
     suspend fun onTelegramRejectCommand(msg: TgMessage): Boolean {
 //        RequestsCommandLogic.executeRequestFinalAction(msg, false)
         return RequestsLogic.executeRequestFinalAction(
-            entity = SQLUser.get(msg.from?.id ?: return false) ?: return false,
+            user = SQLUser.get(msg.from?.id ?: return false) ?: return false,
             isAccepted = false,
         )
     }
     suspend fun onTelegramPromoteCommand(msg: TgMessage): Boolean {
-        val entity = matchEntityFromUpdateServerPlayerStatusCommand(msg) ?:return false
+        val user = matchEntityFromUpdateServerPlayerStatusCommand(msg) ?:return false
         if (!RequestsLogic.checkPermissionToExecute(
-                msg, entity, listOf(AccountType.ADMIN), false
+                msg, user, listOf(AccountType.ADMIN), false
             )) return true
-        if (!RequestsLogic.promoteUser(entity)) {
+        if (!RequestsLogic.promoteUser(user)) {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                text = BotLogic.escapePlaceholders(config.commonLang.command.promoteHelp),
+                text = config.commonLang.command.promoteHelp,
                 replyParameters = TgReplyParameters(msg.messageId),
             )
             return false
         } else {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                text = BotLogic.escapePlaceholders(config.target.lang.event.onPromote, entity.nickname?:entity.userId.toString()),
+                text = config.target.lang.event.onPromote.formatLang("nickname" to (user.nickname?:user.userId.toString())),
                 replyParameters = TgReplyParameters(msg.messageId),
             )
             return true
         }
-    }
-    suspend fun onTelegramRulesUpdatedCommand(msg: TgMessage): Boolean {
-        val entity = SQLUser.get(msg.from?.id?:return false)?:return false
-        return RequestsLogic.updateRules(entity, msg.messageId, false)
-    }
-    suspend fun onTelegramRulesUpdatedWithRevokeCommand(msg: TgMessage): Boolean {
-        val entity = SQLUser.get(msg.from?.id?:return false)?:return false
-        return RequestsLogic.updateRules(entity, msg.messageId, true)
     }
     suspend fun onTelegramLeaveCommand(msg: TgMessage): Boolean =
         RequestsCommandLogic.executeUpdateServerPlayerStatusCommand(
@@ -134,11 +126,11 @@ object RequestsBotCommands {
             removeProtectedContent = true,
         )
     suspend fun onTelegramRestrictCommand(message: TgMessage): Boolean {
-        val entity = SQLUser.getByTempArray(message.replyToMessage?.messageId.toString())
+        val user = SQLUser.getByTempArray(message.replyToMessage?.messageId.toString())
             ?: RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand(message, false)
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
-            entity = entity,
+            user = user,
             allowedExecutionAccountTypes = listOf(AccountType.ADMIN),
             allowedExecutionIfSpendByItself = false,
             applyAccountStatuses = MinecraftAccountType.getAllMaybeActive(),
@@ -151,7 +143,7 @@ object RequestsBotCommands {
             val text4Target = config.target.lang.event.onRestrict
             if (text4Target.isNotEmpty()) bot.sendMessage(
                 chatId = message.chat.id,
-                text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
+                text = text4Target.formatLang("nickname" to (user!!.nickname ?: user.userId.toString())),
                 replyParameters = TgReplyParameters(message.messageId),
             )
             var newMessage: TgMessage? = null
@@ -159,41 +151,41 @@ object RequestsBotCommands {
                 val text4User = config.user.lang.event.onRestrict
                 if (text4User.isNotEmpty()) {
                     newMessage = bot.sendMessage(
-                        chatId = entity!!.userId,
-                        text = BotLogic.escapePlaceholders(text4User, entity.nickname ?: entity.userId.toString()),
+                        chatId = user!!.userId,
+                        text = text4User.formatLang("nickname" to (user.nickname ?: user.userId.toString())),
                     )
                 }
             } catch (_: Exception) {}
-            entity!!.deleteProtected(AccountType.UNKNOWN)
-            val requests = entity.data.getCasted(RequestsChatDataType)?:listOf()
+            user!!.deleteProtected(AccountType.UNKNOWN)
+            val requests = user.data.getCasted(RequestsChatDataType)?:listOf()
             try {
-                requests.filter { it.request_status == RequestType.ACCEPTED } .forEach {
+                requests.filter { it.status == RequestStatus.ACCEPTED } .forEach {
                     bot.editMessageReplyMarkup(
-                        chatId = entity.userId,
-                        messageId = it.message_id_in_chat_with_user.toInt(),
+                        chatId = user.userId,
+                        messageId = it.messageId.toInt(),
                         replyMarkup = TgReplyMarkup()
                     )
                 }
             } catch (_: Exception) {}
-            entity.data.set(RequestsChatDataType, requests.filter { it1 -> it1.request_status != RequestType.CREATING })
-            requests.firstOrNull { RequestType.getAllPending().contains(it.request_status) } ?.let {
-                entity.editRequest(it.apply { this.request_status = RequestType.REJECTED })
+            user.data.set(RequestsChatDataType, requests.filter { it1 -> it1.status != RequestStatus.CREATING })
+            requests.firstOrNull { RequestStatus.getAllPending().contains(it.status) } ?.let {
+                RequestsChatDataType.editRequest(it.apply { this.status = RequestStatus.REJECTED }, user)
             }
             if (newMessage!=null)
-                requests.filter { it.request_status == RequestType.ACCEPTED } .forEach {
-                    entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage.messageId.toLong() })
+                requests.filter { it.status == RequestStatus.ACCEPTED } .forEach {
+                    RequestsChatDataType.editRequest(it.apply { this.messageId = newMessage.messageId.toLong() }, user)
                 }
 //            try {
 //                bot.banChatMember(message.chat.id, entity.userId)
 //            } catch (_: Exception) {}
-            entity.isRestricted = true
+            user.isRestricted = true
         }
         return errorDueExecuting
     }
     suspend fun onTelegramStartCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = SQLUser.getOrCreate(msg.from?.id?:return false)
-        if (entity.isRestricted) return false
+        val user = SQLUser.getOrCreate(msg.from?.id?:return false)
+        if (user.isRestricted) return false
         bot.sendMessage(
             chatId = msg.chat.id,
             text = config.user.lang.event.onStart,
@@ -210,19 +202,19 @@ object RequestsBotCommands {
     suspend fun onTelegramNewCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
         if (msg.from == null) return false
-        val entity = SQLUser.get(msg.from.id)?:return false
-        if (entity.isRestricted) return false
-        return RequestsLogic.newRequest(entity)
+        val user = SQLUser.get(msg.from.id)?:return false
+        if (user.isRestricted) return false
+        return RequestsLogic.newRequest(user)
     }
     suspend fun onTelegramCancelCommand(msg: TgMessage): Boolean {
         if (msg.chat.id < 0) return true
-        val entity = SQLUser.get(msg.from?.id?:return false)?:return false
-        val requests = entity.data.getCasted(RequestsChatDataType)?:listOf()
-        if (requests.any { RequestType.getAllPending().contains(it.request_status)}) return RequestsLogic.cancelRequest(
-            entity
+        val user = SQLUser.get(msg.from?.id?:return false)?:return false
+        val requests = user.data.getCasted(RequestsChatDataType)?:listOf()
+        if (requests.any { RequestStatus.getAllPending().contains(it.status)}) return RequestsLogic.cancelRequest(
+            user
         )
-        else if (requests.any {it.request_status == RequestType.CREATING}) return RequestsLogic.cancelSendingRequest(
-            entity
+        else if (requests.any {it.status == RequestStatus.CREATING}) return RequestsLogic.cancelSendingRequest(
+            user
         )
         return false
     }

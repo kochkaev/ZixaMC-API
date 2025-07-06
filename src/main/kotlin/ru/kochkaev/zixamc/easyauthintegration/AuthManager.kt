@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.easyauthintegration
 
 import net.minecraft.server.network.ServerPlayerEntity
+import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
@@ -45,7 +46,7 @@ object AuthManager {
         try {
             bot.sendMessage(
                 chatId = entity.userId,
-                text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onApprove, nickname),
+                text = config.easyAuth.langTelegram.onApprove.formatLang("nickname" to nickname),
             )
         } catch (_: Exception) {}
     }
@@ -58,7 +59,7 @@ object AuthManager {
         try {
             bot.sendMessage(
                 chatId = entity.userId,
-                text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onDeny, nickname),
+                text = config.easyAuth.langTelegram.onDeny.formatLang("nickname" to nickname),
             )
         } catch (_: Exception) {}
     }
@@ -75,22 +76,19 @@ object AuthManager {
         try {
             val message = bot.sendMessage(
                 chatId = entity.userId,
-                text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.onJoinTip, nickname),
+                text = config.easyAuth.langTelegram.onJoinTip.formatLang("nickname" to nickname),
                 replyMarkup = TgInlineKeyboardMarkup(
                     listOf(
                         listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                text = BotLogic.escapePlaceholders(
-                                    config.easyAuth.langTelegram.buttonApprove,
-                                    nickname
-                                ),
+                                text = config.easyAuth.langTelegram.buttonApprove.formatLang("nickname" to nickname),
 //                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "approve")).serialize()
-                                callback_data = "easyauth\$approve/$nickname"
+                                callback_data = $$"easyauth$approve/$$nickname"
                             ),
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                text = BotLogic.escapePlaceholders(config.easyAuth.langTelegram.buttonDeny, nickname),
+                                text = config.easyAuth.langTelegram.buttonDeny.formatLang("nickname" to nickname),
 //                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "deny")).serialize()
-                                callback_data = "easyauth\$deny/$nickname"
+                                callback_data = $$"easyauth$deny/$$nickname"
                             ),
                         )
                     )

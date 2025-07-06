@@ -1,7 +1,7 @@
 package ru.kochkaev.zixamc.requests
 
+import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.data.NewProtectedData
-import ru.kochkaev.zixamc.api.sql.data.RequestType
 import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.data.AccountType
@@ -30,17 +30,17 @@ object RequestsCommandLogic {
         replyMarkup4Message: TgReplyMarkup? = null,
         protectContentInMessage: Boolean = false,
         removeProtectedContent: Boolean = false,
-        entity: SQLUser? = RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand(
+        user: SQLUser? = RequestsLogic.matchEntityFromUpdateServerPlayerStatusCommand(
             message,
             allowedExecutionIfSpendByItself
         ),
-        entityExecutor: SQLUser? = if (message!=null) SQLUser.get(message.from!!.id) else null,
+        executor: SQLUser? = if (message!=null) SQLUser.get(message.from!!.id) else null,
         messageForReplyId: Int? = message?.messageId,
     ) : Boolean {
         val errorDueExecuting = RequestsLogic.executeCheckPermissionsAndExceptions(
             message = message,
-            entity = entity,
-            entityExecutor = entityExecutor,
+            user = user,
+            executor = executor,
             allowedExecutionAccountTypes = allowedExecutionAccountTypes,
             allowedExecutionIfSpendByItself = allowedExecutionIfSpendByItself,
             applyAccountStatuses = applyAccountStatuses,
@@ -51,7 +51,7 @@ object RequestsCommandLogic {
         if (!errorDueExecuting) {
             if (text4Target!=null) bot.sendMessage(
                 chatId = config.target.chatId,
-                text = BotLogic.escapePlaceholders(text4Target, entity!!.nickname ?: entity.userId.toString()),
+                text = text4Target.formatLang("nickname" to (user?.nickname ?: user?.userId.toString())),
                 replyParameters = if (messageForReplyId!=null) TgReplyParameters(
                     messageForReplyId
                 ) else null,
@@ -60,12 +60,12 @@ object RequestsCommandLogic {
             try {
                 if (text4User!=null) {
                     newMessage = bot.sendMessage(
-                        chatId = entity!!.userId,
-                        text = BotLogic.escapePlaceholders(text4User, entity.nickname ?: entity.userId.toString()),
+                        chatId = user!!.userId,
+                        text = text4User.formatLang("nickname" to (user.nickname ?: user.userId.toString())),
                         replyMarkup = replyMarkup4Message,
                         protectContent = protectContentInMessage,
                     )
-                    if (protectContentInMessage) entity.setProtectedInfoMessage(
+                    if (protectContentInMessage) user.setProtectedInfoMessage(
                         message = newMessage,
                         protectedType = NewProtectedData.ProtectedType.TEXT,
                         protectLevel = AccountType.PLAYER,
@@ -75,24 +75,24 @@ object RequestsCommandLogic {
             } catch (_: Exception) {}
             try {
                 if (removePreviousTgReplyMarkup)
-                    entity!!.data.getCasted(RequestsChatDataType)?.filter { it.request_status == RequestType.ACCEPTED } ?.forEach {
+                    user!!.data.getCasted(RequestsChatDataType)?.filter { it.status == RequestStatus.ACCEPTED } ?.forEach {
                         bot.editMessageReplyMarkup(
-                            chatId = entity.userId,
-                            messageId = it.message_id_in_chat_with_user.toInt(),
+                            chatId = user.userId,
+                            messageId = it.messageId.toInt(),
                             replyMarkup = TgReplyMarkup()
                         )
                     }
             } catch (_: Exception) {}
             if (removeProtectedContent)
-                entity!!.deleteProtected(targetAccountStatus.toAccountType())
+                user!!.deleteProtected(targetAccountStatus.toAccountType())
             if (newMessage!=null)
-                entity!!.data.getCasted(RequestsChatDataType)?.filter { it.request_status == RequestType.ACCEPTED } ?.forEach {
+                user!!.data.getCasted(RequestsChatDataType)?.filter { it.status == RequestStatus.ACCEPTED } ?.forEach {
 //                    val request = it.copy(message_id_in_chat_with_user = newMessage.messageId.toLong())
 //                    request.message_id_in_chat_with_user = newMessage.messageId.toLong()
-                    entity.editRequest(it.apply { this.message_id_in_chat_with_user = newMessage.messageId.toLong() })
+                    RequestsChatDataType.editRequest(it.apply { this.messageId = newMessage.messageId.toLong() }, user)
                 }
         }
-        additionalConsumer.invoke(errorDueExecuting, entity)
+        additionalConsumer.invoke(errorDueExecuting, user)
         return errorDueExecuting
     }
 
@@ -102,45 +102,39 @@ object RequestsCommandLogic {
     ) : Boolean {
         if (message.chat.id >= 0) return true
         val replied = message.replyToMessage?:return false
-        val entity = SQLUser.getByTempArray(replied.messageId.toString())?:return false
+        val user = SQLUser.getByTempArray(replied.messageId.toString())?:return false
         if (!RequestsLogic.checkPermissionToExecute(
-                message, entity, listOf(AccountType.ADMIN), false
+                message, user, listOf(AccountType.ADMIN), false
             )
         ) return true
-        val request = entity.data.getCasted(RequestsChatDataType)?.firstOrNull {it.request_status == RequestType.PENDING} ?: return false
-        val message4User = BotLogic.escapePlaceholders(
-            text = if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject,
-            nickname = request.request_nickname,
-        )
-        val message4Target = BotLogic.escapePlaceholders(
-            text = if (isAccepted) config.target.lang.event.onAccept else config.target.lang.event.onReject,
-            nickname = request.request_nickname,
-        )
+        val request = user.data.getCasted(RequestsChatDataType)?.firstOrNull {it.status == RequestStatus.PENDING} ?: return false
+        val message4User = (if (isAccepted) config.user.lang.event.onAccept else config.user.lang.event.onReject).formatLang("nickname" to (request.nickname?:""))
+        val message4Target = (if (isAccepted) config.target.lang.event.onAccept else config.target.lang.event.onReject).formatLang("nickname" to (request.nickname?:""))
         bot.sendMessage(
             chatId = config.target.chatId,
             text = message4Target,
             replyParameters = TgReplyParameters(replied.messageId),
         )
         val newMessage = bot.sendMessage(
-            chatId = entity.userId,
+            chatId = user.userId,
             text = message4User,
-            replyParameters = TgReplyParameters(request.message_id_in_chat_with_user.toInt()),
+            replyParameters = TgReplyParameters(request.messageId.toInt()),
             protectContent = false,
         )
         bot.editMessageReplyMarkup(
-            chatId = entity.userId,
-            messageId = request.message_id_in_chat_with_user.toInt(),
+            chatId = user.userId,
+            messageId = request.messageId.toInt(),
             replyMarkup = TgReplyMarkup()
         )
-        request.request_status = if (isAccepted) RequestType.ACCEPTED else RequestType.REJECTED
-        request.message_id_in_chat_with_user = newMessage.messageId.toLong()
-        entity.editRequest(request)
-        entity.tempArray.set(listOf())
+        request.status = if (isAccepted) RequestStatus.ACCEPTED else RequestStatus.REJECTED
+        request.messageId = newMessage.messageId.toLong()
+        RequestsChatDataType.editRequest(request, user)
+        user.tempArray.set(listOf())
         if (isAccepted) {
-            RequestsLogic.sendOnJoinInfoMessage(entity, newMessage.messageId)
-            entity.accountType = AccountType.PLAYER
-            entity.addMinecraftAccount(MinecraftAccountData(request.request_nickname!!, MinecraftAccountType.PLAYER))
-            WhitelistManager.add(request.request_nickname!!)
+            RequestsLogic.sendOnJoinInfoMessage(user, newMessage.messageId)
+            user.accountType = AccountType.PLAYER
+            user.addMinecraftAccount(MinecraftAccountData(request.nickname!!, MinecraftAccountType.PLAYER))
+            WhitelistManager.add(request.nickname!!)
         }
         return true
     }

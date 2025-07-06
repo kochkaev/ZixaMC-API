@@ -12,7 +12,7 @@ import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
 import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
-import ru.kochkaev.zixamc.api.sql.process.GroupChatSyncWaitPrefixProcessData
+import ru.kochkaev.zixamc.chatsync.GroupChatSyncWaitPrefixProcessData
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.api.telegram.ServerBot.config
@@ -67,7 +67,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
             replyParameters = replyTo?.let { TgReplyParameters(it) },
             replyMarkup = menu
         )
-        SQLProcess.get(group.chatId, ProcessTypes.GROUP_CHATSYNC_WAITING_PREFIX)?.apply {
+        SQLProcess.get(group.chatId, ChatSyncWaitingPrefixProcess)?.apply {
             this.data?.messageId?.also {
                 try { bot.editMessageReplyMarkup(
                     chatId = group.chatId,
@@ -77,7 +77,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
                 SQLCallback.dropAll(group.chatId, it)
             }
         } ?.drop()
-        SQLProcess.of(ProcessTypes.GROUP_CHATSYNC_WAITING_PREFIX, GroupChatSyncWaitPrefixProcessData(topicId, message.messageId, prefixType)).pull(group.chatId)
+        SQLProcess.of(ChatSyncWaitingPrefixProcess, GroupChatSyncWaitPrefixProcessData(topicId, message.messageId, prefixType)).pull(group.chatId)
     }
 
     override fun getEditorMarkup(cbq: TgCallbackQuery, group: SQLGroup): ArrayList<List<SQLCallback.Companion.Builder<out CallbackData>>> {

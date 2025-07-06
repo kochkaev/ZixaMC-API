@@ -171,7 +171,7 @@ object FabricTailorIntegration {
                     listOf(
                         listOf(
                             CancelCallbackData(
-                                cancelProcesses = listOf(ProcessTypes.MENU_FABRIC_TAILOR_UPLOAD),
+                                cancelProcesses = listOf(FabricTailorUploadProcess),
                                 asCallbackSend = CancelCallbackData.CallbackSend(
                                     type = "menu",
                                     data = Menu.MenuCallbackData.of("back"),
@@ -187,7 +187,7 @@ object FabricTailorIntegration {
                     )
                 ),
             )
-            SQLProcess.Companion.get(cbq.message.chat.id, ProcessTypes.MENU_FABRIC_TAILOR_UPLOAD)?.also {
+            SQLProcess.Companion.get(cbq.message.chat.id, FabricTailorUploadProcess)?.also {
                 it.data?.run {
                     try { ServerBot.bot.editMessageReplyMarkup(
                         chatId = cbq.message.chat.id,
@@ -198,7 +198,7 @@ object FabricTailorIntegration {
                 }
             } ?.drop()
             SQLProcess.Companion.of(
-                ProcessTypes.MENU_FABRIC_TAILOR_UPLOAD, FTProcessData(
+                FabricTailorUploadProcess, FTProcessData(
                 nickname = data.nickname!!,
                 slim = data.slim!!,
                 messageId = cbq.message.messageId,
