@@ -1,17 +1,18 @@
 package ru.kochkaev.zixamc.fabrictailorintegration
 
 import net.fabricmc.api.ModInitializer
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.api.telegram.Menu
-import ru.kochkaev.zixamc.api.telegram.ServerBot
 
 class ZixaMCFabricTailorIntegration: ModInitializer {
 
     override fun onInitialize() {
+        ConfigManager.registerConfig(Config)
         ProcessTypes.registerType(FabricTailorUploadProcess)
         Menu.addIntegration(Menu.Integration.of(
             callbackName = "fabricTailor",
-            menuDisplay = ServerBot.config.integration.fabricTailor.buttonMenu,
+            menuDisplay = Config.config.buttonMenu,
             processor = FabricTailorIntegration::callbackProcessor,
             customDataType = FabricTailorIntegration.AdditionalData::class.java,
             customDataInitial = FabricTailorIntegration.AdditionalData(),

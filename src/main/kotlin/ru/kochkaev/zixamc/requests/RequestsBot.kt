@@ -6,6 +6,7 @@ import ru.kochkaev.zixamc.api.Initializer
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
+import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.api.telegram.TelegramBotZixa
 

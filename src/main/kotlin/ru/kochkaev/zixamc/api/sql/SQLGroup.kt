@@ -41,7 +41,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         set(name) { nameField.set(name) }
     val aliases = StringSQLArray(SQLGroup, "aliases", chatId, "chat_id")
     val members = UsersSQLArray(SQLGroup, "members", chatId, "chat_id")
-    private val agreedWithRulesField = BooleanSQLField(SQLGroup, "agree_with_rules", chatId, "chat_id")
+    private val agreedWithRulesField = BooleanSQLField(SQLGroup, "agreed_with_rules", chatId, "chat_id")
     var agreedWithRules: Boolean
         get() = agreedWithRulesField.get() ?: false
         set(agreedWithRules) { agreedWithRulesField.set(agreedWithRules) }
@@ -104,7 +104,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         fun getAllWithFeature(feature: FeatureType<out FeatureData>) = try {
             reConnect()
             val preparedStatement =
-                MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE JSON_CONTAINS_PATH(currency_ids, 'one', '$.${feature.serializedName}');")
+                MySQLConnection!!.prepareStatement("SELECT chat_id FROM $tableName WHERE JSON_CONTAINS_PATH(features, 'one', '$.${feature.serializedName}');")
             val query = preparedStatement.executeQuery()
             val groups = arrayListOf<SQLGroup>()
             while (query.next())
@@ -220,9 +220,6 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         }
     }
 
-    var lastMessage: LastMessage? = null
-    val lastMessageLock = Mutex()
-
     fun canTakeName(value: String) =
         try {
             MySQL.reConnect()
@@ -266,14 +263,6 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
             it.filter { it1 -> !bot.getChatMember(chatId, it1.id).user.isBot }
         } ?: listOf()
 
-    fun withScopeAndLock(fn: suspend () -> Unit) {
-        coroutineScope.launch {
-            lastMessageLock.withLock {
-                fn()
-            }
-        }
-    }
-
     fun mentionAll() : String {
         val output = StringBuilder()
         val placeholder = config.serverBot.mentionAllReplaceWith
@@ -311,8 +300,8 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 
     override suspend fun sendRulesUpdated(capital: Boolean) {
         val isPlayers = features.contains(FeatureTypes.PLAYERS_GROUP)
-        val message = if (isPlayers) config.general.rules.updated4group
-            else config.general.rules.updated4player
+        val message = if (isPlayers) config.general.rules.updated4player
+            else config.general.rules.updated4group
         val menu = TgMenu(
             listOf(
             listOf(

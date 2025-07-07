@@ -9,8 +9,6 @@ data class Config(
     val botAPIURL: String = "https://api.telegram.org",
     val pollTimeout: Int = 60,
     val playersGroupInviteLink: String = "https://t.me/",
-    val addWhitelistCommand: String = "easywhitelist add {nickname}",
-    val removeWhitelistCommand: String = "easywhitelist add {nickname}",
     val user: RequestsBotForUser = RequestsBotForUser(),
     val target: RequestsBotForTarget = RequestsBotForTarget(),
     val forModerator: RequestsBotForModerator = RequestsBotForModerator(),

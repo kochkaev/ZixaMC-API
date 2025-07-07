@@ -163,7 +163,7 @@ object RequestsBotUpdateManager {
             Operations.REVOKE_AGREE_WITH_RULES -> {
                 bot.sendMessage(
                     chatId = cbq.message.chat.id,
-                    text = config.commonLang.areYouSureRevokeAgreeWithRules.formatLang("nickname" to (user.nickname?:cbq.from.firstName)),
+                    text = ConfigManager.config.general.rules.confirmRemoveAgree4player.formatLang("nickname" to (user.nickname?:cbq.from.firstName)),
                     replyMarkup = TgMenu(listOf(
                         listOf(SQLCallback.of(
                             display = ConfigManager.config.general.buttons.confirm,
@@ -183,7 +183,7 @@ object RequestsBotUpdateManager {
                 if (sql.data?.userId != user.userId) {
                     bot.answerCallbackQuery(
                         callbackQueryId = cbq.id,
-                        text = config.commonLang.thatButtonFor.formatLang(
+                        text = ConfigManager.config.general.rules.thatButtonFor.formatLang(
                             "nickname" to (sql.data?.userId?.let { SQLUser.get(it)?.nickname ?: it.toString() } ?:"")
                         ),
                         showAlert = true,
@@ -199,8 +199,8 @@ object RequestsBotUpdateManager {
                     targetAccountStatus = MinecraftAccountType.FROZEN,
                     editWhitelist = true,
                     helpText = null,
-                    text4User = config.user.lang.event.onLeave,
-                    text4Target = config.target.lang.event.onLeave,
+                    text4User = ConfigManager.config.general.rules.onLeave4player,
+                    text4Target = ConfigManager.config.general.rules.onLeave4group,
                     removePreviousTgReplyMarkup = true,
                     removeProtectedContent = true,
                     user = user,
@@ -432,7 +432,7 @@ object RequestsBotUpdateManager {
                 if (sql.data?.userId != user.userId) {
                     bot.answerCallbackQuery(
                         callbackQueryId = cbq.id,
-                        text = config.commonLang.thatButtonFor.formatLang(
+                        text = ConfigManager.config.general.rules.thatButtonFor.formatLang(
                             "nickname" to (sql.data?.userId?.let { SQLUser.get(it)?.nickname ?: it.toString() } ?:"")
                         ),
                         showAlert = true,

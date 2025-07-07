@@ -13,6 +13,7 @@ class NullableIntSQLField(
     column = column,
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
+    type = Int::class.java,
     setter = { ps, it -> if (it!=null) ps.setInt(1, it) else ps.setNull(1, Types.INTEGER) },
     getter = { rs -> if (!rs.wasNull()) rs.getInt(1) else null },
 )

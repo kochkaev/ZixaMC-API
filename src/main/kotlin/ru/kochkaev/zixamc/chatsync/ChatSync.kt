@@ -1,10 +1,12 @@
 package ru.kochkaev.zixamc.chatsync
 
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.minecraft.server.MinecraftServer
+import ru.kochkaev.zixamc.api.Initializer
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLUser
@@ -22,18 +24,23 @@ class ChatSync: ModInitializer {
         if (!SQLGroup.exists("main")) createMainGroup()
         ChatSyncBotLogic.registerTelegramHandlers()
         ChatSyncBotLogic.registerMinecraftHandlers()
-        ServerLifecycleEvents.SERVER_STOPPED.register(this::onServerStopped)
+        ServerLifecycleEvents.SERVER_STOPPING.register(this::onServerStopping)
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             ReplyCommand.registerCommand(dispatcher)
         }
+        ServerLifecycleEvents.SERVER_STARTED.register { server ->
+            Initializer.coroutineScope.launch {
+                ChatSyncBotLogic.sendServerStartedMessage()
+            }
+        }
     }
-    fun onServerStopped(server: MinecraftServer) {
+    fun onServerStopping(server: MinecraftServer) {
         runBlocking {
-            if (ServerBot.config.chatSync.isEnabled) ChatSyncBotLogic.sendServerStoppedMessage()
+            ChatSyncBotLogic.sendServerStoppedMessage()
         }
     }
     fun createMainGroup() {
-        val config = ConfigManager.config.serverBot.chatSync
+        val config = Config.config
         SQLGroup.create(
             chatId = config.defaultGroup.chatId,
             name = config.defaultGroup.name,

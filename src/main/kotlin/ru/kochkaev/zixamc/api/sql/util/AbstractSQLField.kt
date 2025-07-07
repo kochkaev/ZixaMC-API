@@ -4,6 +4,7 @@ import com.google.common.reflect.TypeToken
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.sql.MySQL
+import java.lang.reflect.Type
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -13,8 +14,9 @@ open class AbstractSQLField<T>(
     val column: String,
     val uniqueId: Long,
     val uniqueColumn: String,
+    val type: Type? = object: TypeToken<T>(){}.type,
     val setter: (PreparedStatement, T) -> Unit = { ps, it -> ps.setString(1, gson.toJson(it)) },
-    val getter: (ResultSet) -> T = { rs -> gson.fromJson(rs.getString(1), object: TypeToken<T>(AbstractSQLField::class.java){}.type) },
+    val getter: (ResultSet) -> T = { rs -> gson.fromJson(rs.getString(1), type) },
 ) {
     protected open fun exists(): Boolean = try {
         MySQL.reConnect()
@@ -37,7 +39,7 @@ open class AbstractSQLField<T>(
             getter(query)
         else null
     } catch (e: SQLException) {
-        ZixaMC.logger.error("Get column \"$column\" from table \"${sql.tableName}\" error", e)
+        ZixaMC.logger.error("Get column \"$column\" in table \"${sql.tableName}\" error", e)
         null
     }
     open fun set(value: T): Boolean = try {
@@ -52,7 +54,7 @@ open class AbstractSQLField<T>(
             true
         }
     } catch (e: SQLException) {
-        ZixaMC.logger.error("Set column \"$column\" from table \"${sql.tableName}\" error", e)
+        ZixaMC.logger.error("Set column \"$column\" in table \"${sql.tableName}\" error", e)
         false
     }
 }

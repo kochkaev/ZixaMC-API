@@ -12,6 +12,7 @@ class BooleanSQLField(
     column = column,
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
+    type = Boolean::class.java,
     setter = { ps, it -> ps.setBoolean(1, it) },
     getter = { rs -> rs.getBoolean(1) },
 )

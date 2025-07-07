@@ -15,11 +15,11 @@ abstract class MySQL {
         @JvmStatic
         var MySQLConnection: Connection? = null
         @JvmStatic
-        lateinit var config: ConfigSQL
+        val config: ConfigSQL
+            get() = ConfigManager.config.mySQL
 
         @Throws(Exception::class)
         fun connect() {
-            config = ConfigManager.config.mySQL
             try {
                 Class.forName("com.mysql.cj.jdbc.Driver")
                 val uri =

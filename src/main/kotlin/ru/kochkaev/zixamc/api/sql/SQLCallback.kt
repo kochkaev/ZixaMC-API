@@ -1,6 +1,7 @@
 package ru.kochkaev.zixamc.api.sql
 
 import com.google.gson.annotations.JsonAdapter
+import io.leangen.geantyref.TypeToken
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLCallbackAdapter
@@ -30,11 +31,12 @@ class SQLCallback<T: CallbackData> private constructor(
     var messageId: Int?
         get() = messageIdField.get()
         set(messageId) { messageIdField.set(messageId) }
-    private val canExecuteField = AbstractSQLField<CallbackCanExecute>(SQLCallback, "can_execute", callbackId, "callback_id")
+    private val canExecuteField = AbstractSQLField<CallbackCanExecute>(SQLCallback, "can_execute", callbackId, "callback_id", CallbackCanExecute::class.java)
     var canExecute: CallbackCanExecute?
         get() = canExecuteField.get()
         set(canExecute) { canExecuteField.set(canExecute?:CallbackCanExecute()) }
     private val dataField = AbstractSQLField(SQLCallback, "data", callbackId, "callback_id",
+        type = null,
         getter = { rs -> gson.fromJson<TgCallback<T>>(rs.getString(1), TgCallback::class.java).data },
         setter = { ps, it -> ps.setString(1, gson.toJson(TgCallback(type, it)))},
     )

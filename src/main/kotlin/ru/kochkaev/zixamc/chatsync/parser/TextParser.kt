@@ -225,7 +225,7 @@ object TextParser {
                     aac.append(component)
                 }
             if (it.isReplyToMinecraft) {
-                ChatSyncBotCore.lang.minecraft.replyToMinecraft.get(listOf(), listOf("text" to fullText))
+                ChatSyncBotCore.lang.minecraft.replyToMinecraft.get(listOf("url" to messageURL), listOf("text" to fullText))
             } else {
                 ChatSyncBotCore.lang.minecraft.reply.get(
                     listOf(

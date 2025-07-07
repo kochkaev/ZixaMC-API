@@ -9,14 +9,17 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import ru.kochkaev.zixamc.chatsync.command.ReplyCommand
 import ru.kochkaev.zixamc.api.command.ZixaMCCommand
 import ru.kochkaev.zixamc.api.config.Config
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
-import ru.kochkaev.zixamc.requests.RequestsBot
 import ru.kochkaev.zixamc.api.telegram.ServerBot
-import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
+import ru.kochkaev.zixamc.audioplayerintegration.ZixaMCAudioPlayerIntegration
+import ru.kochkaev.zixamc.chatsync.ChatSync
+import ru.kochkaev.zixamc.consoleintegration.ZixaMCConsoleIntegration
+import ru.kochkaev.zixamc.easyauthintegration.ZixaMCEasyAuthIntegration
+import ru.kochkaev.zixamc.fabrictailorintegration.ZixaMCFabricTailorIntegration
+import ru.kochkaev.zixamc.requests.ZixaMCRequests
 
 /**
  * @author kochkaev
@@ -42,6 +45,13 @@ class ZixaMC : ModInitializer {
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             ZixaMCCommand.registerCommand(dispatcher)
         }
+
+        ZixaMCAudioPlayerIntegration().onInitialize()
+        ChatSync().onInitialize()
+        ZixaMCConsoleIntegration().onInitialize()
+        ZixaMCEasyAuthIntegration().onInitialize()
+        ZixaMCFabricTailorIntegration().onInitialize()
+        ZixaMCRequests().onInitialize()
     }
     fun onServerStopped(server: MinecraftServer) {
         Initializer.stop()

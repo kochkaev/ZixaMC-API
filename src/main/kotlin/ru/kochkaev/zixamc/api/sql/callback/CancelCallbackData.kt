@@ -7,7 +7,6 @@ import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLProcess
 import ru.kochkaev.zixamc.api.sql.process.ProcessType
-import ru.kochkaev.zixamc.requests.RequestsBot
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.TelegramBotZixa
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery

@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.requests
 
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.telegram.BotLogic
@@ -63,8 +64,8 @@ object RequestsBotCommands {
             targetAccountStatus = MinecraftAccountType.FROZEN,
             editWhitelist = true,
             helpText = config.commonLang.command.leaveHelp,
-            text4User = config.user.lang.event.onLeave,
-            text4Target = config.target.lang.event.onLeave,
+            text4User = ConfigManager.config.general.rules.onLeave4player,
+            text4Target = ConfigManager.config.general.rules.onLeave4group,
             removePreviousTgReplyMarkup = true,
 //            additionalConsumer = { hasError, entity ->
 //                if (!hasError) try {

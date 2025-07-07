@@ -4,7 +4,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.api.telegram.ServerBot.config
+import ru.kochkaev.zixamc.consoleintegration.Config.Companion.config
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.api.sql.SQLChat
@@ -64,7 +64,7 @@ object ConsoleFeature {
     }
     fun startPeriodicBroadcast() {
         job = coroutineScope.launch {
-            broadcast(config.group.features.console.newSession)
+            broadcast(config.newSession)
             while (isActive) {
                 delay(10_000L) // ожидание 10 секунд
                 val messagesToSend = broadcastLock.withLock {
@@ -86,7 +86,7 @@ object ConsoleFeature {
                     accumulatedMessages.clear()
                     content
                 } else null
-            } + "\n" + config.group.features.console.stopSession
+            } + "\n" + config.stopSession
             broadcast(messagesToSend)
             job.cancel()
         }

@@ -15,8 +15,6 @@ import ru.kochkaev.zixamc.api.telegram.model.ITgMenuButton
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMemberStatuses
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
-import ru.kochkaev.zixamc.audioplayerintegration.AudioPlayerUploadProcess
-import ru.kochkaev.zixamc.fabrictailorintegration.FabricTailorUploadProcess
 
 object Menu {
 
@@ -56,9 +54,9 @@ object Menu {
             fun of(
                 callbackName: String,
                 menuDisplay: String,
-                processor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<*>>) -> Unit,
+                processor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<MenuCallbackData.DummyAdditional>>) -> TgCBHandlerResult,
                 filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
-            ): Integration = of(callbackName, menuDisplay, processor as suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<MenuCallbackData.DummyAdditional>>) -> TgCBHandlerResult, MenuCallbackData.DummyAdditional::class.java, MenuCallbackData.DummyAdditional(), filter)
+            ): Integration = of(callbackName, menuDisplay, processor, MenuCallbackData.DummyAdditional::class.java, MenuCallbackData.DummyAdditional(), filter)
             fun <T> of(
                 callbackName: String,
                 menuDisplay: String,

@@ -31,6 +31,7 @@ import ru.kochkaev.zixamc.api.sql.feature.FeatureType
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMember
 import ru.kochkaev.zixamc.api.telegram.Menu
+import ru.kochkaev.zixamc.chatsync.ChatSyncPreLaunch
 
 /**
  * @author kochkaev
@@ -43,17 +44,19 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
                 TgCallback::class.java to CallbackDataAdapter(),
                 Menu.MenuCallbackData::class.java to MenuCallbackDataAdapter(),
                 object : TypeToken<Map<FeatureType<out FeatureData>, FeatureData>>() {}.type to FeatureMapDeserializer(),
-                FeatureType::class.java to FeatureTypeAdapter(),
                 object : TypeToken<Map<ChatDataType<*>, *>>() {}.type to ChatDataMapDeserializer(),
-                ChatDataType::class.java to ChatDataTypeAdapter(),
                 SQLUser::class.java to SQLUserAdapter(),
                 SQLGroup::class.java to SQLGroupAdapter(),
                 SQLCallback::class.java to SQLCallbackAdapter(),
-                ProcessType::class.java to ProcessTypeAdapter(),
                 TextData::class.java to TextDataAdapter(),
                 TgChatMember::class.java to TgChatMemberAdapter(),
                 ServerBotGroup.SetupFeatureCallback::class.java to SetupFeatureCallbackAdapter(),
                 ServerBotGroup.GroupCallback::class.java to GroupCallbackAdapter(),
+            )
+            GsonManager.registerHierarchyAdapters(
+                FeatureType::class.java to FeatureTypeAdapter(),
+                ProcessType::class.java to ProcessTypeAdapter(),
+                ChatDataType::class.java to ChatDataTypeAdapter(),
             )
         }
     }
@@ -62,5 +65,7 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
         ConfigManager.registerConfig(Config)
 
         Initializer.startSQL()
+
+        ChatSyncPreLaunch().onPreLaunch()
     }
 }

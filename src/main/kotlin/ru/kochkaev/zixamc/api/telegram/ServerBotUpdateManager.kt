@@ -1,5 +1,6 @@
 package ru.kochkaev.zixamc.api.telegram
 
+import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.data.AccountType
@@ -8,7 +9,6 @@ import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgChatJoinRequest
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
-import ru.kochkaev.zixamc.requests.RequestsBot
 
 object ServerBotUpdateManager {
 
@@ -27,12 +27,13 @@ object ServerBotUpdateManager {
             val user = SQLUser.get(request.from.id)?:return
             if (user.isRestricted) return
             if (user.accountType.isHigherThanOrEqual(AccountType.PLAYER)) {
-                try {
-                    RequestsBot.bot.approveChatJoinRequest(request.chat.id, request.from.id)
-                } catch (_: Exception) { try {
-                    ServerBot.bot.approveChatJoinRequest(request.chat.id, request.from.id)
-                } catch (_: Exception) {} }
-                group.members.add(request.from.id)
+                var accepted = false
+                for (it in BotLogic.bots) try {
+                    it.approveChatJoinRequest(request.chat.id, request.from.id)
+                    accepted = true
+                    break
+                } catch (_: Exception) {}
+                if (accepted) group.members.add(request.from.id)
             }
         }
     }

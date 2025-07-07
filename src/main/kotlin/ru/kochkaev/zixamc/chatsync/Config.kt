@@ -12,8 +12,9 @@ data class Config(
     val lang: ChatSyncLang = ChatSyncLang(),
     val betaMarkdown: Boolean = false,
     val addPrefixToChatMessages: Boolean = true,
+    val suppressMessagesWithoutEasyAuthAuthentication: Boolean = true,
     val reply: ChatSyncReply = ChatSyncReply(),
-    val featue: ChatSyncFeatureConfig = ChatSyncFeatureConfig()
+    val feature: ChatSyncFeatureConfig = ChatSyncFeatureConfig()
 ) {
     data class DefaultGroup(
         val chatId: Long = 0,
@@ -75,7 +76,7 @@ data class Config(
         val requirePrefixInMinecraft: String? = "",
         val keepPrefix: Boolean = false,
         val mergeWindow: Int? = 0,
-        val replyInDifferentLine: Boolean = false,
+        val replyInDifferentLine: Boolean = true,
         val styledTelegramMessagesInMinecraft: Boolean = true,
         val parseMarkdownInMinecraftToTelegramMessages: Boolean = true,
     )

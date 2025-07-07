@@ -2,12 +2,14 @@ package ru.kochkaev.zixamc.api.telegram
 
 import ru.kochkaev.zixamc.api.config.Config
 import ru.kochkaev.zixamc.api.config.ConfigManager
+import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.api.telegram.model.TgMessage
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLChat
 import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.telegram.RulesManager.RulesCallbackData
@@ -66,9 +68,11 @@ object ServerBotLogic {
             callbackName = "info",
             menuDisplay = config.menu.infoButton,
             processor = { cbq, sql -> SQLUser.get(cbq.from.id)?.let{
-                if (it.hasProtectedLevel(AccountType.PLAYER))
+                if (it.hasProtectedLevel(AccountType.PLAYER)) {
                     sendInfoMessage(it)
-            } },
+                    TgCBHandlerResult.DELETE_MESSAGE
+                } else null
+            } ?: TgCBHandlerResult.SUCCESS },
             filter = { chatId, userId -> chatId == userId },
         ))
         Menu.addIntegration(Menu.Integration.of(
@@ -85,7 +89,7 @@ object ServerBotLogic {
                 bot.editMessageText(
                     chatId = cbq.message.chat.id,
                     messageId = cbq.message.messageId,
-                    text = Config.config.general.rules.confirmRemoveAgree4player
+                    text = Config.config.general.rules.confirmRemoveAgree4player.formatLang("nickname" to (SQLUser.get(cbq.from.id)?.nickname?:""))
                 )
                 bot.editMessageReplyMarkup(
                     chatId = cbq.message.chat.id,
@@ -99,12 +103,13 @@ object ServerBotLogic {
                         listOf(SQLCallback.of(
                             display = ConfigManager.config.general.buttons.cancel,
                             type = "rules",
-                            data = RulesCallbackData(RulesOperation.CANCEL_REMOVE_AGREE, RulesManager.RulesOperationType.REMOVE_AGREE)
+                            data = RulesCallbackData(RulesOperation.CANCEL_REMOVE_AGREE, RulesManager.RulesOperationType.REMOVE_AGREE, cbq.from.id)
                         )),
                     ))
                 )
+                TgCBHandlerResult.DELETE_LINKED
             },
-            filter = { chatId, userId -> chatId == userId },
+            filter = { chatId, userId -> chatId == userId && SQLUser.get(userId)?.agreedWithRules == true },
         ))
 
         bot.registerChatJoinRequestHandler(ServerBotUpdateManager::onTelegramChatJoinRequest)

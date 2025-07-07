@@ -108,10 +108,10 @@ object ServerBotGroup {
             fun of(
                 callbackName: String,
                 menuDisplay: String,
-                processor: suspend (TgCallbackQuery, SQLCallback<GroupCallback<*>>) -> Unit,
+                processor: suspend (TgCallbackQuery, SQLCallback<GroupCallback<GroupCallback.DummyAdditional>>) -> TgCBHandlerResult,
                 filter: (SQLGroup) -> Boolean = { group -> true },
                 canExecute: CallbackCanExecute = CAN_EXECUTE_ADMIN
-            ): Integration = of(callbackName, menuDisplay, processor as suspend (TgCallbackQuery, SQLCallback<GroupCallback<GroupCallback.DummyAdditional>>) -> TgCBHandlerResult, GroupCallback.DummyAdditional::class.java, GroupCallback.DummyAdditional(), filter, canExecute)
+            ): Integration = of(callbackName, menuDisplay, processor, GroupCallback.DummyAdditional::class.java, GroupCallback.DummyAdditional(), filter, canExecute)
             fun <T> of(
                 callbackName: String,
                 menuDisplay: String,

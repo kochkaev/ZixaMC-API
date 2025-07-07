@@ -3,6 +3,7 @@ package ru.kochkaev.zixamc.chatsync.parser
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.chatsync.parser.markdown.RegularNode
 import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.chatsync.Config
 import java.util.*
 
 object Markdown2HTMLParser {
@@ -16,7 +17,7 @@ object Markdown2HTMLParser {
     fun parse(
         markdown: String
     ): String {
-        if (ServerBot.config.chatSync.betaMarkdown) {
+        if (Config.config.betaMarkdown) {
             val node = RegularNode(markdown)
             val parsed = node.parse().build()
             return parsed

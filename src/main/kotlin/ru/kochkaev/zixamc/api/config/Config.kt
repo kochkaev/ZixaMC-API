@@ -30,7 +30,7 @@ data class Config (
             val thatButtonFor: String = "Эта кнопка предназначалась для {nickname}.",
             val agreeButton: String = "С правилами ознакомлен и согласен ✅",
             val removeButton: String = "Отозвать согласие ❌",
-            val onLeave4player: String = "<b>{nickname} решил уйти с сервера. <tg-emoji emoji-id=\"5454350746407419714\">❌</tg-emoji></b>",
+            val onLeave4player: String = "Вы покинули наш сервер, но всегда сможете вернуться! 🫂",
             val onLeave4group: String = "<b>{nickname} решил уйти с сервера. <tg-emoji emoji-id=\"5454350746407419714\">❌</tg-emoji></b>",
         )
         data class ButtonsLang(
@@ -41,7 +41,6 @@ data class Config (
         )
     }
     data class ServerBotDataClass (
-        val isEnabled: Boolean = true,
         val botToken: String = "",
         val botAPIURL: String = "https://api.telegram.org",
         val pollTimeout: Int = 60,

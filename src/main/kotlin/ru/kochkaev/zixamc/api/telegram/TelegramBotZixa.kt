@@ -129,6 +129,7 @@ class TelegramBotZixa(
                     offset = updates.last().updateId + 1
                     updates.forEach { update ->
                         update.message?.run {
+                            // TODO: Add user restricted check globally
                             SQLGroup.collectData(this.chat, this.from)
                             var itCommand = false
                             var itSystem = false
@@ -185,7 +186,7 @@ class TelegramBotZixa(
                                 if (sql.canExecute?.let { canExecute ->
                                         !(canExecute.statuses?.contains(ServerBot.bot.getChatMember(this.message.chat.id, this.from.id).status) == true || canExecute.users?.contains(this.from.id) == true)
                                     } != false) result = answerHaventRights(this.id, sql.canExecute?.display?:"")
-                                result = typedCallbackQueryHandlers[sql.type]?.invoke(this, sql)
+                                if (result == null) result = typedCallbackQueryHandlers[sql.type]?.invoke(this, sql)
                                 if (result!=null) {
                                     if (result.deleteMessage) try {
                                         deleteMessage(

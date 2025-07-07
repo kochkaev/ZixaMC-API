@@ -14,6 +14,7 @@ import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
+import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 
 object RequestsLogic {
 
@@ -311,6 +312,17 @@ object RequestsLogic {
             user.accountType = AccountType.PLAYER
             user.addMinecraftAccount(MinecraftAccountData(request.nickname!!, MinecraftAccountType.PLAYER))
             try { WhitelistManager.add(request.nickname!!) } catch (_:Exception) {}
+            SQLGroup.getAllWithFeature(FeatureTypes.PLAYERS_GROUP)
+                .filter { it.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoRemove == true }
+                .forEach { chat ->
+                    for (bot in BotLogic.bots) try {
+                        bot.unbanChatMember(
+                            chatId = chat.id,
+                            userId = user.id,
+                            onlyIfBanned = true,
+                        )
+                    } catch (_: Exception) {}
+                }
         }
         return true
     }

@@ -5,6 +5,7 @@ import net.kyori.adventure.text.Component
 import kotlinx.coroutines.*
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
+import ru.kochkaev.zixamc.api.Initializer
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import java.time.Clock
 import java.time.temporal.ChronoUnit
@@ -19,9 +20,11 @@ import ru.kochkaev.zixamc.api.telegram.model.*
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.chatsync.settings.ChatSyncEditPrefixCallbackData
 import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureType
+import ru.kochkaev.zixamc.requests.ChatSyncSQLGroup
 import kotlin.plus
 
 
+@Suppress("CAST_NEVER_SUCCEEDS")
 object ChatSyncBotLogic {
 
     val DEFAULT_GROUP = SQLGroup.get("main")!!
@@ -78,8 +81,8 @@ object ChatSyncBotLogic {
         val group = (SQLGroup.get(msg.chat.id) ?: return).also {
             if (it.features.getCasted(ChatSyncFeatureType)?.checkValidMsg(msg) != true) return
         }
-        group.lastMessageLock.withLock {
-            group.lastMessage = null
+        (group as ChatSyncSQLGroup).`chatsync$getLastMessageLock`().withLock {
+            (group as ChatSyncSQLGroup).`chatsync$setLastMessage`(null)
         }
         ChatSyncBotCore.broadcastMessage(TextParser.toMinecraft(msg, group, bot.me.id), group)
     }
@@ -104,9 +107,9 @@ object ChatSyncBotLogic {
         }
         runBlocking {
             bot.recoverPolling(coroutineScope)
-            SQLGroup.groups.forEach {
-                if (it.lastMessageLock.isLocked)
-                    it.lastMessageLock.unlock()
+            SQLGroup.groups.map { it as ChatSyncSQLGroup } .forEach {
+                if (it.`chatsync$getLastMessageLock`().isLocked)
+                    it.`chatsync$getLastMessageLock`().unlock()
             }
         }
         ctx.reply("Config reloaded. Note that the bot token can't be changed without a restart")
@@ -147,7 +150,7 @@ object ChatSyncBotLogic {
         canMergeMessages: Boolean = true,
         shouldKeepAsLast: Boolean = true,
         replyTo: Int? = null
-    ) = group.withScopeAndLock {
+    ) = withScopeAndLock(group) {
         sendChatMessage(
             rawMinecraftText = (e.text as TextComponent).content(),
             group = group,
@@ -188,7 +191,7 @@ object ChatSyncBotLogic {
 
         val currDate = Clock.systemUTC().instant()
 
-        val lm = group.lastMessage
+        val lm = (group as ChatSyncSQLGroup).`chatsync$getLastMessage`()
         return if (
             canMergeMessages && replyTo == null
             && lm != null
@@ -211,17 +214,17 @@ object ChatSyncBotLogic {
                 messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId,
                 replyParameters = replyTo?.let { TgReplyParameters(it) }
             )
-            group.lastMessage = if (shouldKeepAsLast) LastMessage(
+            (group as ChatSyncSQLGroup).`chatsync$setLastMessage`(if (shouldKeepAsLast) LastMessage(
                 LastMessageType.TEXT,
                 newMsg.messageId,
                 currDate,
                 text = currText,
-            ) else null
+            ) else null)
             newMsg
         }
     }
 
-    private fun onPlayerDeath(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = group.withScopeAndLock {
+    private fun onPlayerDeath(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = withScopeAndLock(group) {
         if (!ChatSyncBotCore.config.events.enableDeathMessages)
             return@withScopeAndLock
         val component = e.text as TranslatableComponent
@@ -235,13 +238,13 @@ object ChatSyncBotLogic {
                 },
             messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId
         )
-        group.lastMessage = null
+        (group as ChatSyncSQLGroup).`chatsync$setLastMessage`(null)
     }
 
-    private fun onPlayerJoin(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = group.withScopeAndLock {
+    private fun onPlayerJoin(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = withScopeAndLock(group) {
         if (!ChatSyncBotCore.config.events.enableJoinMessages)
             return@withScopeAndLock
-        val lm = group.lastMessage
+        val lm = (group as ChatSyncSQLGroup).`chatsync$getLastMessage`()
         val currDate = Clock.systemUTC().instant()
         if (
             lm != null
@@ -257,18 +260,14 @@ object ChatSyncBotLogic {
             bot.sendMessage(
                 chatId = group.chatId,
                 text = ChatSyncBotCore.lang.telegram.playerJoined
-                    .formatLang("username" to e.username)
-                    .let {
-                        if (ChatSyncBotCore.config.messages.parseMarkdownInMinecraftToTelegramMessages) it
-                        else it.escapeHTML()
-                    },
+                    .formatLang("username" to e.username),
                 messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId
             )
         }
-        group.lastMessage = null
+        (group as ChatSyncSQLGroup).`chatsync$setLastMessage`(null)
     }
 
-    private fun onPlayerLeave(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = group.withScopeAndLock {
+    private fun onPlayerLeave(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = withScopeAndLock(group) {
         if (!ChatSyncBotCore.config.events.enableLeaveMessages)
             return@withScopeAndLock
         val message = ChatSyncBotCore.lang.telegram.playerLeft.formatLang("username" to e.username)
@@ -277,15 +276,15 @@ object ChatSyncBotLogic {
             text = message,
             messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId
         )
-        group.lastMessage = LastMessage(
+        (group as ChatSyncSQLGroup).`chatsync$setLastMessage`(LastMessage(
             LastMessageType.LEAVE,
             newMsg.messageId,
             Clock.systemUTC().instant(),
             leftPlayer = e.username
-        )
+        ))
     }
 
-    private fun onPlayerAdvancement(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = group.withScopeAndLock {
+    private fun onPlayerAdvancement(e: TBPlayerEventData, group: SQLGroup = DEFAULT_GROUP) = withScopeAndLock(group) {
         val advancementsCfg = ChatSyncBotCore.config.events.advancementMessages
         if (!advancementsCfg.enable) {
             return@withScopeAndLock
@@ -340,6 +339,14 @@ object ChatSyncBotLogic {
             text = message,
             messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId
         )
-        group.lastMessage = null
+        (group as ChatSyncSQLGroup).`chatsync$setLastMessage`(null)
+    }
+
+    fun withScopeAndLock(group: SQLGroup, fn: suspend () -> Unit) {
+        coroutineScope.launch {
+            (group as ChatSyncSQLGroup).`chatsync$getLastMessageLock`().withLock { 
+                fn()
+            }
+        }
     }
 }

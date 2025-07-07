@@ -14,6 +14,7 @@ class NullableStringSQLField(
     column = column,
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
+    type = String::class.java,
     setter = { ps, it -> if (it!=null) ps.setString(1, it) else ps.setNull(1, sqlType) },
     getter = { rs -> if (!rs.wasNull()) rs.getString(1) else null },
 )

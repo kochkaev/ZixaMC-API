@@ -37,7 +37,7 @@ abstract class SQLChat(
         var level: AccountType? = protectLevel
         while (level!=null){
             protected[level]?.sortedByDescending { it.messageId } ?.forEach { data ->
-                data.senderBotId.let { BotLogic.getBot(it) } ?.also { bot ->
+                BotLogic.getBot(data.senderBotId)?.also { bot ->
                     try { when (data.protectedType) {
                         NewProtectedData.ProtectedType.TEXT ->
                             bot.deleteMessage(

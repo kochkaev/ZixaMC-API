@@ -1,16 +1,10 @@
 package ru.kochkaev.zixamc.api.telegram
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
 import ru.kochkaev.zixamc.api.ZixaMC.Companion.logger
-import ru.kochkaev.zixamc.chatsync.ChatSyncBotCore
-import ru.kochkaev.zixamc.chatsync.ChatSyncBotLogic
 import ru.kochkaev.zixamc.api.config.ConfigManager
-import ru.kochkaev.zixamc.easyauthintegration.EasyAuthIntegration
 import ru.kochkaev.zixamc.api.Initializer.coroutineScope
 
 /**
@@ -24,7 +18,6 @@ object ServerBot {
     val config
         get() = ConfigManager.config.serverBot
     var isInitialized = false
-    private val lastMessageLock = Mutex()
 
     fun startBot() {
         bot = TelegramBotZixa(config.botAPIURL, config.botToken, logger, config.pollTimeout)
@@ -46,18 +39,6 @@ object ServerBot {
             bot.startPolling(coroutineScope)
 //            ZixaMCTGBridge.isServerBotLoaded = true
             ServerBotLogic.registerTelegramHandlers()
-            if (EasyAuthIntegration.isEnabled) {
-//                ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
-//                    EasyAuthIntegration.onJoin(handler.player)
-//                }
-                ServerPlayConnectionEvents.DISCONNECT.register { handler, _ ->
-                    EasyAuthIntegration.onLeave(handler.player)
-                }
-                EasyAuthIntegration.registerEasyAuthHandlers()
-            }
-            if (config.chatSync.isEnabled) {
-                ChatSyncBotLogic.sendServerStartedMessage()
-            }
         }
         isInitialized = true
     }
@@ -67,13 +48,5 @@ object ServerBot {
             bot.shutdown()
         }
         isInitialized = false
-    }
-
-    fun withScopeAndLock(fn: suspend () -> Unit) {
-        coroutineScope.launch {
-            lastMessageLock.withLock {
-                fn()
-            }
-        }
     }
 }

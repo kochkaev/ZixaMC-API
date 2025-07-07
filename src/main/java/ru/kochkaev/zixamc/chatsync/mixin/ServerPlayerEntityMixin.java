@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.mixin;
+package ru.kochkaev.zixamc.chatsync.mixin;
 
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;

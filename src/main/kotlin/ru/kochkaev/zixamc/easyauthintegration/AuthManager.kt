@@ -1,15 +1,17 @@
 package ru.kochkaev.zixamc.easyauthintegration
 
+import com.google.gson.annotations.SerializedName
 import net.minecraft.server.network.ServerPlayerEntity
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLUser
+import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.api.telegram.ServerBot.config
+import ru.kochkaev.zixamc.easyauthintegration.Config.Companion.config
 import ru.kochkaev.zixamc.api.telegram.ServerBot.server
+import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgInlineKeyboardMarkup
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 import xyz.nikitacartes.easyauth.utils.PlayerAuth
@@ -42,24 +44,24 @@ object AuthManager {
         (player as PlayerAuth).`easyAuth$restoreTrueLocation`()
         data.lastAuthenticatedDate = ZonedDateTime.now()
         data.loginTries = 0L
-        player.sendMessage(config.easyAuth.langMinecraft.onApprove.getMinecraft())
+        player.sendMessage(config.langMinecraft.onApprove.getMinecraft())
         try {
             bot.sendMessage(
                 chatId = entity.userId,
-                text = config.easyAuth.langTelegram.onApprove.formatLang("nickname" to nickname),
+                text = config.langTelegram.onApprove.formatLang("nickname" to nickname),
             )
         } catch (_: Exception) {}
     }
     suspend fun deny(entity: SQLUser, nickname: String) {
         val player = server.playerManager.getPlayer(nickname)
         val data = (player as PlayerAuth).`easyAuth$getPlayerEntryV1`()
-        player.networkHandler.disconnect(config.easyAuth.langMinecraft.onDeny.getMinecraft())
+        player.networkHandler.disconnect(config.langMinecraft.onDeny.getMinecraft())
         data.lastKickedDate = ZonedDateTime.now()
         data.loginTries = 0L
         try {
             bot.sendMessage(
                 chatId = entity.userId,
-                text = config.easyAuth.langTelegram.onDeny.formatLang("nickname" to nickname),
+                text = config.langTelegram.onDeny.formatLang("nickname" to nickname),
             )
         } catch (_: Exception) {}
     }
@@ -72,21 +74,21 @@ object AuthManager {
                 acc, it -> acc || MinecraftAccountType.getAllActiveNow().contains(it.accountStatus) && it.nickname == nickname
             } != true) return kickYouAreNotPlayer(player)
         if ((player as PlayerAuth).`easyAuth$canSkipAuth`() || (player as PlayerAuth).`easyAuth$isAuthenticated`()) return
-        player.sendMessage(config.easyAuth.langMinecraft.onJoinTip.getMinecraft())
+        player.sendMessage(config.langMinecraft.onJoinTip.getMinecraft())
         try {
             val message = bot.sendMessage(
                 chatId = entity.userId,
-                text = config.easyAuth.langTelegram.onJoinTip.formatLang("nickname" to nickname),
+                text = config.langTelegram.onJoinTip.formatLang("nickname" to nickname),
                 replyMarkup = TgInlineKeyboardMarkup(
                     listOf(
                         listOf(
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                text = config.easyAuth.langTelegram.buttonApprove.formatLang("nickname" to nickname),
+                                text = config.langTelegram.buttonApprove.formatLang("nickname" to nickname),
 //                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "approve")).serialize()
                                 callback_data = $$"easyauth$approve/$$nickname"
                             ),
                             TgInlineKeyboardMarkup.TgInlineKeyboardButton(
-                                text = config.easyAuth.langTelegram.buttonDeny.formatLang("nickname" to nickname),
+                                text = config.langTelegram.buttonDeny.formatLang("nickname" to nickname),
 //                            callback_data = TgCallback("easyauth", EasyAuthCallbackData(nickname, "deny")).serialize()
                                 callback_data = $$"easyauth$deny/$$nickname"
                             ),
@@ -96,9 +98,9 @@ object AuthManager {
             )
             entity.tempArray.add(message.messageId.toString())
         } catch (e: Exception) {
-            val botUsername = config.easyAuth.langMinecraft.botUsername
+            val botUsername = config.langMinecraft.botUsername
             player.sendMessage(
-                config.easyAuth.langMinecraft.noHaveChatWithBot.getMinecraft(
+                config.langMinecraft.noHaveChatWithBot.getMinecraft(
                     listOf("url" to "https://t.me/${botUsername.replace("@", "")}")
                 )
             )
@@ -118,9 +120,36 @@ object AuthManager {
         entity.tempArray.set(listOf())
     }
     private fun kickYouAreNotPlayer(player: ServerPlayerEntity?) {
-        player?.networkHandler?.disconnect(config.easyAuth.langMinecraft.youAreNotPlayer.getMinecraft())
+        player?.networkHandler?.disconnect(config.langMinecraft.youAreNotPlayer.getMinecraft())
         val data = (player as PlayerAuth).`easyAuth$getPlayerEntryV1`()
         data.loginTries = 0L
         data.lastKickedDate = ZonedDateTime.now()
     }
+
+    suspend fun onTelegramCallbackQuery(cbq: TgCallbackQuery, /*data: TgCallback<EasyAuthCallbackData>*/) {
+//        val args = cbq.data?.split(Regex("easyauth\$(.*?)/([a-zA-Z0-9_])"))
+        val data = cbq.data?:return
+        if (!cbq.data.startsWith("easyauth")) return
+        val args = data.substring(data.indexOf('\$')+1, data.length)
+        val nickname = args.substring(args.indexOf('/')+1, args.length)
+        val operation = args.substring(0, args.indexOf('/'))
+        val user = SQLUser.get(cbq.from.id)?:return
+        when (/*data.data!!.operation*/ operation) {
+            "approve" -> approve(user, /*data.data.nickname*/nickname)
+            "deny" -> deny(user, /*data.data.nickname*/nickname)
+        }
+        user.tempArray.remove(cbq.message.messageId.toString()).toString()
+        bot.editMessageReplyMarkup(
+            chatId = cbq.message.chat.id,
+            messageId = cbq.message.messageId,
+            replyMarkup = TgReplyMarkup(),
+        )
+    }
+
+    data class EasyAuthCallbackData(
+        @SerializedName("n")
+        val nickname: String,
+        @SerializedName("o")
+        val operation: String
+    ) : CallbackData
 }

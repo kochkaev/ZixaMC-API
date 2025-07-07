@@ -8,8 +8,6 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
 import ru.kochkaev.zixamc.api.config.ConfigManager
-import ru.kochkaev.zixamc.api.ZixaMC
-import ru.kochkaev.zixamc.api.config.Config
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 
@@ -39,16 +37,7 @@ object ZixaMCCommand {
                 .then(CommandManager.literal("reload")
                     .executes { context ->
                         ConfigManager.reload()
-                        context.source.sendFeedback({ Text.of("§7ZixaMCTGBridge configs successfully reloaded!") }, true)
-                        0
-                    }
-                )
-                .then(CommandManager.literal("silentRestart")
-                    .executes { context ->
-                        ZixaMC.tmp.isSilentRestart = true
-                        Config.update()
-                        context.source.sendFeedback({ Text.of("Server restart will not be seen in telegram.") }, true)
-                        context.source.server.stop(false)
+                        context.source.sendFeedback({ Text.of("ZixaMC configs successfully reloaded!") }, true)
                         0
                     }
                 )

@@ -12,6 +12,7 @@ class LongSQLField(
     column = column,
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
+    type = Long::class.java,
     setter = { ps, it -> ps.setLong(1, it) },
     getter = { rs -> rs.getLong(1) },
 )

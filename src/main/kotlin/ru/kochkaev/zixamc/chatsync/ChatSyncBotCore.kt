@@ -9,11 +9,8 @@ import net.minecraft.network.message.SignedMessage
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
-import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.ServerBot.server
-import ru.kochkaev.zixamc.chatsync.parser.MinecraftAdventureConverter
-import ru.kochkaev.zixamc.easyauthintegration.EasyAuthCustomEvents
-import ru.kochkaev.zixamc.easyauthintegration.EasyAuthIntegration
+import ru.kochkaev.zixamc.api.config.MinecraftAdventureConverter
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 
 
@@ -30,7 +27,7 @@ object ChatSyncBotCore {
                 params.type.matchesKey(MessageType.CHAT) &&
                 sender is ServerPlayerEntity
                 && (vanishInstance == null || !FabricVanishIntegration.isVanished(sender))
-                && EasyAuthIntegration.isAuthenticated(sender)
+                && (!Config.config.suppressMessagesWithoutEasyAuthAuthentication || EasyAuthModuleIntegration.isAuthenticated(sender))
             ) {
                 handler.invoke(
                     TBPlayerEventData(
@@ -48,7 +45,7 @@ object ChatSyncBotCore {
                 params.type.matchesKey(MessageType.SAY_COMMAND) &&
                 ((sender.player != null
                 && (vanishInstance == null || !FabricVanishIntegration.isVanished(sender.player!!))
-                && EasyAuthIntegration.isAuthenticated(sender.player!!))
+                && (!Config.config.suppressMessagesWithoutEasyAuthAuthentication || EasyAuthModuleIntegration.isAuthenticated(sender.player!!)))
                 || sender.player == null)
             ) {
                 handler.invoke(
@@ -67,7 +64,7 @@ object ChatSyncBotCore {
                 params.type.matchesKey(MessageType.EMOTE_COMMAND) &&
                 ((sender.player != null
                 && (vanishInstance == null || !FabricVanishIntegration.isVanished(sender.player!!))
-                && EasyAuthIntegration.isAuthenticated(sender.player!!))
+                && (!Config.config.suppressMessagesWithoutEasyAuthAuthentication || EasyAuthModuleIntegration.isAuthenticated(sender.player!!)))
                 || sender.player == null)
             ) {
                 handler.invoke(
@@ -98,7 +95,7 @@ object ChatSyncBotCore {
         ServerPlayConnectionEvents.JOIN.register { handlr, _, _ ->
             val player = handlr.player
             if (
-                EasyAuthIntegration.isAuthenticated(player)
+                (!Config.config.suppressMessagesWithoutEasyAuthAuthentication || EasyAuthModuleIntegration.isAuthenticated(player))
                 && (vanishInstance == null || !FabricVanishIntegration.isVanished(player))
             ) handler.invoke(
                 TBPlayerEventData(
@@ -107,13 +104,13 @@ object ChatSyncBotCore {
                 )
             )
         }
-        if (EasyAuthIntegration.isEnabled)
-            EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticated, player ->
-                if (authenticated && ServerBot.config.easyAuth.suppressMessagesWithoutAuth) {
-                    EasyAuthIntegration.addToPrevious(player)
+        if (EasyAuthModuleIntegration.enabled)
+            EasyAuthModuleIntegration.registerUpdatePlayerAuthenticatedListener { authenticated, player ->
+                if (authenticated && Config.config.suppressMessagesWithoutEasyAuthAuthentication) {
+                    EasyAuthModuleIntegration.addToPrevious(player)
                     if (vanishInstance == null || !FabricVanishIntegration.isVanished(player)) handler.invoke(
                         TBPlayerEventData(
-                            player.displayName?.string ?: return@register,
+                            player.displayName?.string ?: return@registerUpdatePlayerAuthenticatedListener,
                             Component.text(""),
                         )
                     )
@@ -126,7 +123,7 @@ object ChatSyncBotCore {
         ServerPlayConnectionEvents.DISCONNECT.register { handlr, _ ->
             val player = handlr.player
             if (
-                EasyAuthIntegration.isAuthenticated(player)
+                (!Config.config.suppressMessagesWithoutEasyAuthAuthentication || EasyAuthModuleIntegration.isAuthenticated(player))
                 && (vanishInstance == null || !FabricVanishIntegration.isVanished(player))
             ) handler.invoke(
                 TBPlayerEventData(
@@ -135,15 +132,15 @@ object ChatSyncBotCore {
                 )
             )
         }
-        if (EasyAuthIntegration.isEnabled)
-            EasyAuthCustomEvents.UPDATE_PLAYER_AUTHENTICATED_EVENT.register { authenticated, player ->
-                if (!authenticated && ServerBot.config.easyAuth.suppressMessagesWithoutAuth)
+        if (EasyAuthModuleIntegration.enabled)
+            EasyAuthModuleIntegration.registerUpdatePlayerAuthenticatedListener { authenticated, player ->
+                if (!authenticated && Config.config.suppressMessagesWithoutEasyAuthAuthentication)
                     if (
-                        (EasyAuthIntegration.isAuthenticated(player) && !player.isDisconnected)
+                        (EasyAuthModuleIntegration.isAuthenticated(player) && !player.isDisconnected)
                         && (vanishInstance == null || !FabricVanishIntegration.isVanished(player))
                     ) handler.invoke(
                         TBPlayerEventData(
-                            player.displayName?.string ?: return@register,
+                            player.displayName?.string ?: return@registerUpdatePlayerAuthenticatedListener,
                             Component.text(""),
                         )
                     )
@@ -198,6 +195,11 @@ object ChatSyncBotCore {
         server.playerManager.playerList
             .filter { group.isMember(it.nameForScoreboard) }
             .forEach { it.sendMessage(MinecraftAdventureConverter.adventureToMinecraft(text), false) }
+    }
+    fun broadcastMessages(list: List<Component>, group: SQLGroup) {
+        server.playerManager.playerList
+            .filter { group.isMember(it.nameForScoreboard) }
+            .forEach { group -> list.forEach{ group.sendMessage(MinecraftAdventureConverter.adventureToMinecraft(it), false) } }
     }
 
     fun getOnlinePlayerNames(): Array<String> {

@@ -9,6 +9,7 @@ import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.telegram.ServerBot
+import ru.kochkaev.zixamc.chatsync.Config
 import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureData
 import ru.kochkaev.zixamc.chatsync.settings.ChatSyncFeatureType
 
@@ -51,7 +52,7 @@ object ReplyCommand {
             ChatSyncFeatureData.BroadcastMinecraftResult.NOT_FOUND ->
                 context.source.sendFeedback(
                     {
-                        ServerBot.config.chatSync.reply.chatNotFound.getMinecraft(
+                        Config.config.reply.chatNotFound.getMinecraft(
                             listOf("group" to groupName)
                         )
                     }, false
@@ -60,7 +61,7 @@ object ReplyCommand {
             ChatSyncFeatureData.BroadcastMinecraftResult.MESSAGE_NOT_FOUND ->
                 context.source.sendFeedback(
                     {
-                        ServerBot.config.chatSync.reply.messageIdNotFound.getMinecraft(
+                        Config.config.reply.messageIdNotFound.getMinecraft(
                             listOf("group" to groupName, "messageId" to messageId.toString())
                         )
                     }, false
@@ -68,7 +69,7 @@ object ReplyCommand {
 
             ChatSyncFeatureData.BroadcastMinecraftResult.TG_ERROR ->
                 context.source.sendFeedback(
-                    { ServerBot.config.chatSync.reply.errorDueSending.getMinecraft() },
+                    { Config.config.reply.errorDueSending.getMinecraft() },
                     false
                 )
 

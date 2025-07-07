@@ -1,10 +1,11 @@
 package ru.kochkaev.zixamc.api
 
 fun String.formatLang(vararg args: Pair<String, String>): String {
+    var formatted = this
     args.forEach {
-        replace("{${it.first}}", it.second)
+        formatted = formatted.replace("{${it.first}}", it.second)
     }
-    return this
+    return formatted
 }
 fun String.escapeHTML(): String = this
     .replace("&", "&amp;")

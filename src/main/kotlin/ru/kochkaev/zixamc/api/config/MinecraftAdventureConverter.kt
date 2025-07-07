@@ -1,16 +1,16 @@
-package ru.kochkaev.zixamc.chatsync.parser
+package ru.kochkaev.zixamc.api.config
 
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.minecraft.registry.DynamicRegistryManager
 import net.minecraft.registry.Registries
 import net.minecraft.text.Text
-import ru.kochkaev.zixamc.api.ZixaMC.Companion.server
+import ru.kochkaev.zixamc.api.ZixaMC
 
 object MinecraftAdventureConverter {
     private val registries: DynamicRegistryManager.Immutable
         get(){
-            val server = server ?: return DynamicRegistryManager.of(Registries.REGISTRIES)
+            val server = ZixaMC.Companion.server ?: return DynamicRegistryManager.of(Registries.REGISTRIES)
             return server.registryManager
         }
     fun adventureToMinecraft(adventure: Component): Text {

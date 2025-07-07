@@ -8,7 +8,9 @@ import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
+import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
+import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
@@ -104,34 +106,35 @@ object RulesManager {
             }
             RulesOperation.CONFIRM_REMOVE_AGREE -> {
                 user.agreedWithRules = false
+                if (user.id != sql.data!!.id && user.id != cbq.message.chat.id) {
+                    bot.answerCallbackQuery(
+                        callbackQueryId = cbq.id,
+                        text = ConfigManager.config.general.rules.thatButtonFor.formatLang(
+                            "nickname" to (sql.data!!.id?.let { SQLUser.get(it)?.nickname ?: it.toString() } ?: "")
+                        ),
+                        showAlert = true,
+                    )
+                    return TgCBHandlerResult.SUCCESS
+                }
                 if (user.hasProtectedLevel(AccountType.PLAYER)) {
-                    SQLGroup.getAllWithFeature(FeatureTypes.PLAYERS_GROUP).filter { it.members.contains(user.id) } .forEach { chat ->
-                        for (it in BotLogic.bots) try {
-                            it.banChatMember(chat.id, user.id)
-                            it.sendMessage(
-                                chatId = cbq.message.chat.id,
-                                text = ConfigManager.config.general.rules.onLeave4group
-                            )
-                        } catch (_: Exception) {}
-                    }
                     user.accountType = AccountType.REQUESTER
-                    user.deleteProtected(AccountType.PLAYER)
                     if (group!=null) for (it in BotLogic.bots) try {
                         it.sendMessage(
                             chatId = user.id,
-                            text = ConfigManager.config.general.rules.onLeave4player
+                            text = ConfigManager.config.general.rules.onLeave4player.formatLang("nickname" to (user.nickname?:""))
                         )
                         break
                     } catch (_: Exception) {}
-                    else bot.sendMessage(
+                    else bot.editMessageText(
                         chatId = user.id,
-                        text = ConfigManager.config.general.rules.onLeave4player
+                        messageId = cbq.message.messageId,
+                        text = ConfigManager.config.general.rules.onLeave4player.formatLang("nickname" to (user.nickname?:""))
                     )
                 }
                 return if (group!=null) TgCBHandlerResult.DELETE_MESSAGE else TgCBHandlerResult.DELETE_LINKED
             }
             RulesOperation.CANCEL_REMOVE_AGREE -> {
-                if (user.id != sql.data!!.id) {
+                if (user.id != sql.data!!.id && user.id != cbq.message.chat.id) {
                     bot.answerCallbackQuery(
                         callbackQueryId = cbq.id,
                         text = ConfigManager.config.general.rules.thatButtonFor.formatLang(

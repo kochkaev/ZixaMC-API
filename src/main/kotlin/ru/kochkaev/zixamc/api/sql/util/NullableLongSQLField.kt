@@ -13,6 +13,7 @@ class NullableLongSQLField(
     column = column,
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
+    type = Long::class.java,
     setter = { ps, it -> if (it!=null) ps.setLong(1, it) else ps.setNull(1, Types.BIGINT) },
     getter = { rs -> if (!rs.wasNull()) rs.getLong(1) else null },
 )

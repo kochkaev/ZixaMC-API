@@ -7,6 +7,7 @@ import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLUserAdapter
+import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
@@ -23,32 +24,39 @@ import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
 import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.api.telegram.RulesManager
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
-import ru.kochkaev.zixamc.requests.RequestsBot
-import ru.kochkaev.zixamc.requests.RequestsBotUpdateManager
 import java.sql.SQLException
 
 @JsonAdapter(SQLUserAdapter::class)
 class SQLUser private constructor(val userId: Long): SQLChat(userId) {
 
-    private val nicknameField = NullableStringSQLField(SQLUser, "nicknames", userId, "user_id")
+    private val nicknameField = NullableStringSQLField(SQLUser, "nickname", userId, "user_id")
     var nickname: String?
         get() = nicknameField.get()
         set(nickname) { nicknameField.set(nickname) }
     val nicknames = StringSQLArray(SQLUser, "nicknames", userId, "user_id")
-    private val accountTypeField = object: AbstractSQLField<AccountType>(SQLUser, "account_type", userId, "user_id",
+    private val accountTypeField = object: AbstractSQLField<AccountType>(SQLUser, "account_type", userId, "user_id", AccountType::class.java,
         getter = { rs -> AccountType.parse(rs.getInt(1)) },
-        setter = { ps, it -> ps.setInt(1, accountType.id) }
+        setter = { ps, it -> ps.setInt(1, it.id) }
     ) {
         override fun set(value: AccountType): Boolean {
             val original = super.set(value)
             if (original && !value.isHigherThanOrEqual(AccountType.PLAYER)) Initializer.coroutineScope.launch {
-                SQLGroup.getAllWithUser(userId).forEach {
-                    if (it.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoRemove == true)
-                        try {
-                            ServerBot.bot.banChatMember(it.chatId, userId)
+                SQLGroup.getAllWithUser(userId).forEach { chat ->
+                    if (chat.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoRemove == true)
+                        for (it in BotLogic.bots) try {
+                            it.banChatMember(chat.id, id)
+                            it.sendMessage(
+                                chatId = chat.id,
+                                text = ConfigManager.config.general.rules.onLeave4group.formatLang("nickname" to (nickname?:""))
+                            )
+                            break
                         } catch (_: Exception) {}
-                    if (!it.atLeastOnePlayer()) it.onNoMorePlayers()
+                    if (!chat.atLeastOnePlayer()) chat.onNoMorePlayers()
                 }
+                data.getCasted(ChatDataTypes.MINECRAFT_ACCOUNTS)
+                    ?.filter { MinecraftAccountType.getAllActiveNow().contains(it.accountStatus) }
+                    ?.forEach { editMinecraftAccount(it.nickname, MinecraftAccountType.FROZEN) }
+                deleteProtected(AccountType.PLAYER)
             }
             return original
         }
@@ -61,7 +69,7 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
     var agreedWithRules: Boolean
         get() = agreedWithRulesField.get() ?: false
         set(agreedWithRules) { agreedWithRulesField.set(agreedWithRules) }
-    private val isRestrictedField = BooleanSQLField(SQLUser, "agreed_with_rules", userId, "user_id")
+    private val isRestrictedField = BooleanSQLField(SQLUser, "is_restricted", userId, "user_id")
     var isRestricted: Boolean
         get() = isRestrictedField.get() ?: false
         set(isRestricted) { isRestrictedField.set(isRestricted) }

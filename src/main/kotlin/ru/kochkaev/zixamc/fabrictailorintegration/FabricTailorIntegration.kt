@@ -67,7 +67,7 @@ object FabricTailorIntegration {
                 ServerBot.bot.sendMessage(
                     chatId = cbq.message.chat.id,
                     messageThreadId = cbq.message.messageThreadId,
-                    text = ServerBot.config.integration.fabricTailor.messageErrorUpload,
+                    text = Config.config.messageErrorUpload,
                     replyMarkup = TgMenu(listOf(listOf(Menu.getBackButtonExecuteOnly(user))))
                 )
                 return TgCBHandlerResult.DELETE_MARKUP
@@ -75,7 +75,7 @@ object FabricTailorIntegration {
                 ServerBot.bot.editMessageText(
                     chatId = cbq.message.chat.id,
                     messageId = cbq.message.messageId,
-                    text = ServerBot.config.integration.fabricTailor.messageUploadPlayer,
+                    text = Config.config.messageUploadPlayer,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
                     chatId = cbq.message.chat.id,
@@ -108,7 +108,7 @@ object FabricTailorIntegration {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,
                 messageId = cbq.message.messageId,
-                text = ServerBot.config.integration.fabricTailor.messageUploadModel,
+                text = Config.config.messageUploadModel,
             )
             ServerBot.bot.editMessageReplyMarkup(
                 chatId = cbq.message.chat.id,
@@ -117,7 +117,7 @@ object FabricTailorIntegration {
                     listOf(
                         listOf(
                             SQLCallback.of(
-                                display = ServerBot.config.integration.fabricTailor.buttonModelClassic,
+                                display = Config.config.buttonModelClassic,
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of(
                                     operation = "fabricTailor",
@@ -136,7 +136,7 @@ object FabricTailorIntegration {
                         ),
                         listOf(
                             SQLCallback.of(
-                                display = ServerBot.config.integration.fabricTailor.buttonModelSlim,
+                                display = Config.config.buttonModelSlim,
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of(
                                     operation = "fabricTailor",
@@ -162,7 +162,7 @@ object FabricTailorIntegration {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,
                 messageId = cbq.message.messageId,
-                text = ServerBot.config.integration.fabricTailor.messageUploadFile,
+                text = Config.config.messageUploadFile,
             )
             ServerBot.bot.editMessageReplyMarkup(
                 chatId = cbq.message.chat.id,
@@ -215,7 +215,7 @@ object FabricTailorIntegration {
             val message = ServerBot.bot.sendMessage(
                 chatId = msg.chat.id,
                 replyParameters = TgReplyParameters(msg.messageId),
-                text = ServerBot.config.integration.fabricTailor.messagePreparing
+                text = Config.config.messagePreparing
             )
             val path = FabricLoader.getInstance().gameDir.toAbsolutePath()
             val path1 = path.resolve("$path/fabrictailor_uploads/")
@@ -227,7 +227,7 @@ object FabricTailorIntegration {
                 ServerBot.bot.editMessageText(
                     chatId = msg.chat.id,
                     messageId = message.messageId,
-                    text = ServerBot.config.integration.fabricTailor.messageErrorUpload,
+                    text = Config.config.messageErrorUpload,
                 )
                 process.data?.run {
                     try { ServerBot.bot.editMessageReplyMarkup(
@@ -274,7 +274,7 @@ object FabricTailorIntegration {
             ServerBot.bot.sendMessage(
                 chatId = msg.chat.id,
                 replyParameters = TgReplyParameters(msg.messageId),
-                text = ServerBot.config.integration.fabricTailor.messageErrorNotAnImage,
+                text = Config.config.messageErrorNotAnImage,
             )
         }
     }
@@ -331,31 +331,31 @@ object FabricTailorIntegration {
     enum class SkinUploadResult {
         WRONG_RESOLUTION {
             override val message: String
-                get() = ServerBot.config.integration.fabricTailor.messageErrorWrongResolution
+                get() = Config.config.messageErrorWrongResolution
         },
         NOT_AN_IMAGE {
             override val message: String
-                get() = ServerBot.config.integration.fabricTailor.messageErrorNotAnImage
+                get() = Config.config.messageErrorNotAnImage
         },
         UPLOAD_ERROR {
             override val message: String
-                get() = ServerBot.config.integration.fabricTailor.messageErrorUpload
+                get() = Config.config.messageErrorUpload
         },
         SET_ERROR {
             override val message: String
-                get() = ServerBot.config.integration.fabricTailor.messageErrorSet
+                get() = Config.config.messageErrorSet
         },
         NOT_ONLINE {
             override val message: String
-                get() = ServerBot.config.integration.fabricTailor.messageErrorNotOnline
+                get() = Config.config.messageErrorNotOnline
         },
         OTHER_ERROR {
             override val message: String
-                get() = ServerBot.config.integration.fabricTailor.messageErrorUpload
+                get() = Config.config.messageErrorUpload
         },
         SUCCESS {
             override val message: String
-                get() = ServerBot.config.integration.fabricTailor.messageDone
+                get() = Config.config.messageDone
         };
         abstract val message: String
     }

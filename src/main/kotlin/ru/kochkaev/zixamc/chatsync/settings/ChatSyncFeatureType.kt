@@ -14,29 +14,30 @@ import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_LI
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.api.telegram.ServerBot.config
+import ru.kochkaev.zixamc.chatsync.Config.Companion.config
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.getSettingsText
 import ru.kochkaev.zixamc.api.sql.feature.TopicFeatureType
+import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.api.telegram.model.*
 
 object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
     model = ChatSyncFeatureData::class.java,
     serializedName = "CHAT_SYNC",
-    tgDisplayName = { config.group.features.chatSync.display },
-    tgDescription = { config.group.features.chatSync.description },
+    tgDisplayName = { config.feature.display },
+    tgDescription = { config.feature.description },
     tgOnDone = {
         if (bot.getChat(it.chatId).isForum)
-            config.group.features.chatSync.doneTopic
-        else config.group.features.chatSync.doneNoTopic
+            config.feature.doneTopic
+        else config.feature.doneNoTopic
     },
     checkAvailable = { true },
     getDefault = { ChatSyncFeatureData() },
     optionsResolver = {
-        config.group.features.chatSync.options.formatLang(
-            "topicId" to (it.topicId?.toString() ?: config.group.settings.nullTopicPlaceholder),
-            "prefix" to (it.prefix?.raw?.escapeHTML() ?: config.group.settings.nullPlaceholder),
-            "fromMcPrefix" to (it.fromMcPrefix?.raw?.escapeHTML() ?: config.group.settings.nullPlaceholder)
+        config.feature.options.formatLang(
+            "topicId" to (it.topicId?.toString() ?: ServerBot.config.group.settings.nullTopicPlaceholder),
+            "prefix" to (it.prefix?.raw?.escapeHTML() ?: ServerBot.config.group.settings.nullPlaceholder),
+            "fromMcPrefix" to (it.fromMcPrefix?.raw?.escapeHTML() ?: ServerBot.config.group.settings.nullPlaceholder)
         )
     }
 ) {
@@ -60,7 +61,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
         )))
         val message = bot.sendMessage(
             chatId = group.chatId,
-            text = config.group.features.chatSync.prefixNeeded.formatLang(
+            text = config.feature.prefixNeeded.formatLang(
                 "groupName" to group.name.toString(),
             ),
             replyParameters = replyTo?.let { TgReplyParameters(it) },
@@ -84,7 +85,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
         val isForum = cbq.message.chat.isForum
         origin.add(if (isForum) 1 else 0, listOf(
             SQLCallback.of(
-                display = config.group.features.chatSync.editPrefix,
+                display = config.feature.editPrefix,
                 type = $$"group$chatsync$editPrefix",
                 data = ChatSyncEditPrefixCallbackData(
                     name = GroupChatSyncWaitPrefixProcessData.PrefixTypes.DEFAULT.name,
@@ -93,7 +94,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
         ))
         origin.add(if (isForum) 2 else 1, listOf(
             SQLCallback.of(
-            display = config.group.features.chatSync.editPrefixMC,
+            display = config.feature.editPrefixMC,
             type = $$"group$chatsync$editPrefix",
             data = ChatSyncEditPrefixCallbackData(
                 name = GroupChatSyncWaitPrefixProcessData.PrefixTypes.FROM_MINECRAFT.name,
@@ -119,7 +120,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
             } catch (e: Exception) {
                 bot.sendMessage(
                     chatId = group.chatId,
-                    text = config.group.features.chatSync.wrongPrefix.formatLang(
+                    text = config.feature.wrongPrefix.formatLang(
                         "error" to e.message.toString()
                     )
                 )
@@ -155,8 +156,8 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
                 )
             } else bot.sendMessage(
                 chatId = group.chatId,
-                text = if (msg.chat.isForum) config.group.features.chatSync.doneTopic
-                else config.group.features.chatSync.doneNoTopic,
+                text = if (msg.chat.isForum) config.feature.doneTopic
+                else config.feature.doneNoTopic,
                 replyParameters = TgReplyParameters(
                     msg.messageId
                 )

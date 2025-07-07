@@ -1,4 +1,4 @@
-package ru.kochkaev.zixamc.tgbridge.mixin;
+package ru.kochkaev.zixamc.easyauthintegration.mixin;
 
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.spongepowered.asm.mixin.Dynamic;

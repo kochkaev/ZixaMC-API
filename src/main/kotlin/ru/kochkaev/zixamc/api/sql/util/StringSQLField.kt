@@ -12,6 +12,7 @@ class StringSQLField(
     column = column,
     uniqueId = uniqueId,
     uniqueColumn = uniqueColumn,
+    type = String::class.java,
     setter = { ps, it -> ps.setString(1, it) },
     getter = { rs -> rs.getString(1) },
 )

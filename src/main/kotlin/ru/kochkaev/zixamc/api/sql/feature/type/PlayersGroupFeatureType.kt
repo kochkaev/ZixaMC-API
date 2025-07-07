@@ -2,7 +2,6 @@ package ru.kochkaev.zixamc.api.sql.feature.type
 
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.GroupCallback
-import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.FeatureGroupCallback
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.SetupFeatureCallback
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.Operations
 import ru.kochkaev.zixamc.api.sql.SQLCallback

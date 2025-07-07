@@ -22,7 +22,8 @@
     ]
   },
   "mixins": [
-    "zixamc.mixins.json"
+    "zixamc-chatsync.mixins.json",
+    "zixamc-easyauthintegration.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
