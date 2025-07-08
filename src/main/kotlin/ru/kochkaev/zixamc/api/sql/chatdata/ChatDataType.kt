@@ -1,10 +1,8 @@
 package ru.kochkaev.zixamc.api.sql.chatdata
 
 import com.google.gson.annotations.JsonAdapter
-import io.leangen.geantyref.TypeToken
 import ru.kochkaev.zixamc.api.config.GsonManager
 import ru.kochkaev.zixamc.api.config.serialize.ChatDataTypeAdapter
-import ru.kochkaev.zixamc.api.sql.SQLGroup
 import java.lang.reflect.Type
 
 @JsonAdapter(ChatDataTypeAdapter::class)

@@ -47,7 +47,6 @@ subprojects {
     apply(plugin = "kotlin")
     apply(plugin = "fabric-loom")
 
-    // Применяем настройки Loom только для основного проекта
     if (project.name == "main") {
         loom {
             splitEnvironmentSourceSets()

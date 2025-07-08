@@ -21,10 +21,7 @@
       "ru.kochkaev.zixamc.api.ZixaMCPreLaunch"
     ]
   },
-  "mixins": [
-    "zixamc-chatsync.mixins.json",
-    "zixamc-easyauthintegration.mixins.json"
-  ],
+  "mixins": [],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-language-kotlin": ">=${kotlin_loader_version}",

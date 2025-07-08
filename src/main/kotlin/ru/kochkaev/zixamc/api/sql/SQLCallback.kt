@@ -1,7 +1,6 @@
 package ru.kochkaev.zixamc.api.sql
 
 import com.google.gson.annotations.JsonAdapter
-import io.leangen.geantyref.TypeToken
 import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLCallbackAdapter

@@ -3,10 +3,7 @@ package ru.kochkaev.zixamc.api.sql.util
 import com.google.common.reflect.TypeToken
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.sql.MySQL
-import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
-import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
-import ru.kochkaev.zixamc.api.sql.feature.FeatureType
 
 class ChatDataSQLMap(
     sql: MySQL,

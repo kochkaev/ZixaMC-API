@@ -1,7 +1,6 @@
 package ru.kochkaev.zixamc.api.config.serialize
 
 import com.google.gson.*
-import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import java.lang.reflect.Type
 

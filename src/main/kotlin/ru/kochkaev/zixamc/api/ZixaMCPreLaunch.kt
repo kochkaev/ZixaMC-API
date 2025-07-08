@@ -37,7 +37,6 @@ import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
 import ru.kochkaev.zixamc.api.telegram.AdminPanel
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMember
 import ru.kochkaev.zixamc.api.telegram.Menu
-import ru.kochkaev.zixamc.chatsync.ChatSyncPreLaunch
 
 /**
  * @author kochkaev
@@ -75,7 +74,5 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
         TempConfig.temp.init()
 
         Initializer.startSQL()
-
-        ChatSyncPreLaunch().onPreLaunch()
     }
 }
