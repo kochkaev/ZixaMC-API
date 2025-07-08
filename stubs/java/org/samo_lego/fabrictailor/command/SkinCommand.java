@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 public class SkinCommand {
-    public static void setSkin(ServerPlayerEntity player, Supplier<Property> skinProvider) {
+    public static void setSkin(ServerPlayerEntity player, Supplier<Optional<Property>> skinProvider) {
         System.out.println("STUB!");
     }
 }

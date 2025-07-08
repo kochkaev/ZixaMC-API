@@ -40,6 +40,7 @@ import java.net.URL
 import java.net.URLConnection
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.util.Optional
 import java.util.Scanner
 import java.util.UUID
 import java.util.function.Supplier
@@ -318,7 +319,7 @@ object FabricTailorIntegration {
             val server = (FabricLoader.getInstance().gameInstance as MinecraftServer)
             val player = server.playerManager.getPlayer(nickname)
             if (player != null) {
-                SkinCommand.setSkin(player) { it }
+                SkinCommand.setSkin(player) { Optional.of(it) }
             } else {
 //                val profile = server.userCache?.findByName(nickname)?.getOrNull()
 //                return profile?.let { _ -> setSkin(profile) { it } } ?: SkinUploadResult.SET_ERROR
