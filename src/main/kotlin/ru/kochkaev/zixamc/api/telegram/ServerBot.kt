@@ -39,6 +39,7 @@ object ServerBot {
             bot.startPolling(coroutineScope)
 //            ZixaMCTGBridge.isServerBotLoaded = true
             ServerBotLogic.registerTelegramHandlers()
+            ServerBotEvents.SERVER_BOT_STARTED.invoker().onStarted(bot)
         }
         isInitialized = true
     }

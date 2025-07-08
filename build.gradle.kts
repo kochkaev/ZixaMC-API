@@ -24,8 +24,6 @@ plugins {
 }
 
 val kamlVersion = "0.56.0"
-val tgbridgeVersion = "0.5.0"
-val adventureVersion: String by project
 version = project.property("mod_version") as String
 group = project.property("maven_group") as String
 
@@ -113,6 +111,7 @@ dependencies {
 
     // Storage
     // LevelDB database
+    /*
     include(implementation("org.iq80.leveldb:leveldb:${project.property("leveldb_version")}")) {}
     include(implementation("org.iq80.leveldb:leveldb-api:${project.property("leveldb_version")}")) {}
 
@@ -120,6 +119,7 @@ dependencies {
     include(implementation("org.mongodb:mongodb-driver-sync:${project.property("mongodb_version")}")) {}
     include(implementation("org.mongodb:mongodb-driver-core:${project.property("mongodb_version")}")) {}
     include(implementation("org.mongodb:bson:${project.property("mongodb_version")}")) {}
+     */
 
     // MySQL driver
     include(implementation("com.mysql:mysql-connector-j:${project.property("mysql_version")}")) {}
@@ -140,7 +140,7 @@ dependencies {
         exclude(module = "kotlin-stdlib")
         exclude(module = "kotlinx-serialization-core")
     })
-
+/*
     // EasyAuth
     compileOnly("maven.modrinth:easyauth:${project.property("easyauth_version")}")
 //    compileOnly("maven.modrinth:easywhitelist:1.0.1")
@@ -161,21 +161,23 @@ dependencies {
     modImplementation("io.leangen.geantyref:geantyref:1.3.13")
     // JNA lib
     modImplementation("net.java.dev.jna:jna:5.13.0")
+ */
 
-    include(implementation("net.kyori:adventure-api:${adventureVersion}")!!)
-    include(implementation("net.kyori:adventure-key:${adventureVersion}")!!)
-    include(implementation("net.kyori:adventure-text-serializer-gson:${adventureVersion}") {
+    include(implementation("net.kyori:adventure-api:${project.property("adventure_version")}")!!)
+    include(implementation("net.kyori:adventure-key:${project.property("adventure_version")}")!!)
+    include(implementation("net.kyori:adventure-text-serializer-gson:${project.property("adventure_version")}") {
         exclude(module = "gson")
     })
-    include(implementation("net.kyori:adventure-text-serializer-json:${adventureVersion}") {
+    include(implementation("net.kyori:adventure-text-serializer-json:${project.property("adventure_version")}") {
         exclude(module = "gson")
     })
-    include(implementation("net.kyori:adventure-text-minimessage:${adventureVersion}")!!)
+    include(implementation("net.kyori:adventure-text-minimessage:${project.property("adventure_version")}")!!)
     include(implementation("net.kyori:examination-api:1.3.0")!!)
     include(implementation("net.kyori:examination-string:1.3.0")!!)
     include(implementation("net.kyori:option:1.0.0")!!)
 
     compileOnly("com.google.code.gson:gson:2.10.1")
+    /*
     modImplementation("maven.modrinth:vanish:${project.property("vanish_version")}")
     modImplementation("eu.pb4:player-data-api:${project.property("player_data_api_version")}")
     modImplementation("me.lucko:fabric-permissions-api:${project.property("fabric_permissions_api_version")}")
@@ -183,6 +185,7 @@ dependencies {
     modImplementation("eu.pb4:placeholder-api:${project.property("placeholder_api_version")}")
 
     modImplementation("maven.modrinth:audioplayer:${project.property("audioplayer_version")}")
+     */
 //
 //    modImplementation("maven.modrinth:fabrictailor:2.5.0") {
 //        exclude(group = "net.fabricmc.fabric-loader")

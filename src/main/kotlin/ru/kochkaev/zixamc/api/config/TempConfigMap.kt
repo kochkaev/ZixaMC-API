@@ -1,6 +1,6 @@
 package ru.kochkaev.zixamc.api.config
 
-import io.leangen.geantyref.TypeToken
+import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.lang.reflect.Type
 
