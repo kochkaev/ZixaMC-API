@@ -22,7 +22,7 @@ object RequestsLogic {
         val request = user.data.getCasted(RequestsChatDataType)?.firstOrNull { RequestStatus.getAllPending().contains(it.status) } ?: return false
         RequestsChatDataType.editRequest(request.apply { this.status = RequestStatus.CANCELED }, user)
         bot.sendMessage(
-            chatId = user.userId,
+            chatId = user.id,
             text = config.user.lang.event.onCanceled.formatLang("nickname" to (user.nickname?:"")),
             replyMarkup = TgMenu(listOf(listOf(
                 SQLCallback.of(
@@ -64,7 +64,7 @@ object RequestsLogic {
         val requests = user.data.getCasted(RequestsChatDataType)?:listOf()
         user.data.set(RequestsChatDataType, requests.filter { it.status == RequestStatus.CREATING })
         bot.sendMessage(
-            chatId = user.userId,
+            chatId = user.id,
             text = config.user.lang.event.onCanceled,
             replyMarkup = TgMenu(listOf(listOf(
                 SQLCallback.of(
@@ -80,7 +80,7 @@ object RequestsLogic {
         when (user.data.getCasted(RequestsChatDataType)?.firstOrNull { RequestStatus.getAllPendingAndCreating().contains(it.status) }?.status) {
             RequestStatus.CREATING -> {
                 bot.sendMessage(
-                    chatId = user.userId,
+                    chatId = user.id,
                     text = config.user.lang.creating.youAreNowCreatingRequest,
                     replyMarkup = TgMenu(listOf(listOf(
                         SQLCallback.of(
@@ -94,7 +94,7 @@ object RequestsLogic {
             }
             RequestStatus.MODERATING, RequestStatus.PENDING -> {
                 bot.sendMessage(
-                    chatId = user.userId,
+                    chatId = user.id,
                     text = config.user.lang.creating.youHavePendingRequest.formatLang("nickname" to (user.nickname?:"")),
                     replyMarkup = TgMenu(listOf(listOf(
                         SQLCallback.of(
@@ -110,13 +110,13 @@ object RequestsLogic {
         }
         if (user.accountType.isPlayer) {
             bot.sendMessage(
-                chatId = user.userId,
+                chatId = user.id,
                 text = config.user.lang.creating.youAreNowPlayer.formatLang("nickname" to (user.nickname?:"")),
             )
             return false
         }
         val forReplyMessage = if (user.agreedWithRules) bot.sendMessage(
-            chatId = user.userId,
+            chatId = user.id,
             text = config.user.lang.creating.needNickname,
             replyMarkup = TgForceReply(
                 true,
@@ -124,7 +124,7 @@ object RequestsLogic {
             )
         )
         else bot.sendMessage(
-            chatId = user.userId,
+            chatId = user.id,
             text = config.user.lang.creating.needAgreeWithRules,
             replyMarkup = TgMenu(listOf(listOf(
                 SQLCallback.of(
@@ -170,7 +170,7 @@ object RequestsLogic {
         allowedAccountTypes: List<AccountType> = listOf(AccountType.ADMIN),
         allowedIfSpendByItself: Boolean = false,
     ): Boolean =
-        (user.accountType in allowedAccountTypes || (allowedIfSpendByItself && message?.from?.id==user.userId))
+        (user.accountType in allowedAccountTypes || (allowedIfSpendByItself && message?.from?.id==user.id))
 
     fun matchEntityFromUpdateServerPlayerStatusCommand(msg: TgMessage?, allowedIfSpendByItself: Boolean = false): SQLUser? {
         if (msg == null) return null
@@ -293,13 +293,13 @@ object RequestsLogic {
             replyParameters = TgReplyParameters(request.pollMessageId!!.toInt()),
         )
         val newMessage = bot.sendMessage(
-            chatId = user.userId,
+            chatId = user.id,
             text = message4User,
             replyParameters = TgReplyParameters(request.messageId.toInt()),
             protectContent = false,
         )
         bot.editMessageReplyMarkup(
-            chatId = user.userId,
+            chatId = user.id,
             messageId = request.messageId.toInt(),
             replyMarkup = TgReplyMarkup()
         )

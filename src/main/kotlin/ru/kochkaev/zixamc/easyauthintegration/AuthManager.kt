@@ -47,7 +47,7 @@ object AuthManager {
         player.sendMessage(config.langMinecraft.onApprove.getMinecraft())
         try {
             bot.sendMessage(
-                chatId = entity.userId,
+                chatId = entity.id,
                 text = config.langTelegram.onApprove.formatLang("nickname" to nickname),
             )
         } catch (_: Exception) {}
@@ -60,7 +60,7 @@ object AuthManager {
         data.loginTries = 0L
         try {
             bot.sendMessage(
-                chatId = entity.userId,
+                chatId = entity.id,
                 text = config.langTelegram.onDeny.formatLang("nickname" to nickname),
             )
         } catch (_: Exception) {}
@@ -77,7 +77,7 @@ object AuthManager {
         player.sendMessage(config.langMinecraft.onJoinTip.getMinecraft())
         try {
             val message = bot.sendMessage(
-                chatId = entity.userId,
+                chatId = entity.id,
                 text = config.langTelegram.onJoinTip.formatLang("nickname" to nickname),
                 replyMarkup = TgInlineKeyboardMarkup(
                     listOf(
@@ -111,7 +111,7 @@ object AuthManager {
         entity.tempArray.get()?.forEach {
             try {
                 bot.editMessageReplyMarkup(
-                    chatId = entity.userId,
+                    chatId = entity.id,
                     messageId = Integer.parseInt(it),
                     replyMarkup = TgReplyMarkup(),
                 )

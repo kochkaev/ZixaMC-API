@@ -11,6 +11,8 @@ import java.sql.*
  */
 abstract class MySQL {
 
+    // TODO: Add local database support
+
     companion object {
         @JvmStatic
         var MySQLConnection: Connection? = null

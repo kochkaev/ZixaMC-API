@@ -38,7 +38,7 @@ object Menu {
         data = MenuCallbackData.of(if (newMessage) $$"back$newMessage" else "back"),
         canExecute = CallbackCanExecute(
             statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-            users = listOf(user.userId),
+            users = listOf(user.id),
             display = user.nickname ?: "",
         )
     )
@@ -83,6 +83,7 @@ object Menu {
                     )),
                     menuCallbackProcessor = { cbq, sql ->
                         if (sql.data?.operation == callbackName)
+                            @Suppress("UNCHECKED_CAST")
                             processor(cbq, sql as SQLCallback<MenuCallbackData<T>>)
                         else TgCBHandlerResult.SUCCESS
                     },
@@ -92,7 +93,7 @@ object Menu {
         }
     }
 
-    suspend fun sendMenu(chatId: Long, userId: Long?, replyTo: Int? = null, newMessage: Boolean = false, messageId: Int? = null) {
+    suspend fun sendMenu(chatId: Long, userId: Long?, messageId: Int? = null, newMessage: Boolean = false) {
         val chat = SQLChat.get(chatId)
         val user = userId?.let { SQLUser.get(it) }
         ProcessTypes.entries.values
@@ -131,7 +132,7 @@ object Menu {
                 chatId = chatId,
                 text = text,
                 replyMarkup = replyMarkup,
-                replyParameters = replyTo?.let { TgReplyParameters(it) },
+                replyParameters = messageId?.let { TgReplyParameters(it) },
             )
             else {
                 ServerBot.bot.editMessageText(
@@ -150,13 +151,12 @@ object Menu {
             ServerBot.bot.sendMessage(
                 chatId = chatId,
                 text = ServerBot.config.menu.messageNotPlayer,
-                replyParameters = replyTo?.let { TgReplyParameters(it) },
+                replyParameters = messageId?.let { TgReplyParameters(it) },
             )
     }
     suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<MenuCallbackData<*>>): TgCBHandlerResult {
-//        if (cbq.data == null || !cbq.data.startsWith("menu")) return
-        val entity = SQLUser.get(cbq.from.id)?:return TgCBHandlerResult.SUCCESS
-        if (!entity.hasProtectedLevel(AccountType.PLAYER)) {
+        val user = SQLUser.get(cbq.from.id)
+        if (user == null || !user.hasProtectedLevel(AccountType.PLAYER)) {
             ServerBot.bot.editMessageText(
                 chatId = cbq.message.chat.id,
                 messageId = cbq.message.messageId,
@@ -164,13 +164,13 @@ object Menu {
             )
             return TgCBHandlerResult.DELETE_MARKUP
         }
-        when (sql.data!!.operation /*cbq.data*/) {
+        when (sql.data!!.operation) {
             "back" -> {
-                sendMenu(cbq.message.chat.id, cbq.from.id, null, false, cbq.message.messageId)
+                sendMenu(cbq.message.chat.id, cbq.from.id, cbq.message.messageId, false)
                 return TgCBHandlerResult.DELETE_LINKED
             }
             $$"back$newMessage" -> {
-                sendMenu(cbq.message.chat.id, cbq.from.id, cbq.message.messageId, true, null)
+                sendMenu(cbq.message.chat.id, cbq.from.id, cbq.message.messageId, true)
                 return TgCBHandlerResult.DELETE_MARKUP
             }
 //            "info" -> {
@@ -210,17 +210,9 @@ object Menu {
         }
         return TgCBHandlerResult.DELETE_MARKUP
     }
-//    suspend fun onMessage(msg: TgMessage) {
-//        runBlocking {
-//            val chat = SQLChat.get(msg.chat.id)
-//            if (chat != null && chat.hasProtectedLevel(AccountType.PLAYER))
-//                SQLProcess.get(chat.id, ProcessTypes.MENU_AUDIO_PLAYER_UPLOAD)?.also {
-//
-//        }
-//    }
 
     val integrationTypes = hashMapOf<String, Class<*>>()
-    open class MenuCallbackData <T> private constructor(
+    class MenuCallbackData <T> private constructor(
         val operation: String,
         val additionalType: String,
         val additional: T,

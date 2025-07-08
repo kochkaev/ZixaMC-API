@@ -12,10 +12,8 @@ import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
 import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult.Companion.DELETE_LINKED
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
-import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.chatsync.Config.Companion.config
-import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.getSettingsText
 import ru.kochkaev.zixamc.api.sql.feature.TopicFeatureType
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
@@ -27,7 +25,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
     tgDisplayName = { config.feature.display },
     tgDescription = { config.feature.description },
     tgOnDone = {
-        if (bot.getChat(it.chatId).isForum)
+        if (bot.getChat(it.id).isForum)
             config.feature.doneTopic
         else config.feature.doneNoTopic
     },
@@ -60,24 +58,24 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
             ).build()
         )))
         val message = bot.sendMessage(
-            chatId = group.chatId,
+            chatId = group.id,
             text = config.feature.prefixNeeded.formatLang(
                 "groupName" to group.name.toString(),
             ),
             replyParameters = replyTo?.let { TgReplyParameters(it) },
             replyMarkup = menu
         )
-        SQLProcess.get(group.chatId, ChatSyncWaitingPrefixProcess)?.apply {
+        SQLProcess.get(group.id, ChatSyncWaitingPrefixProcess)?.apply {
             this.data?.messageId?.also {
                 try { bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = it,
                     replyMarkup = TgReplyMarkup()
                 ) } catch (_: Exception) {}
-                SQLCallback.dropAll(group.chatId, it)
+                SQLCallback.dropAll(group.id, it)
             }
         } ?.drop()
-        SQLProcess.of(ChatSyncWaitingPrefixProcess, GroupChatSyncWaitPrefixProcessData(topicId, message.messageId, prefixType)).pull(group.chatId)
+        SQLProcess.of(ChatSyncWaitingPrefixProcess, GroupChatSyncWaitPrefixProcessData(topicId, message.messageId, prefixType)).pull(group.id)
     }
 
     override fun getEditorMarkup(cbq: TgCallbackQuery, group: SQLGroup): ArrayList<List<SQLCallback.Companion.Builder<out CallbackData>>> {
@@ -107,7 +105,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
         val group = SQLGroup.get(msg.chat.id) ?: return
         if (msg.replyToMessage?.from?.id == bot.me.id && msg.from != null &&
             listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
-                bot.getChatMember(group.chatId, msg.from.id).status
+                bot.getChatMember(group.id, msg.from.id).status
             )
         ) {
 //            val data = processData as GroupChatSyncWaitPrefixProcessData
@@ -119,7 +117,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
                 mm.get()
             } catch (e: Exception) {
                 bot.sendMessage(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     text = config.feature.wrongPrefix.formatLang(
                         "error" to e.message.toString()
                     )
@@ -141,16 +139,16 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
                 }
             )
             try { bot.editMessageReplyMarkup(
-                chatId = group.chatId,
+                chatId = group.id,
                 messageId = data.messageId,
                 replyMarkup = TgReplyMarkup()
             ) } catch (_: Exception) {}
-            SQLCallback.dropAll(group.chatId, data.messageId)
+            SQLCallback.dropAll(group.id, data.messageId)
             process.drop()
             if (isNotNew) {
                 ServerBotGroup.sendSettings(group, msg.messageId)
             } else bot.sendMessage(
-                chatId = group.chatId,
+                chatId = group.id,
                 text = if (msg.chat.isForum) config.feature.doneTopic
                 else config.feature.doneNoTopic,
                 replyParameters = TgReplyParameters(

@@ -29,12 +29,12 @@ open class FeatureType<R: FeatureData>(
 ) {
     open suspend fun setUp(cbq: TgCallbackQuery, group: SQLGroup): TgCBHandlerResult {
         bot.editMessageText(
-            chatId = group.chatId,
+            chatId = group.id,
             messageId = cbq.message.messageId,
             text = tgDescription()
         )
         bot.editMessageReplyMarkup(
-            chatId = group.chatId,
+            chatId = group.id,
             messageId = cbq.message.messageId,
             replyMarkup = TgMenu(listOf(
                 listOf(SQLCallback.of(
@@ -62,7 +62,7 @@ open class FeatureType<R: FeatureData>(
         if (!group.features.contains(this)) {
             group.features.set(this, getDefault(group))
             bot.sendMessage(
-                chatId = group.chatId,
+                chatId = group.id,
                 text = tgOnDone(group),
                 replyParameters = replyTo?.let { TgReplyParameters(it) }
             )
@@ -76,7 +76,7 @@ open class FeatureType<R: FeatureData>(
         getEditorMarkup(cbq, group).also {
             if (it.isEmpty()) return TgCBHandlerResult.SUCCESS
             try { bot.editMessageText(
-                chatId = group.chatId,
+                chatId = group.id,
                 messageId = cbq.message.messageId,
                 text = config.group.settings.featureDescription.formatLang(
                     "feature" to tgDisplayName(),
@@ -84,7 +84,7 @@ open class FeatureType<R: FeatureData>(
                 )
             ) } catch (_: Exception) {}
             try { bot.editMessageReplyMarkup(
-                chatId = group.chatId,
+                chatId = group.id,
                 messageId = cbq.message.messageId,
                 replyMarkup = TgMenu(it),
             ) } catch (_: Exception) {}

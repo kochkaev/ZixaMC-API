@@ -3,7 +3,6 @@ package ru.kochkaev.zixamc.requests
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
-import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.requests.RequestsBot.bot
 import ru.kochkaev.zixamc.requests.RequestsBot.config
 import ru.kochkaev.zixamc.api.sql.data.AccountType
@@ -49,7 +48,7 @@ object RequestsBotCommands {
         } else {
             bot.sendMessage(
                 chatId = msg.chat.id,
-                text = config.target.lang.event.onPromote.formatLang("nickname" to (user.nickname?:user.userId.toString())),
+                text = config.target.lang.event.onPromote.formatLang("nickname" to (user.nickname?:user.id.toString())),
                 replyParameters = TgReplyParameters(msg.messageId),
             )
             return true
@@ -99,9 +98,9 @@ object RequestsBotCommands {
             additionalConsumer = { hasError, entity ->
                 if (!hasError) SQLGroup.getAllWithFeature(FeatureTypes.PLAYERS_GROUP).forEach {
                     try {
-                        bot.unbanChatMember(it.chatId, entity!!.userId, true)
+                        bot.unbanChatMember(it.id, entity!!.id, true)
                     } catch (_: Exception) { try {
-                        ServerBot.bot.unbanChatMember(it.chatId, entity!!.userId, true)
+                        ServerBot.bot.unbanChatMember(it.id, entity!!.id, true)
                     } catch (_: Exception) {} }
                 }
             },
@@ -144,7 +143,7 @@ object RequestsBotCommands {
             val text4Target = config.target.lang.event.onRestrict
             if (text4Target.isNotEmpty()) bot.sendMessage(
                 chatId = message.chat.id,
-                text = text4Target.formatLang("nickname" to (user!!.nickname ?: user.userId.toString())),
+                text = text4Target.formatLang("nickname" to (user!!.nickname ?: user.id.toString())),
                 replyParameters = TgReplyParameters(message.messageId),
             )
             var newMessage: TgMessage? = null
@@ -152,8 +151,8 @@ object RequestsBotCommands {
                 val text4User = config.user.lang.event.onRestrict
                 if (text4User.isNotEmpty()) {
                     newMessage = bot.sendMessage(
-                        chatId = user!!.userId,
-                        text = text4User.formatLang("nickname" to (user.nickname ?: user.userId.toString())),
+                        chatId = user!!.id,
+                        text = text4User.formatLang("nickname" to (user.nickname ?: user.id.toString())),
                     )
                 }
             } catch (_: Exception) {}
@@ -162,7 +161,7 @@ object RequestsBotCommands {
             try {
                 requests.filter { it.status == RequestStatus.ACCEPTED } .forEach {
                     bot.editMessageReplyMarkup(
-                        chatId = user.userId,
+                        chatId = user.id,
                         messageId = it.messageId.toInt(),
                         replyMarkup = TgReplyMarkup()
                     )

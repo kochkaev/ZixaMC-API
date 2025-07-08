@@ -82,12 +82,12 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
         if (cbd.additional.arg.isEmpty()) when (cbd.additional.field) {
             "autoAccept" -> {
                 bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = config.group.features.playersGroup.autoAccept
                 )
                 bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(
@@ -135,12 +135,12 @@ object PlayersGroupFeatureType: FeatureType<PlayersGroupFeatureData>(
             }
             "autoRemove" -> {
                 bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = config.group.features.playersGroup.autoRemove
                 )
                 bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(

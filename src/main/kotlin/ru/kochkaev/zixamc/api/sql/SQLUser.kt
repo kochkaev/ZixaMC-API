@@ -18,7 +18,6 @@ import ru.kochkaev.zixamc.api.sql.util.AbstractSQLField
 import ru.kochkaev.zixamc.api.sql.util.BooleanSQLField
 import ru.kochkaev.zixamc.api.sql.util.NullableStringSQLField
 import ru.kochkaev.zixamc.api.sql.util.StringSQLArray
-import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.sql.util.ChatDataSQLMap
 import ru.kochkaev.zixamc.api.telegram.BotLogic
@@ -27,21 +26,21 @@ import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
 import java.sql.SQLException
 
 @JsonAdapter(SQLUserAdapter::class)
-class SQLUser private constructor(val userId: Long): SQLChat(userId) {
+class SQLUser private constructor(id: Long): SQLChat(id) {
 
-    private val nicknameField = NullableStringSQLField(SQLUser, "nickname", userId, "user_id")
+    private val nicknameField = NullableStringSQLField(SQLUser, "nickname", id, "user_id")
     var nickname: String?
         get() = nicknameField.get()
         set(nickname) { nicknameField.set(nickname) }
-    val nicknames = StringSQLArray(SQLUser, "nicknames", userId, "user_id")
-    private val accountTypeField = object: AbstractSQLField<AccountType>(SQLUser, "account_type", userId, "user_id", AccountType::class.java,
+    val nicknames = StringSQLArray(SQLUser, "nicknames", id, "user_id")
+    private val accountTypeField = object: AbstractSQLField<AccountType>(SQLUser, "account_type", id, "user_id", AccountType::class.java,
         getter = { rs -> AccountType.parse(rs.getInt(1)) },
         setter = { ps, it -> ps.setInt(1, it.id) }
     ) {
         override fun set(value: AccountType): Boolean {
             val original = super.set(value)
             if (original && !value.isHigherThanOrEqual(AccountType.PLAYER)) Initializer.coroutineScope.launch {
-                SQLGroup.getAllWithUser(userId).forEach { chat ->
+                SQLGroup.getAllWithUser(id).forEach { chat ->
                     if (chat.features.getCasted(FeatureTypes.PLAYERS_GROUP)?.autoRemove == true)
                         for (it in BotLogic.bots) try {
                             it.banChatMember(chat.id, id)
@@ -64,16 +63,16 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
     var accountType: AccountType
         get() = accountTypeField.get() ?: AccountType.UNKNOWN
         set(accountType) { accountTypeField.set(accountType) }
-    val tempArray = StringSQLArray(SQLUser, "temp_array", userId, "user_id")
-    private val agreedWithRulesField = BooleanSQLField(SQLUser, "agreed_with_rules", userId, "user_id")
+    val tempArray = StringSQLArray(SQLUser, "temp_array", id, "user_id")
+    private val agreedWithRulesField = BooleanSQLField(SQLUser, "agreed_with_rules", id, "user_id")
     var agreedWithRules: Boolean
         get() = agreedWithRulesField.get() ?: false
         set(agreedWithRules) { agreedWithRulesField.set(agreedWithRules) }
-    private val isRestrictedField = BooleanSQLField(SQLUser, "is_restricted", userId, "user_id")
+    private val isRestrictedField = BooleanSQLField(SQLUser, "is_restricted", id, "user_id")
     var isRestricted: Boolean
         get() = isRestrictedField.get() ?: false
         set(isRestricted) { isRestrictedField.set(isRestricted) }
-    override val data = ChatDataSQLMap(SQLUser, "data", userId, "user_id")
+    override val data = ChatDataSQLMap(SQLUser, "data", id, "user_id")
 
     companion object: MySQL() {
         override val tableName: String = config.usersTable
@@ -211,15 +210,15 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
             }
     }
 
-    fun isInTable() = exists(userId)
-    fun addToTable() = createDefault(userId)
+    fun isInTable() = exists(id)
+    fun addToTable() = createDefault(id)
 
     fun canTakeNickname(nickname: String) =
         try {
             MySQL.reConnect()
             val preparedStatement =
                 MySQL.MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE user_id != ? AND (nickname = ? OR JSON_CONTAINS(nicknames, JSON_QUOTE(?), '$'));")
-            preparedStatement.setLong(1, userId)
+            preparedStatement.setLong(1, id)
             preparedStatement.setString(2, nickname)
             preparedStatement.setString(3, nickname)
             !preparedStatement.executeQuery().next()
@@ -279,7 +278,7 @@ class SQLUser private constructor(val userId: Long): SQLChat(userId) {
         for(it in BotLogic.bots) {
             try {
                 it.sendMessage(
-                    chatId = userId,
+                    chatId = id,
                     text = message,
                     replyMarkup = menu,
                 )

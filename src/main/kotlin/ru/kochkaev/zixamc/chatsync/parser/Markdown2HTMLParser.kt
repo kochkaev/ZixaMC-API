@@ -1,6 +1,5 @@
 package ru.kochkaev.zixamc.chatsync.parser
 
-import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.chatsync.parser.markdown.RegularNode
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.chatsync.Config
@@ -127,7 +126,7 @@ object Markdown2HTMLParser {
             val mention = it.value
             val nickname = mention.replace("@", "")
             if (SQLUser.exists(nickname))
-                "<a href=\"tg://user?id=${SQLUser.get(nickname)?.userId}\">$mention</a>"
+                "<a href=\"tg://user?id=${SQLUser.get(nickname)?.id}\">$mention</a>"
             else mention
         }
 

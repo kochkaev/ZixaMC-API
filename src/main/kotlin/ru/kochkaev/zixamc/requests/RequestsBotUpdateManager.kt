@@ -4,7 +4,6 @@ import com.google.gson.annotations.SerializedName
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
-import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.requests.RequestsBot.bot
 import ru.kochkaev.zixamc.requests.RequestsBot.config
 import ru.kochkaev.zixamc.api.telegram.model.*
@@ -14,7 +13,6 @@ import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.api.telegram.ServerBot
 
 object RequestsBotUpdateManager {
     suspend fun onTelegramMessage(msg: TgMessage) {
@@ -132,7 +130,7 @@ object RequestsBotUpdateManager {
             val user = SQLUser.getByTempArray(replied.messageId.toString())?:return
             if (!user.tempArray.contains(replied.messageId.toString()) || !(user.data.getCasted(RequestsChatDataType)?:listOf()).any { RequestStatus.getAllPending().contains(it.status)}) return
             bot.forwardMessage(
-                chatId = user.userId,
+                chatId = user.id,
                 fromChatId = msg.chat.id,
                 messageId = msg.messageId,
             )
@@ -168,19 +166,19 @@ object RequestsBotUpdateManager {
                         listOf(SQLCallback.of(
                             display = ConfigManager.config.general.buttons.confirm,
                             type = "requests",
-                            data = RequestCallback(Operations.CONFIRM_REVOKE_AGREE_WITH_RULES, user.userId)
+                            data = RequestCallback(Operations.CONFIRM_REVOKE_AGREE_WITH_RULES, user.id)
                         )),
                         listOf(SQLCallback.of(
                             display = ConfigManager.config.general.buttons.cancel,
                             type = "requests",
-                            data = RequestCallback(Operations.SUCCESS, user.userId)
+                            data = RequestCallback(Operations.SUCCESS, user.id)
                         )),
                     ))
                 )
                 return TgCBHandlerResult.SUCCESS
             }
             Operations.CONFIRM_REVOKE_AGREE_WITH_RULES -> {
-                if (sql.data?.userId != user.userId) {
+                if (sql.data?.userId != user.id) {
                     bot.answerCallbackQuery(
                         callbackQueryId = cbq.id,
                         text = ConfigManager.config.general.rules.thatButtonFor.formatLang(
@@ -222,11 +220,11 @@ object RequestsBotUpdateManager {
                 val forwarded = bot.forwardMessage(
                     chatId = config.forModerator.chatId,
                     messageThreadId = config.forModerator.topicId,
-                    fromChatId = user.userId,
+                    fromChatId = user.id,
                     messageId = request.messageId.toInt()
                 )
                 val messageInChatWithUser = bot.sendMessage(
-                    chatId = user.userId,
+                    chatId = user.id,
                     text = config.user.lang.event.onSend.formatLang("nickname" to (request.nickname?:"")),
                     replyParameters = TgReplyParameters(cbq.message.messageId),
                     replyMarkup = TgMenu(listOf(listOf(
@@ -304,13 +302,13 @@ object RequestsBotUpdateManager {
                 requester.tempArray.add(poll.messageId.toString())
                 bot.pinMessage(config.target.chatId, forwardedMessage.messageId.toLong(), true)
                 bot.editMessageReplyMarkup(
-                    chatId = requester.userId,
+                    chatId = requester.id,
                     messageId = request.messageId.toInt(),
                     replyMarkup = TgReplyMarkup()
                 )
-                SQLCallback.getAll(requester.userId, request.messageId.toInt()).forEach { it.drop() }
+                SQLCallback.getAll(requester.id, request.messageId.toInt()).forEach { it.drop() }
                 val messageInChatWithUser = bot.sendMessage(
-                    chatId = requester.userId,
+                    chatId = requester.id,
                     text = config.user.lang.event.onApprove.formatLang("nickname" to (request.nickname?:"")),
                     replyParameters = TgReplyParameters(request.messageId.toInt()),
                     replyMarkup = TgMenu(listOf(listOf(
@@ -357,13 +355,13 @@ object RequestsBotUpdateManager {
                 }
                 val request = requester.data.getCasted(RequestsChatDataType)!!.first { it.status == RequestStatus.MODERATING }
                 bot.editMessageReplyMarkup(
-                    chatId = requester.userId,
+                    chatId = requester.id,
                     messageId = request.messageId.toInt(),
                     replyMarkup = TgReplyMarkup()
                 )
-                SQLCallback.getAll(requester.userId, request.messageId.toInt()).forEach { it.drop() }
+                SQLCallback.getAll(requester.id, request.messageId.toInt()).forEach { it.drop() }
                 val messageInChatWithUser = bot.sendMessage(
-                    chatId = requester.userId,
+                    chatId = requester.id,
                     text = config.user.lang.event.onDeny.formatLang("nickname" to (request.nickname?:"")),
                     replyParameters = TgReplyParameters(request.messageId.toInt()),
                     replyMarkup = TgMenu(listOf(listOf(
@@ -397,8 +395,8 @@ object RequestsBotUpdateManager {
                     val text4User = config.user.lang.event.onRestrict
                     if (text4User.isNotEmpty()) {
                         bot.sendMessage(
-                            chatId = requester.userId,
-                            text = text4User.formatLang("nickname" to (user.nickname ?: user.userId.toString())),
+                            chatId = requester.id,
+                            text = text4User.formatLang("nickname" to (user.nickname ?: user.id.toString())),
                         )
                     }
                 } catch (_: Exception) {}
@@ -414,7 +412,7 @@ object RequestsBotUpdateManager {
                     it.data.getCasted(RequestsChatDataType)?.any { it1 -> it1.status == RequestStatus.PENDING && it1.moderationMessageId?.toInt() == cbq.message.messageId } == true
                 }
                 val request = userEntity.data.getCasted(RequestsChatDataType)!!.first { it.status == RequestStatus.PENDING }
-                SQLCallback.getAll(userEntity.userId, request.messageId.toInt()).forEach { it.drop() }
+                SQLCallback.getAll(userEntity.id, request.messageId.toInt()).forEach { it.drop() }
                 val isAccepted = bot.stopPoll(
                     chatId = config.target.chatId,
                     messageId = request.pollMessageId?.toInt()?:return TgCBHandlerResult.SUCCESS
@@ -429,7 +427,7 @@ object RequestsBotUpdateManager {
                 )
             }
             Operations.SUCCESS -> {
-                if (sql.data?.userId != user.userId) {
+                if (sql.data?.userId != user.id) {
                     bot.answerCallbackQuery(
                         callbackQueryId = cbq.id,
                         text = ConfigManager.config.general.rules.thatButtonFor.formatLang(

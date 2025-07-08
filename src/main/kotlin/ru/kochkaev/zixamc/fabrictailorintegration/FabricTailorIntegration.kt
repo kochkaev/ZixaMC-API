@@ -19,7 +19,6 @@ import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
 import ru.kochkaev.zixamc.api.sql.process.ProcessData
-import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
 import ru.kochkaev.zixamc.api.telegram.Menu
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.api.telegram.model.ITgMenuButton
@@ -99,7 +98,7 @@ object FabricTailorIntegration {
                                 ),
                                 canExecute = CallbackCanExecute(
                                     statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-                                    users = listOf(user.userId),
+                                    users = listOf(user.id),
                                     display = user.nickname ?: "",
                                 )
                             )
@@ -134,7 +133,7 @@ object FabricTailorIntegration {
                                 ),
                                 canExecute = CallbackCanExecute(
                                     statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-                                    users = listOf(user.userId),
+                                    users = listOf(user.id),
                                     display = user.nickname ?: "",
                                 )
                             )
@@ -153,7 +152,7 @@ object FabricTailorIntegration {
                                 ),
                                 canExecute = CallbackCanExecute(
                                     statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-                                    users = listOf(user.userId),
+                                    users = listOf(user.id),
                                     display = user.nickname ?: "",
                                 )
                             )
@@ -184,7 +183,7 @@ object FabricTailorIntegration {
                                 ),
                                 canExecute = CallbackCanExecute(
                                     statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-                                    users = listOf(user.userId),
+                                    users = listOf(user.id),
                                     display = user.nickname ?: "",
                                 )
                             ).build()
@@ -255,7 +254,7 @@ object FabricTailorIntegration {
                             ),
                             canExecute = CallbackCanExecute(
                                 statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-                                users = listOf(user.userId),
+                                users = listOf(user.id),
                                 display = user.nickname ?: "",
                             )
                         ).build()))
@@ -305,7 +304,7 @@ object FabricTailorIntegration {
                             ),
                             canExecute = CallbackCanExecute(
                                 statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-                                users = listOf(user.userId),
+                                users = listOf(user.id),
                                 display = user.nickname ?: "",
                             )
                         ).build()))
@@ -328,7 +327,7 @@ object FabricTailorIntegration {
                         ),
                         canExecute = CallbackCanExecute(
                             statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
-                            users = listOf(user.userId),
+                            users = listOf(user.id),
                             display = user.nickname ?: "",
                         )
                     ).build()))

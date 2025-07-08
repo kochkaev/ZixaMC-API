@@ -2,7 +2,6 @@ package ru.kochkaev.zixamc.requests
 
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.data.NewProtectedData
-import ru.kochkaev.zixamc.api.telegram.BotLogic
 import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountData
@@ -51,7 +50,7 @@ object RequestsCommandLogic {
         if (!errorDueExecuting) {
             if (text4Target!=null) bot.sendMessage(
                 chatId = config.target.chatId,
-                text = text4Target.formatLang("nickname" to (user?.nickname ?: user?.userId.toString())),
+                text = text4Target.formatLang("nickname" to (user?.nickname ?: user?.id.toString())),
                 replyParameters = if (messageForReplyId!=null) TgReplyParameters(
                     messageForReplyId
                 ) else null,
@@ -60,8 +59,8 @@ object RequestsCommandLogic {
             try {
                 if (text4User!=null) {
                     newMessage = bot.sendMessage(
-                        chatId = user!!.userId,
-                        text = text4User.formatLang("nickname" to (user.nickname ?: user.userId.toString())),
+                        chatId = user!!.id,
+                        text = text4User.formatLang("nickname" to (user.nickname ?: user.id.toString())),
                         replyMarkup = replyMarkup4Message,
                         protectContent = protectContentInMessage,
                     )
@@ -77,7 +76,7 @@ object RequestsCommandLogic {
                 if (removePreviousTgReplyMarkup)
                     user!!.data.getCasted(RequestsChatDataType)?.filter { it.status == RequestStatus.ACCEPTED } ?.forEach {
                         bot.editMessageReplyMarkup(
-                            chatId = user.userId,
+                            chatId = user.id,
                             messageId = it.messageId.toInt(),
                             replyMarkup = TgReplyMarkup()
                         )
@@ -116,13 +115,13 @@ object RequestsCommandLogic {
             replyParameters = TgReplyParameters(replied.messageId),
         )
         val newMessage = bot.sendMessage(
-            chatId = user.userId,
+            chatId = user.id,
             text = message4User,
             replyParameters = TgReplyParameters(request.messageId.toInt()),
             protectContent = false,
         )
         bot.editMessageReplyMarkup(
-            chatId = user.userId,
+            chatId = user.id,
             messageId = request.messageId.toInt(),
             replyMarkup = TgReplyMarkup()
         )

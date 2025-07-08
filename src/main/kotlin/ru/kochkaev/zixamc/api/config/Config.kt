@@ -10,7 +10,6 @@ data class Config (
     val general: GeneralConfig = GeneralConfig(),
     val mySQL: ConfigSQL = ConfigSQL(),
     val serverBot: ServerBotDataClass = ServerBotDataClass(),
-    val tmp: TempConfig = TempConfig(),
 ) {
     data class GeneralConfig (
         val serverIP: String = "",
@@ -24,7 +23,7 @@ data class Config (
         )
         data class RulesLang(
             val updated4player: String = "Правила сервера были обновлены!\n» <a href=\"https://teletype.in/@zixamc/rules-general\">Ознакомиться</a>\n\n<blockquote><u>Игрок может считаться игроком</u> только до тех пор, <u>пока он согласен с правилами</u> и соблюдает их.</blockquote>\n\n{mentionAll}",
-            val confirmRemoveAgree4player: String = "<b>{nickname}, вы уверены, что хотите отозвать согласие с правилами?</b> 🤔\n<blockquote><u>Игрок может считаться игроком</u> только до тех пор, <u>пока он согласен с правилами</u> и соблюдает их.</blockquote>",
+            val confirmRemoveAgree4player: String = "<b>{nickname}, вы уверены, что хотите отозвать согласие с правилами?</b> 🤔\n<blockquote><u>Игрок может считаться игроком</u> только до тех пор, <u>пока он согласен с правилами</u> и соблюдает их.</blockquote>\nПосле того, как вы отзовёте своё согласие, вы перестанете быть игроком нашего сервера.",
             val updated4group: String = "Правила сервера были обновлены!\n» <a href=\"https://teletype.in/@zixamc/rules-bot\">Ознакомиться</a>\n\n<blockquote>Бот может работать в группе только до тех пор, пока подтверждено согласие с правилами и среди членов группы есть хотя-бы один игрок.</blockquote>",
             val confirmRemoveAgree4group: String = "<b>Вы уверены, что хотите отозвать своё согласие?</b> 🤔\nЭтот бот может работать в вашей группе только до тех пор, пока вы согласны с правилами сервера и придерживаетесь их.",
             val thatButtonFor: String = "Эта кнопка предназначалась для {nickname}.",
@@ -46,15 +45,25 @@ data class Config (
         val pollTimeout: Int = 60,
         val mentionAllReplaceWith: String = "▌",
         val menu: MenuConfig = MenuConfig(),
+        val adminPanel: AdminPanelConfig = AdminPanelConfig(),
         val group: GroupConfig = GroupConfig(),
     ) {
         data class MenuConfig(
-            val messageNotPlayer: String = "<b>👋 Приветствую!</b>\nЯ бот приватного Minecraft сервера Zixa City.\n\n<i>Вы не являетесь игроком сервера</i> »\n<b>Подать заявку</b> -> @ZixaMC_request_bot",
+            val messageNotPlayer: String = "<b>👋 Приветствую, {nickname}!</b>\nЯ бот приватного Minecraft сервера Zixa City.\n\n<i>Вы не являетесь игроком сервера</i> »\n<b>Подать заявку</b> -> @ZixaMC_request_bot",
             val messageMenu: String = "<b>👋 Приветствую!</b>\nЯ бот приватного Minecraft сервера Zixa City, чем могу помочь?",
             val buttonBackToMenu: String = "« Вернуться в меню",
             val infoButton: String = "Информация о сервере 📌",
             val addToGroupButton: String = "Добавить бота в группу 🎊",
             val removeAgreedWithRules: String = "Отозвать согласие с правилами ❌",
+        )
+        data class AdminPanelConfig(
+            val messageNotAdmin: String = "<b>Это действие доступно только администраторам сервера! ⛔️</b>",
+            val messagePanel: String = "<b>💻 ZixaMC::AdminPanel</b>",
+            val buttonBackToPanel: String = "« Вернуться в панель",
+            val sendRulesUpdated: String = "Уведомить об обновлении правил 📜",
+            val sendRulesUpdatedMessage: String = "<b>Отправить уведомление об обновлении правил сервера всем пользователям и группам.</b>\nНеобходимо <u>сообщить</u> о внесении изменений в правила или также <u>снять все согласия</u>?",
+            val sendRulesUpdatedNotRemove: String = "Только сообщить ✅",
+            val sendRulesUpdatedRemove: String = "Снять все согласия ❌",
         )
         data class GroupConfig(
             val sorryOnlyForPlayer: String = "<b>Извините, но добавлять меня в группы могут только игроки</b> 😔\n<blockquote><b>Добавлять бота в группы могут только игроки.</b> Бот может <u>находиться в группе</u> до тех пор, <u>пока среди её членов есть хотя-бы один игрок</u>.</blockquote>\n» <a href=\"https://teletype.in/@zixamc/rules-bot\">Подробнее</a>",
@@ -124,9 +133,6 @@ data class Config (
             )
         }
     }
-    data class TempConfig (
-        var isSilentRestart: Boolean = false,
-    )
     companion object: ConfigFile<Config>(
         file = File(FabricLoader.getInstance().configDir.toFile(), "ZixaMC-API.json"),
         model = Config::class.java,

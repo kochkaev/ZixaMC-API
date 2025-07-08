@@ -8,10 +8,7 @@ import ru.kochkaev.zixamc.api.sql.SQLUser
 import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
-import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataTypes
 import ru.kochkaev.zixamc.api.sql.data.AccountType
-import ru.kochkaev.zixamc.api.sql.data.MinecraftAccountType
-import ru.kochkaev.zixamc.api.sql.feature.FeatureTypes
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
@@ -168,8 +165,8 @@ object RulesManager {
                             return TgCBHandlerResult.DELETE_LINKED
                         }
                         RulesOperationType.REMOVE_AGREE -> {
-                            Menu.sendMenu(user.id, user.id)
-                            return TgCBHandlerResult.DELETE_MESSAGE
+                            Menu.sendMenu(user.id, user.id, cbq.message.messageId, false)
+                            return TgCBHandlerResult.DELETE_LINKED
                         }
                     }
                 }
@@ -207,20 +204,20 @@ object RulesManager {
             RulesOperation.CONFIRM_REMOVE_AGREE_GROUP -> {
                 if (group==null) return TgCBHandlerResult.SUCCESS
                 bot.sendMessage(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     text = ServerBot.config.group.wait,
                     replyParameters = TgReplyParameters(cbq.message.messageId)
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgReplyMarkup()
                 )
                 val sanitized = arrayListOf<Int>()
-                SQLCallback.getAll(group.chatId).sortedByDescending { it.messageId } .forEach {
+                SQLCallback.getAll(group.id).sortedByDescending { it.messageId } .forEach {
                     it.messageId?.also { messageId -> if (!sanitized.contains(messageId)) try {
                         ServerBot.bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
+                            chatId = group.id,
                             messageId = messageId,
                             replyMarkup = TgReplyMarkup()
                         )
@@ -236,7 +233,7 @@ object RulesManager {
                 group.agreedWithRules = false
                 BotLogic.bots.forEach {
                     try {
-                        it.leaveChat(group.chatId)
+                        it.leaveChat(group.id)
                     } catch (_: Exception) {}
                 }
                 return TgCBHandlerResult.SUCCESS
@@ -272,4 +269,7 @@ object RulesManager {
             }
         }
     }
+    data class RulesUpdatedAdminPanelCallback(
+        val capital: Boolean? = null
+    )
 }

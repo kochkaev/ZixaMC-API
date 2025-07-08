@@ -14,7 +14,7 @@ object ConsoleFeatureType: TopicFeatureType<TopicFeatureData>(
     tgDisplayName = { config.display },
     tgDescription = { config.description },
     tgOnDone = {
-        if (bot.getChat(it.chatId).isForum)
+        if (bot.getChat(it.id).isForum)
             config.doneTopic
         else config.doneNoTopic
     },

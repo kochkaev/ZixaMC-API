@@ -19,7 +19,7 @@ object ConsoleFeature {
     private val groups: HashMap<Long, Int?>
         get() = SQLGroup.getAllWithFeature(ConsoleFeatureType).fold(hashMapOf()) { acc, sql ->
             sql.features.getCasted(ConsoleFeatureType)?.run {
-                acc[sql.chatId] = this.topicId
+                acc[sql.id] = this.topicId
             }
             acc
         }
@@ -97,13 +97,13 @@ object ConsoleFeature {
         if (msg.messageThreadId != data.topicId) return@withScopeAndLock
         val message = msg.effectiveText ?: return@withScopeAndLock
         try {
-            lastedMessage[group.chatId] = null
+            lastedMessage[group.id] = null
             lastMessage = null
             ZixaMC.runConsoleCommand(message)
         } catch (e: Exception) {
             e.message?.also {
                 bot.sendMessage(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     text = it.escapeHTML(),
                     messageThreadId = data.topicId,
                     replyParameters = TgReplyParameters(msg.messageId),

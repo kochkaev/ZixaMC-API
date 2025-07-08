@@ -245,6 +245,7 @@ class TelegramBotZixa(
             logger.info("pollTask finished")
         }
     }
+    // TODO: Add webhooks support
     suspend fun startPosting(scope: CoroutineScope) {
         if (postTask != null) {
             throw IllegalStateException("posting already started")

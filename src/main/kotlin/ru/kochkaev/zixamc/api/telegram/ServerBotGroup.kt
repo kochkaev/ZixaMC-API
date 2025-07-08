@@ -92,19 +92,19 @@ object ServerBotGroup {
     )
     suspend fun backToSettings(group: SQLGroup, messageId: Int) {
         ServerBot.bot.editMessageText(
-            chatId = group.chatId,
+            chatId = group.id,
             messageId = messageId,
             text = getSettingsText(group),
         )
         ServerBot.bot.editMessageReplyMarkup(
-            chatId = group.chatId,
+            chatId = group.id,
             messageId = messageId,
             replyMarkup = getSettings(group),
         )
     }
     suspend fun sendSettings(group: SQLGroup, replyTo: Int? = null) {
         ServerBot.bot.sendMessage(
-            chatId = group.chatId,
+            chatId = group.id,
             text = getSettingsText(group),
             replyMarkup = getSettings(group),
             replyParameters = replyTo?.let { TgReplyParameters(it) }
@@ -151,6 +151,7 @@ object ServerBotGroup {
                         )),
                     callbackProcessor = { cbq, sql ->
                         if (sql.data?.operation == callbackName)
+                            @Suppress("UNCHECKED_CAST")
                             processor(cbq, sql as SQLCallback<GroupCallback<T>>)
                         else TgCBHandlerResult.SUCCESS
                     },
@@ -170,10 +171,10 @@ object ServerBotGroup {
                 try {
                     group.deleteProtected(AccountType.UNKNOWN)
                 } catch (_: Exception) {}
-                SQLCallback.getAll(group.chatId).sortedByDescending { it.messageId }.forEach {
+                SQLCallback.getAll(group.id).sortedByDescending { it.messageId }.forEach {
                     it.messageId?.also { messageId -> try {
                         ServerBot.bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
+                            chatId = group.id,
                             messageId = messageId,
                             replyMarkup = TgReplyMarkup()
                         )
@@ -227,7 +228,7 @@ object ServerBotGroup {
                     val user = SQLUser.getOrCreate(member.id)
                     user.accountType.levelHigh?.let { group.deleteProtected(it) }
                     if (group.data.getCasted(ChatDataTypes.GREETING_ENABLE)?:false) ServerBot.bot.sendMessage(
-                        chatId = group.chatId,
+                        chatId = group.id,
                         text = ServerBot.config.group.protectedWasDeleted
                     )
                 }
@@ -264,7 +265,7 @@ object ServerBotGroup {
                 group.agreedWithRules = true
                 if (group.name == null) {
                     val message = ServerBot.bot.sendMessage(
-                        chatId = group.chatId,
+                        chatId = group.id,
                         text = ServerBot.config.group.thinkOfName,
                         replyMarkup = TgMenu(
                             listOf(
@@ -296,14 +297,14 @@ object ServerBotGroup {
                                 } ?: listOf(),
                             ))
                     )
-                    SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
+                    SQLProcess.Companion.get(group.id, ProcessTypes.GROUP_WAITING_NAME)?.apply {
                         this.data?.messageId?.also { try {
                             ServerBot.bot.editMessageReplyMarkup(
-                                chatId = group.chatId,
+                                chatId = group.id,
                                 messageId = it,
                                 replyMarkup = TgReplyMarkup()
                             )
-                            SQLCallback.Companion.dropAll(group.chatId, it)
+                            SQLCallback.Companion.dropAll(group.id, it)
                         } catch (_: Exception) {} }
                     } ?.drop()
                     SQLProcess.Companion.of(
@@ -311,7 +312,7 @@ object ServerBotGroup {
                             messageId = message.messageId,
                             nameType = GroupWaitingNameProcessData.NameType.NAME,
                         )
-                    ).pull(group.chatId)
+                    ).pull(group.id)
                 }
                 else sendFeatures(group, cbq.message.messageId, true, null)
 //                } else {
@@ -325,28 +326,28 @@ object ServerBotGroup {
             }
             Operations.SET_NAME -> {
                 group.name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name
-                SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
+                SQLProcess.Companion.get(group.id, ProcessTypes.GROUP_WAITING_NAME)?.apply {
                     this.data?.messageId?.also { try {
                         ServerBot.bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
+                            chatId = group.id,
                             messageId = it,
                             replyMarkup = TgReplyMarkup()
                         )
-                        SQLCallback.Companion.dropAll(group.chatId, it)
+                        SQLCallback.Companion.dropAll(group.id, it)
                     } catch (_: Exception) {} }
                 } ?.drop()
                 sendFeatures(group, cbq.message.messageId, true, null)
                 return TgCBHandlerResult.SUCCESS
             }
             Operations.UPDATE_NAME -> {
-                SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
+                SQLProcess.Companion.get(group.id, ProcessTypes.GROUP_WAITING_NAME)?.apply {
                     this.data?.messageId?.also { try {
                         ServerBot.bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
+                            chatId = group.id,
                             messageId = it,
                             replyMarkup = TgReplyMarkup()
                         )
-                        SQLCallback.Companion.dropAll(group.chatId, it)
+                        SQLCallback.Companion.dropAll(group.id, it)
                     } catch (_: Exception) {} }
                 } ?.drop()
                 SQLProcess.Companion.of(
@@ -354,14 +355,14 @@ object ServerBotGroup {
                         messageId = cbq.message.messageId,
                         nameType = GroupWaitingNameProcessData.NameType.NAME
                     )
-                ).pull(group.chatId)
+                ).pull(group.id)
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.thinkOfName,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(
@@ -381,14 +382,14 @@ object ServerBotGroup {
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.ADD_ALIAS -> {
-                SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
+                SQLProcess.Companion.get(group.id, ProcessTypes.GROUP_WAITING_NAME)?.apply {
                     this.data?.messageId?.also { try {
                         ServerBot.bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
+                            chatId = group.id,
                             messageId = it,
                             replyMarkup = TgReplyMarkup()
                         )
-                        SQLCallback.Companion.dropAll(group.chatId, it)
+                        SQLCallback.Companion.dropAll(group.id, it)
                     } catch (_: Exception) {} }
                 } ?.drop()
                 SQLProcess.Companion.of(
@@ -396,14 +397,14 @@ object ServerBotGroup {
                         messageId = cbq.message.messageId,
                         nameType = GroupWaitingNameProcessData.NameType.ALIAS
                     )
-                ).pull(group.chatId)
+                ).pull(group.id)
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.thinkOfName,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(
@@ -424,12 +425,12 @@ object ServerBotGroup {
             }
             Operations.GET_ALIASES -> {
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.settings.aliasesDescription,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         (group.aliases.get()?.let {
@@ -484,14 +485,14 @@ object ServerBotGroup {
                 val name = (sql.data!!.additional as GroupCallback.AdditionalWithName).name!!
                 group.aliases.remove(name)
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.settings.aliasDeleted.formatLang(
                         "alias" to name
                     ),
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(
@@ -521,12 +522,12 @@ object ServerBotGroup {
             }
             Operations.EDIT_FEATURES -> {
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.settings.featuresDescription,
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         (group.features.getAll()?.let {
@@ -578,7 +579,7 @@ object ServerBotGroup {
                 val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 val data = group.features.getCasted(type) ?: return TgCBHandlerResult.Companion.SUCCESS
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.settings.featureDescription.formatLang(
                         "feature" to type.tgDisplayName(),
@@ -586,7 +587,7 @@ object ServerBotGroup {
                     ),
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(
@@ -642,14 +643,14 @@ object ServerBotGroup {
                 val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 group.features.remove(type)
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.settings.featureRemoved.formatLang(
                         "feature" to type.tgDisplayName()
                     ),
                 )
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(
@@ -676,20 +677,20 @@ object ServerBotGroup {
                 val name = (sql.data!!.additional as? GroupCallback.AdditionalWithName)?.name ?: TgCBHandlerResult.Companion.SUCCESS
                 val type = FeatureTypes.entries[name] ?: return TgCBHandlerResult.Companion.SUCCESS
                 ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     text = ServerBot.config.group.selectTopicForFeature
                 )
-                SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_SELECT_TOPIC_FEATURE)?.run {
-                    this.data?.also { ServerBot.bot.deleteMessage(group.chatId, it.messageId) }
+                SQLProcess.Companion.get(group.id, ProcessTypes.GROUP_SELECT_TOPIC_FEATURE)?.run {
+                    this.data?.also { ServerBot.bot.deleteMessage(group.id, it.messageId) }
                     this.drop()
                 }
                 SQLProcess.Companion.of(
                     ProcessTypes.GROUP_SELECT_TOPIC_FEATURE,
                     GroupSelectTopicProcessData(cbq.message.messageId, type.serializedName)
-                ).pull(group.chatId)
+                ).pull(group.id)
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(
                         listOf(
@@ -718,7 +719,7 @@ object ServerBotGroup {
             }
             Operations.SUCCESS -> {
                 ServerBot.bot.deleteMessage(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = cbq.message.messageId,
                 )
                 return TgCBHandlerResult.Companion.DELETE_LINKED
@@ -737,7 +738,7 @@ object ServerBotGroup {
         val group = SQLGroup.Companion.get(msg.chat.id) ?: return
         if (msg.replyToMessage?.from?.id == ServerBot.bot.me.id && msg.from != null &&
             listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
-                ServerBot.bot.getChatMember(group.chatId, msg.from.id).status
+                ServerBot.bot.getChatMember(group.id, msg.from.id).status
             )
         ) {
             val inFirstTime = group.name == null
@@ -746,7 +747,7 @@ object ServerBotGroup {
             val name = msg.effectiveText ?: return
             if (name.length !in 1..16 || !name.matches(Regex("[а-яa-z0-9_\\-]+", RegexOption.IGNORE_CASE))) {
                 ServerBot.bot.sendMessage(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     text = ServerBot.config.group.incorrectName,
                     replyParameters = TgReplyParameters(
                         msg.messageId
@@ -754,7 +755,7 @@ object ServerBotGroup {
                 )
             } else if (!group.canTakeName(name)) {
                 ServerBot.bot.sendMessage(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     text = ServerBot.config.group.nameIsTaken,
                     replyParameters = TgReplyParameters(
                         msg.messageId
@@ -766,11 +767,11 @@ object ServerBotGroup {
                 else if (data.nameType == GroupWaitingNameProcessData.NameType.ALIAS && !group.aliases.contains(name))
                     group.aliases.add(name)
                 ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
+                    chatId = group.id,
                     messageId = data.messageId,
                     replyMarkup = TgReplyMarkup(),
                 )
-                SQLCallback.Companion.dropAll(group.chatId, data.messageId)
+                SQLCallback.Companion.dropAll(group.id, data.messageId)
                 process.drop()
                 if (inFirstTime) sendFeatures(group, msg.messageId, true, null)
                 else settingsCommand(msg)
@@ -793,10 +794,10 @@ object ServerBotGroup {
         val group = SQLGroup.Companion.get(msg.chat.id)?:return
         if (!(msg.from != null &&
             listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
-                ServerBot.bot.getChatMember(group.chatId, msg.from.id).status
+                ServerBot.bot.getChatMember(group.id, msg.from.id).status
             )
         )) return
-        val processes = SQLProcess.Companion.getAll(group.chatId)
+        val processes = SQLProcess.Companion.getAll(group.id)
         processes.forEach { process ->
             when (process.type) {
                 ProcessTypes.GROUP_SELECT_TOPIC_FEATURE -> {
@@ -812,7 +813,7 @@ object ServerBotGroup {
                             }
                         )
                         ServerBot.bot.sendMessage(
-                            chatId = group.chatId,
+                            chatId = group.id,
                             text = getSettingsText(group),
                             replyMarkup = getSettings(group),
                             replyParameters = TgReplyParameters(
@@ -822,9 +823,9 @@ object ServerBotGroup {
                     }
                     else feature.finishSetUp(group, topicId, topicId)
                     try {
-                        SQLCallback.Companion.getAll(group.chatId, data.messageId).forEach { it.drop() }
+                        SQLCallback.Companion.getAll(group.id, data.messageId).forEach { it.drop() }
                         ServerBot.bot.editMessageReplyMarkup(
-                            chatId = group.chatId,
+                            chatId = group.id,
                             messageId = data.messageId,
                             replyMarkup = TgReplyMarkup(),
                         )
@@ -838,7 +839,7 @@ object ServerBotGroup {
         val group = SQLGroup.Companion.get(msg.chat.id)?:return
         if (msg.from == null ||
             !listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR).contains(
-                ServerBot.bot.getChatMember(group.chatId, msg.from.id).status
+                ServerBot.bot.getChatMember(group.id, msg.from.id).status
             )
         ) return
         sendSettings(group, msg.messageId)
@@ -865,19 +866,19 @@ object ServerBotGroup {
                 .map { listOf(it) }
         )
         if (edit == null) ServerBot.bot.sendMessage(
-            chatId = group.chatId,
+            chatId = group.id,
             text = message,
             replyParameters = replyTo?.let { TgReplyParameters(it) },
             replyMarkup = menu
         )
         else {
             ServerBot.bot.editMessageText(
-                chatId = group.chatId,
+                chatId = group.id,
                 messageId = edit,
                 text = message,
             )
             ServerBot.bot.editMessageReplyMarkup(
-                chatId = group.chatId,
+                chatId = group.id,
                 messageId = edit,
                 replyMarkup = menu
             )

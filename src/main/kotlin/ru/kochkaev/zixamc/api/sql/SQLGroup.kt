@@ -1,13 +1,8 @@
 package ru.kochkaev.zixamc.api.sql
 
 import com.google.gson.annotations.JsonAdapter
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
-import ru.kochkaev.zixamc.api.Initializer.coroutineScope
 import ru.kochkaev.zixamc.api.ZixaMC
-import ru.kochkaev.zixamc.chatsync.LastMessage
 import ru.kochkaev.zixamc.api.config.ConfigManager.config
 import ru.kochkaev.zixamc.api.config.GsonManager.gson
 import ru.kochkaev.zixamc.api.config.serialize.SQLGroupAdapter
@@ -33,24 +28,24 @@ import ru.kochkaev.zixamc.api.telegram.model.TgChat
 import ru.kochkaev.zixamc.api.telegram.model.TgUser
 
 @JsonAdapter(SQLGroupAdapter::class)
-class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
+class SQLGroup private constructor(id: Long): SQLChat(id) {
 
-    private val nameField = NullableStringSQLField(SQLGroup, "name", chatId, "chat_id")
+    private val nameField = NullableStringSQLField(SQLGroup, "name", id, "chat_id")
     var name: String?
         get() = nameField.get()
         set(name) { nameField.set(name) }
-    val aliases = StringSQLArray(SQLGroup, "aliases", chatId, "chat_id")
-    val members = UsersSQLArray(SQLGroup, "members", chatId, "chat_id")
-    private val agreedWithRulesField = BooleanSQLField(SQLGroup, "agreed_with_rules", chatId, "chat_id")
+    val aliases = StringSQLArray(SQLGroup, "aliases", id, "chat_id")
+    val members = UsersSQLArray(SQLGroup, "members", id, "chat_id")
+    private val agreedWithRulesField = BooleanSQLField(SQLGroup, "agreed_with_rules", id, "chat_id")
     var agreedWithRules: Boolean
         get() = agreedWithRulesField.get() ?: false
         set(agreedWithRules) { agreedWithRulesField.set(agreedWithRules) }
-    private val isRestrictedField = BooleanSQLField(SQLGroup, "is_restricted", chatId, "chat_id")
+    private val isRestrictedField = BooleanSQLField(SQLGroup, "is_restricted", id, "chat_id")
     var isRestricted: Boolean
         get() = isRestrictedField.get() ?: false
         set(isRestricted) { isRestrictedField.set(isRestricted) }
-    val features = FeaturesSQLMap(SQLGroup, "features", chatId, "chat_id", this)
-    override val data = ChatDataSQLMap(SQLGroup, "data", chatId, "chat_id")
+    val features = FeaturesSQLMap(SQLGroup, "features", id, "chat_id", this)
+    override val data = ChatDataSQLMap(SQLGroup, "data", id, "chat_id")
 
     companion object: MySQL() {
         override val tableName: String = config.groupsTable
@@ -226,7 +221,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
             val preparedStatement =
 //                MySQLConnection!!.prepareStatement("SELECT * FROM ${SQLEntity.tableName} WHERE chat_id != ? AND JSON_CONTAINS_PATH(features, 'one', '$.map.CHAT_SYNC') AND (features->>'$.map.CHAT_SYNC.name' = ? OR JSON_CONTAINS(features, JSON_QUOTE(?), '$.map.CHAT_SYNC.aliases'));")
                 MySQL.MySQLConnection!!.prepareStatement("SELECT * FROM $tableName WHERE chat_id != ? AND (name = ? OR JSON_CONTAINS(aliases, JSON_QUOTE(?), '$'));")
-            preparedStatement.setLong(1, chatId)
+            preparedStatement.setLong(1, id)
             preparedStatement.setString(2, value)
             preparedStatement.setString(3, value)
             !preparedStatement.executeQuery().next()
@@ -238,7 +233,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
     fun updateChatId(newChatId: Long) =
         try {
             MySQL.reConnect()
-            val old = chatId
+            val old = id
             if (exists(old) && !exists(newChatId)) {
                 val preparedStatement =
                     MySQL.MySQLConnection!!.prepareStatement("UPDATE $tableName SET chat_id = ? WHERE chat_id = ?;")
@@ -260,7 +255,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         SQLUser.get(nickname)?.let { members.contains(it) } ?: false
     suspend fun getNoBotsMembers(): List<SQLUser> =
         members.get()?.let {
-            it.filter { it1 -> !bot.getChatMember(chatId, it1.id).user.isBot }
+            it.filter { it1 -> !bot.getChatMember(id, it1.id).user.isBot }
         } ?: listOf()
 
     fun mentionAll() : String {
@@ -275,8 +270,8 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
 
     override suspend fun hasProtectedLevel(level: AccountType): Boolean =
         getNoBotsMembers().fold(true) { acc, it -> acc && it.hasProtectedLevel(level) }
-        && (!level.requireGroupPrivate || bot.getChat(chatId).username == null)
-        && bot.getChatMemberCount(chatId) == (members.get()?.size?:0)+1
+        && (!level.requireGroupPrivate || bot.getChat(id).username == null)
+        && bot.getChatMemberCount(id) == (members.get()?.size?:0)+1
     override suspend fun deleteProtected(protectLevel: AccountType) {
         super.deleteProtected(protectLevel)
         features.getAll()?.keys?.forEach { key ->
@@ -291,10 +286,10 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         } catch (_: Exception) {}
         try {
             bot.sendMessage(
-                chatId = chatId,
+                chatId = id,
                 text = ServerBot.config.group.hasNoMorePlayers,
             )
-            bot.leaveChat(chatId)
+            bot.leaveChat(id)
         } catch (_: Exception) {}
     }
 
@@ -330,7 +325,7 @@ class SQLGroup private constructor(val chatId: Long): SQLChat(chatId) {
         for(it in BotLogic.bots) {
             try {
                 it.sendMessage(
-                    chatId = chatId,
+                    chatId = id,
                     text = message,
                     replyMarkup = menu,
                 )

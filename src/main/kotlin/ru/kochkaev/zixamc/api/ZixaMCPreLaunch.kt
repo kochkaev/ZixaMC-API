@@ -10,6 +10,7 @@ import ru.kochkaev.zixamc.api.config.TempConfig
 import ru.kochkaev.zixamc.api.config.TempConfigValueType
 import ru.kochkaev.zixamc.api.config.serialize.MenuCallbackDataAdapter
 import ru.kochkaev.zixamc.api.config.TextData
+import ru.kochkaev.zixamc.api.config.serialize.AdminPanelCallbackAdapter
 import ru.kochkaev.zixamc.api.config.serialize.CallbackDataAdapter
 import ru.kochkaev.zixamc.api.config.serialize.FeatureMapDeserializer
 import ru.kochkaev.zixamc.api.config.serialize.FeatureTypeAdapter
@@ -33,6 +34,7 @@ import ru.kochkaev.zixamc.api.telegram.ServerBotGroup
 import ru.kochkaev.zixamc.api.sql.feature.data.FeatureData
 import ru.kochkaev.zixamc.api.sql.feature.FeatureType
 import ru.kochkaev.zixamc.api.sql.chatdata.ChatDataType
+import ru.kochkaev.zixamc.api.telegram.AdminPanel
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMember
 import ru.kochkaev.zixamc.api.telegram.Menu
 import ru.kochkaev.zixamc.chatsync.ChatSyncPreLaunch
@@ -47,6 +49,7 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
 //                AccountType::class.java to AccountTypeAdapter(),
                 TgCallback::class.java to CallbackDataAdapter(),
                 Menu.MenuCallbackData::class.java to MenuCallbackDataAdapter(),
+                AdminPanel.AdminPanelCallback::class.java to AdminPanelCallbackAdapter(),
                 object : TypeToken<Map<FeatureType<out FeatureData>, FeatureData>>() {}.type to FeatureMapDeserializer(),
                 object : TypeToken<Map<ChatDataType<*>, *>>() {}.type to ChatDataMapDeserializer(),
                 object : TypeToken<Map<TempConfigValueType<*>, *>>() {}.type to TempConfigMapDeserializer(),

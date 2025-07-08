@@ -5,13 +5,10 @@ import net.kyori.adventure.text.Component
 import kotlinx.coroutines.*
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.TranslatableComponent
-import ru.kochkaev.zixamc.api.Initializer
-import ru.kochkaev.zixamc.api.config.ConfigManager
 import java.time.Clock
 import java.time.temporal.ChronoUnit
 import ru.kochkaev.zixamc.api.telegram.ServerBot.bot
 import ru.kochkaev.zixamc.api.Initializer.coroutineScope
-import ru.kochkaev.zixamc.api.ZixaMC
 import ru.kochkaev.zixamc.api.escapeHTML
 import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.chatsync.parser.Markdown2HTMLParser
@@ -32,7 +29,7 @@ object ChatSyncBotLogic {
     suspend fun sendServerStartedMessage() {
         if (!ChatSync.isSilentRestart)
             bot.sendMessage(
-                chatId = DEFAULT_GROUP.chatId,
+                chatId = DEFAULT_GROUP.id,
                 text = ChatSyncBotCore.lang.telegram.serverStarted,
                 messageThreadId = DEFAULT_GROUP.features.getCasted(ChatSyncFeatureType)!!.topicId,
             )
@@ -45,7 +42,7 @@ object ChatSyncBotLogic {
     suspend fun sendServerStoppedMessage() {
         if (!ChatSync.isSilentRestart)
             bot.sendMessage(
-                chatId = DEFAULT_GROUP.chatId,
+                chatId = DEFAULT_GROUP.id,
                 text = ChatSyncBotCore.lang.telegram.serverStopped,
                 messageThreadId = DEFAULT_GROUP.features.getCasted(ChatSyncFeatureType)!!.topicId,
             )
@@ -202,14 +199,14 @@ object ChatSyncBotLogic {
             lm.text + "\n" + currText
             lm.date = currDate
             bot.editMessageText(
-                chatId = group.chatId,
+                chatId = group.id,
                 messageId = lm.id,
                 text = lm.text!!,
                 entities = lm.entities
             )
         } else {
             val newMsg = bot.sendMessage(
-                chatId = group.chatId,
+                chatId = group.id,
                 text = currText,
                 messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId,
                 replyParameters = replyTo?.let { TgReplyParameters(it) }
@@ -229,7 +226,7 @@ object ChatSyncBotLogic {
             return@withScopeAndLock
         val component = e.text as TranslatableComponent
         bot.sendMessage(
-            chatId = group.chatId,
+            chatId = group.id,
             text = ChatSyncBotCore.lang.telegram.playerDied.formatLang(
                 "deathMessage" to TextParser.translateComponent(component), "username" to e.username)
                 .let {
@@ -253,12 +250,12 @@ object ChatSyncBotLogic {
             && currDate.minus((ChatSyncBotCore.config.events.leaveJoinMergeWindow ?: 0).toLong(), ChronoUnit.SECONDS) < lm.date
         ) {
             bot.deleteMessage(
-                chatId = group.chatId,
+                chatId = group.id,
                 messageId = lm.id,
             )
         } else {
             bot.sendMessage(
-                chatId = group.chatId,
+                chatId = group.id,
                 text = ChatSyncBotCore.lang.telegram.playerJoined
                     .formatLang("username" to e.username),
                 messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId
@@ -272,7 +269,7 @@ object ChatSyncBotLogic {
             return@withScopeAndLock
         val message = ChatSyncBotCore.lang.telegram.playerLeft.formatLang("username" to e.username)
         val newMsg = bot.sendMessage(
-            chatId = group.chatId,
+            chatId = group.id,
             text = message,
             messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId
         )
@@ -335,7 +332,7 @@ object ChatSyncBotLogic {
                     else advancementDescription.escapeHTML(),
         )
         bot.sendMessage(
-            chatId = group.chatId,
+            chatId = group.id,
             text = message,
             messageThreadId = group.features.getCasted(ChatSyncFeatureType)!!.topicId
         )

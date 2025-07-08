@@ -33,7 +33,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
 ): FeatureType<R>(model, serializedName, tgDisplayName, tgDescription, tgOnDone, checkAvailable, getDefault, optionsResolver) {
     override suspend fun setUp(cbq: TgCallbackQuery, group: SQLGroup): TgCBHandlerResult {
         bot.editMessageText(
-            chatId = group.chatId,
+            chatId = group.id,
             messageId = cbq.message.messageId,
             text = ((tgDescription.invoke()) +
                     if (cbq.message.chat.isForum) "\n\n" + config.group.selectTopicForFeature else "")
@@ -41,17 +41,17 @@ open class TopicFeatureType<R: TopicFeatureData>(
                     "groupName" to group.name!!
                 )
         )
-        SQLProcess.get(group.chatId, ProcessTypes.GROUP_SELECT_TOPIC_FEATURE)?.run {
-            this.data?.also { bot.deleteMessage(group.chatId, it.messageId) }
+        SQLProcess.get(group.id, ProcessTypes.GROUP_SELECT_TOPIC_FEATURE)?.run {
+            this.data?.also { bot.deleteMessage(group.id, it.messageId) }
             this.drop()
         }
         if (cbq.message.chat.isForum)
-            SQLProcess.of(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE, GroupSelectTopicProcessData(cbq.message.messageId, serializedName)).pull(group.chatId)
+            SQLProcess.of(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE, GroupSelectTopicProcessData(cbq.message.messageId, serializedName)).pull(group.id)
         else {
             finishSetUp(group, cbq.message.messageId)
         }
         if (cbq.message.chat.isForum) bot.editMessageReplyMarkup(
-            chatId = group.chatId,
+            chatId = group.id,
             messageId = cbq.message.messageId,
             replyMarkup = TgMenu(listOf(
                 listOf(
@@ -78,7 +78,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
                 this.topicId = topicId
             })
             bot.sendMessage(
-                chatId = group.chatId,
+                chatId = group.id,
                 text = tgOnDone(group),
                 replyParameters = replyTo?.let { TgReplyParameters(it) }
             )

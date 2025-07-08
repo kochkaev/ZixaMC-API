@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.server.MinecraftServer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import ru.kochkaev.zixamc.admintools.ZixaMCAdminTools
 import ru.kochkaev.zixamc.api.command.ZixaMCCommand
 import ru.kochkaev.zixamc.api.config.Config
 import ru.kochkaev.zixamc.api.config.ConfigManager
@@ -52,6 +53,7 @@ class ZixaMC : ModInitializer {
         ZixaMCEasyAuthIntegration().onInitialize()
         ZixaMCFabricTailorIntegration().onInitialize()
         ZixaMCRequests().onInitialize()
+        ZixaMCAdminTools().onInitialize()
     }
     fun onServerStopped(server: MinecraftServer) {
         Initializer.stop()
