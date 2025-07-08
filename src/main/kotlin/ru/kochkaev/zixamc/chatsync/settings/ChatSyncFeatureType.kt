@@ -48,7 +48,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
         val isNotNew = group.features.contains(this)
         val menu = TgMenu(listOf(listOf(
             CancelCallbackData(
-                cancelProcesses = listOf(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE),
+                cancelProcesses = listOf(ChatSyncWaitingPrefixProcess),
                 asCallbackSend = CancelCallbackData.CallbackSend(
                     type = "group",
                     data = GroupCallback.of(
@@ -148,12 +148,7 @@ object ChatSyncFeatureType: TopicFeatureType<ChatSyncFeatureData>(
             SQLCallback.dropAll(group.chatId, data.messageId)
             process.drop()
             if (isNotNew) {
-                bot.sendMessage(
-                    chatId = group.chatId,
-                    text = getSettingsText(group),
-                    replyMarkup = ServerBotGroup.getSettings(group),
-                    replyParameters = TgReplyParameters(msg.messageId)
-                )
+                ServerBotGroup.sendSettings(group, msg.messageId)
             } else bot.sendMessage(
                 chatId = group.chatId,
                 text = if (msg.chat.isForum) config.feature.doneTopic

@@ -31,7 +31,7 @@ class SQLProcess<T: ProcessData> private constructor(
                     MySQL.MySQLConnection!!.prepareStatement("UPDATE $tableName SET data = ? WHERE chat_id = ? AND type = ?;")
                 preparedStatement.setString(1, gson.toJson(data))
                 preparedStatement.setLong(2, chatId)
-                preparedStatement.setString(2, gson.toJson(type))
+                preparedStatement.setString(3, gson.toJson(type))
                 preparedStatement.executeUpdate()
             } catch (e: SQLException) {
                 ZixaMC.logger.error("Register error ", e)

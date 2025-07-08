@@ -75,7 +75,7 @@ object AudioPlayerIntegration {
                             asCallbackSend = CancelCallbackData.CallbackSend(
                                 type = "menu",
                                 data = Menu.MenuCallbackData.of("back"),
-                                result = TgCBHandlerResult.DELETE_MESSAGE,
+                                result = TgCBHandlerResult.DELETE_LINKED,
                             ),
                             canExecute = CallbackCanExecute(
                                 statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
@@ -104,7 +104,7 @@ object AudioPlayerIntegration {
         return TgCBHandlerResult.DELETE_LINKED
     }
 
-    suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<*>, data: ProcessData) = runBlocking {
+    suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<ProcessData>, data: ProcessData) = runBlocking {
 //        if (msg.replyToMessage==null || msg.replyToMessage.messageId != data.messageId) return@runBlocking
         var done = false
         val user = msg.from?.id?.let { SQLUser.get(it) } ?: return@runBlocking
@@ -114,11 +114,13 @@ object AudioPlayerIntegration {
             messageId = data.messageId,
             replyMarkup = TgReplyMarkup()
         )
+        SQLCallback.dropAll(msg.chat.id, data.messageId)
         val message = ServerBot.bot.sendMessage(
             chatId = msg.chat.id,
             text = Config.config.messagePreparing,
             replyParameters = TgReplyParameters(msg.messageId)
         )
+        process.data = ProcessData(message.messageId)
         var filename: String? = null
         if (msg.audio != null || msg.document != null) {
             val tgFilename =
@@ -153,7 +155,9 @@ object AudioPlayerIntegration {
                 messageId = message.messageId,
                 text = Config.config.messageErrorUpload,
             )
-        } else if (!done) {
+            done = true
+        }
+        if (!done) {
             ServerBot.bot.editMessageText(
                 chatId = message.chat.id,
                 messageId = message.messageId,
@@ -165,9 +169,33 @@ object AudioPlayerIntegration {
             ServerBot.bot.editMessageReplyMarkup(
                 chatId = message.chat.id,
                 messageId = message.messageId,
-                replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON)))
+                replyMarkup = TgMenu(listOf(listOf(Menu.getBackButtonExecuteOnly(user, true))))
             )
             process.drop()
+        } else {
+            ServerBot.bot.editMessageReplyMarkup(
+                chatId = message.chat.id,
+                messageId = message.messageId,
+                replyMarkup = TgMenu(
+                    listOf(
+                        listOf(
+                            CancelCallbackData(
+                                cancelProcesses = listOf(AudioPlayerUploadProcess),
+                                asCallbackSend = CancelCallbackData.CallbackSend(
+                                    type = "menu",
+                                    data = Menu.MenuCallbackData.of("back"),
+                                    result = TgCBHandlerResult.DELETE_LINKED,
+                                ),
+                                canExecute = CallbackCanExecute(
+                                    statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
+                                    users = listOf(user.userId),
+                                    display = user.nickname ?: "",
+                                )
+                            ).build(),
+                        )
+                    )
+                ),
+            )
         }
 //        ServerBot.bot.editMessageReplyMarkup(
 //            chatId = message.chat.id,

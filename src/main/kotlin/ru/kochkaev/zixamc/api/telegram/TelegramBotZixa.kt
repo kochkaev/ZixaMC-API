@@ -185,7 +185,7 @@ class TelegramBotZixa(
                                 var result: TgCBHandlerResult? = null
                                 if (sql.canExecute?.let { canExecute ->
                                         !(canExecute.statuses?.contains(ServerBot.bot.getChatMember(this.message.chat.id, this.from.id).status) == true || canExecute.users?.contains(this.from.id) == true)
-                                    } != false) result = answerHaventRights(this.id, sql.canExecute?.display?:"")
+                                    } != false) result = answerHaventRights(this.id, sql.canExecute?.display?:"", this@TelegramBotZixa)
                                 if (result == null) result = typedCallbackQueryHandlers[sql.type]?.invoke(this, sql)
                                 if (result!=null) {
                                     if (result.deleteMessage) try {
@@ -314,7 +314,7 @@ class TelegramBotZixa(
                 delay((body.parameters?.retryAfter?:3L) * 1000L)
                 return call(f)
             }
-            else throw Exception("Telegram exception: ${resp.errorBody()?.string() ?: "no response body"}")
+            else throw Exception("Telegram exception ${body.errorCode}: ${body.description ?: "no response body"}")
         }
     }
     private suspend fun <T> callWithoutDelay(f: suspend () -> TgResponse<T>): T {

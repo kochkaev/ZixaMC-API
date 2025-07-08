@@ -82,35 +82,6 @@ object ServerBotLogic {
             ),
             filter = { chatId, userId -> chatId == userId },
         ))
-        Menu.addIntegration(Menu.Integration.of(
-            callbackName = "removeAgreedWithRules",
-            menuDisplay = config.menu.removeAgreedWithRules,
-            processor = { cbq, sql ->
-                bot.editMessageText(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    text = Config.config.general.rules.confirmRemoveAgree4player.formatLang("nickname" to (SQLUser.get(cbq.from.id)?.nickname?:""))
-                )
-                bot.editMessageReplyMarkup(
-                    chatId = cbq.message.chat.id,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = TgMenu(listOf(
-                        listOf(SQLCallback.of(
-                            display = ConfigManager.config.general.buttons.confirm,
-                            type = "rules",
-                            data = RulesCallbackData(RulesOperation.CONFIRM_REMOVE_AGREE, RulesManager.RulesOperationType.REMOVE_AGREE)
-                        )),
-                        listOf(SQLCallback.of(
-                            display = ConfigManager.config.general.buttons.cancel,
-                            type = "rules",
-                            data = RulesCallbackData(RulesOperation.CANCEL_REMOVE_AGREE, RulesManager.RulesOperationType.REMOVE_AGREE, cbq.from.id)
-                        )),
-                    ))
-                )
-                TgCBHandlerResult.DELETE_LINKED
-            },
-            filter = { chatId, userId -> chatId == userId && SQLUser.get(userId)?.agreedWithRules == true },
-        ))
 
         bot.registerChatJoinRequestHandler(ServerBotUpdateManager::onTelegramChatJoinRequest)
         bot.registerNewChatMembersHandler(ServerBotGroup::newChatMembers)

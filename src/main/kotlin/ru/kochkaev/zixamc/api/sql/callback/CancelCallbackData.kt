@@ -34,22 +34,20 @@ data class CancelCallbackData(
         val ON_SERVER_CALLBACK: suspend (TgCallbackQuery, SQLCallback<CancelCallbackData>) -> TgCBHandlerResult =
             { cbq, sql -> onCallback(cbq, sql, ServerBot.bot) }
         suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<CancelCallbackData>, bot: TelegramBotZixa): TgCBHandlerResult {
-            if (sql.canExecute?.statuses?.contains(bot.getChatMember(cbq.message.chat.id, cbq.from.id).status) == true) {
-                sql.data?.run {
-                    this.cancelProcesses.forEach { SQLProcess.get(cbq.message.chat.id, it)?.drop() }
-                    this.asCallbackSend?.also {
-                        val fake = SQLCallback.of("", it.type, it.data, this.canExecute)
-                            .pull(cbq.message.chat.id)
-                            .let { id -> SQLCallback.get(id)!! }
-                            .apply {
-                                this.messageId = cbq.message.messageId
-                            }
-                        bot.typedCallbackQueryHandlers[it.type]?.invoke(cbq, fake)
-                        fake.drop()
-                        return it.result
-                    }
+            sql.data?.run {
+                this.cancelProcesses.forEach { SQLProcess.get(cbq.message.chat.id, it)?.drop() }
+                this.asCallbackSend?.also {
+                    val fake = SQLCallback.of("", it.type, it.data, this.canExecute)
+                        .pull(cbq.message.chat.id)
+                        .let { id -> SQLCallback.get(id)!! }
+                        .apply {
+                            this.messageId = cbq.message.messageId
+                        }
+                    bot.typedCallbackQueryHandlers[it.type]?.invoke(cbq, fake)
+                    fake.drop()
+                    return it.result
                 }
-            } else return ServerBotGroup.answerHaventRights(cbq.id, sql.canExecute?.display?:"")
+            }
             return TgCBHandlerResult.DELETE_MARKUP
         }
     }

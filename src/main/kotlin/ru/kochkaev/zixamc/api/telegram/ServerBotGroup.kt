@@ -43,14 +43,14 @@ object ServerBotGroup {
     )
     fun getSettings(group: SQLGroup) = TgMenu(
         arrayListOf<List<ITgMenuButton>>(
-            listOf(
-                SQLCallback.of(
-                    display = ServerBot.config.group.settings.features,
-                    type = "group",
-                    data = GroupCallback.of(Operations.EDIT_FEATURES),
-                    canExecute = CAN_EXECUTE_ADMIN,
-                )
-            ),
+//            listOf(
+//                SQLCallback.of(
+//                    display = ServerBot.config.group.settings.features,
+//                    type = "group",
+//                    data = GroupCallback.of(Operations.EDIT_FEATURES),
+//                    canExecute = CAN_EXECUTE_ADMIN,
+//                )
+//            ),
             listOf(
                 SQLCallback.of(
                     display = ServerBot.config.group.settings.changeName,
@@ -90,6 +90,26 @@ object ServerBotGroup {
             ))
         }
     )
+    suspend fun backToSettings(group: SQLGroup, messageId: Int) {
+        ServerBot.bot.editMessageText(
+            chatId = group.chatId,
+            messageId = messageId,
+            text = getSettingsText(group),
+        )
+        ServerBot.bot.editMessageReplyMarkup(
+            chatId = group.chatId,
+            messageId = messageId,
+            replyMarkup = getSettings(group),
+        )
+    }
+    suspend fun sendSettings(group: SQLGroup, replyTo: Int? = null) {
+        ServerBot.bot.sendMessage(
+            chatId = group.chatId,
+            text = getSettingsText(group),
+            replyMarkup = getSettings(group),
+            replyParameters = replyTo?.let { TgReplyParameters(it) }
+        )
+    }
 
     private val settingsIntegrations = arrayListOf<Integration>()
     fun registerSettingsIntegration(integration: Integration) {
@@ -125,7 +145,7 @@ object ServerBotGroup {
                     button = listOf(
                         SQLCallback.of(
                             display = menuDisplay,
-                            type = "menu",
+                            type = "group",
                             data = GroupCallback.of(callbackName, customDataType, customDataInitial),
                             canExecute = canExecute,
                         )),
@@ -316,6 +336,7 @@ object ServerBotGroup {
                     } catch (_: Exception) {} }
                 } ?.drop()
                 sendFeatures(group, cbq.message.messageId, true, null)
+                return TgCBHandlerResult.SUCCESS
             }
             Operations.UPDATE_NAME -> {
                 SQLProcess.Companion.get(group.chatId, ProcessTypes.GROUP_WAITING_NAME)?.apply {
@@ -648,16 +669,7 @@ object ServerBotGroup {
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.SETTINGS -> {
-                ServerBot.bot.editMessageText(
-                    chatId = group.chatId,
-                    messageId = cbq.message.messageId,
-                    text = getSettingsText(group)
-                )
-                ServerBot.bot.editMessageReplyMarkup(
-                    chatId = group.chatId,
-                    messageId = cbq.message.messageId,
-                    replyMarkup = getSettings(group)
-                )
+                backToSettings(group, cbq.message.messageId)
                 return TgCBHandlerResult.Companion.DELETE_LINKED
             }
             Operations.TOPIC_RESELECT -> {
@@ -767,8 +779,8 @@ object ServerBotGroup {
 
     }
 
-    suspend fun answerHaventRights(id: String, display: String): TgCBHandlerResult {
-        ServerBot.bot.answerCallbackQuery(
+    suspend fun answerHaventRights(id: String, display: String, bot: TelegramBotZixa): TgCBHandlerResult {
+        bot.answerCallbackQuery(
             callbackQueryId = id,
             text = ServerBot.config.group.haveNotPermission.formatLang(
                 "placeholder" to display
@@ -829,12 +841,7 @@ object ServerBotGroup {
                 ServerBot.bot.getChatMember(group.chatId, msg.from.id).status
             )
         ) return
-        ServerBot.bot.sendMessage(
-            chatId = group.chatId,
-            text = getSettingsText(group),
-            replyParameters = TgReplyParameters(msg.messageId),
-            replyMarkup = getSettings(group)
-        )
+        sendSettings(group, msg.messageId)
     }
 
     suspend fun sendFeatures(group: SQLGroup, replyTo: Int? = null, withDone: Boolean = false, edit: Int? = null) {

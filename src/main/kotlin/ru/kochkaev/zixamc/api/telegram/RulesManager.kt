@@ -239,7 +239,7 @@ object RulesManager {
                         it.leaveChat(group.chatId)
                     } catch (_: Exception) {}
                 }
-                return TgCBHandlerResult.DELETE_MARKUP
+                return TgCBHandlerResult.SUCCESS
             }
             RulesOperation.CANCEL_REMOVE_AGREE_GROUP -> {
                 if (group==null) return TgCBHandlerResult.SUCCESS
@@ -264,16 +264,7 @@ object RulesManager {
                         return TgCBHandlerResult.DELETE_LINKED
                     }
                     RulesOperationType.REMOVE_AGREE -> {
-                        bot.editMessageText(
-                            chatId = cbq.message.chat.id,
-                            messageId = cbq.message.messageId,
-                            text = ServerBot.config.group.settings.text
-                        )
-                        bot.editMessageReplyMarkup(
-                            chatId = cbq.message.chat.id,
-                            messageId = cbq.message.messageId,
-                            replyMarkup = ServerBotGroup.getSettings(group),
-                        )
+                        ServerBotGroup.backToSettings(group, cbq.message.messageId)
                         return TgCBHandlerResult.DELETE_LINKED
                     }
                 }

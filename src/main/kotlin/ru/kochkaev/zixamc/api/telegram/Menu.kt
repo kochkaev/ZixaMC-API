@@ -1,5 +1,7 @@
 package ru.kochkaev.zixamc.api.telegram
 
+import ru.kochkaev.zixamc.api.config.ConfigManager
+import ru.kochkaev.zixamc.api.formatLang
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLChat
 import ru.kochkaev.zixamc.api.sql.SQLProcess
@@ -9,12 +11,14 @@ import ru.kochkaev.zixamc.api.sql.callback.CallbackData
 import ru.kochkaev.zixamc.api.sql.callback.TgCBHandlerResult
 import ru.kochkaev.zixamc.api.sql.callback.TgMenu
 import ru.kochkaev.zixamc.api.sql.data.AccountType
-import ru.kochkaev.zixamc.api.sql.process.ProcessType
 import ru.kochkaev.zixamc.api.sql.process.ProcessTypes
+import ru.kochkaev.zixamc.api.telegram.RulesManager.RulesCallbackData
+import ru.kochkaev.zixamc.api.telegram.RulesManager.RulesOperation
 import ru.kochkaev.zixamc.api.telegram.model.ITgMenuButton
 import ru.kochkaev.zixamc.api.telegram.model.TgCallbackQuery
 import ru.kochkaev.zixamc.api.telegram.model.TgChatMemberStatuses
 import ru.kochkaev.zixamc.api.telegram.model.TgReplyMarkup
+import ru.kochkaev.zixamc.api.telegram.model.TgReplyParameters
 
 object Menu {
 
@@ -23,10 +27,15 @@ object Menu {
         type = "menu",
         data = MenuCallbackData.of("back")
     )
-    fun getBackButtonExecuteOnly(user: SQLUser) = SQLCallback.of(
+    val BACK_BUTTON_NEW_MESSAGE = SQLCallback.of(
         display = ServerBot.config.menu.buttonBackToMenu,
         type = "menu",
-        data = MenuCallbackData.of("back"),
+        data = MenuCallbackData.of($$"back$newMessage")
+    )
+    fun getBackButtonExecuteOnly(user: SQLUser, newMessage: Boolean = false) = SQLCallback.of(
+        display = ServerBot.config.menu.buttonBackToMenu,
+        type = "menu",
+        data = MenuCallbackData.of(if (newMessage) $$"back$newMessage" else "back"),
         canExecute = CallbackCanExecute(
             statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
             users = listOf(user.userId),
@@ -83,7 +92,7 @@ object Menu {
         }
     }
 
-    suspend fun sendMenu(chatId: Long, userId: Long?, threadId: Int? = null) {
+    suspend fun sendMenu(chatId: Long, userId: Long?, replyTo: Int? = null, newMessage: Boolean = false, messageId: Int? = null) {
         val chat = SQLChat.get(chatId)
         val user = userId?.let { SQLUser.get(it) }
         ProcessTypes.entries.values
@@ -104,20 +113,44 @@ object Menu {
                 process.drop()
             }
         if (user != null && chat != null && user.hasProtectedLevel(AccountType.PLAYER)) {
-            ServerBot.bot.sendMessage(
+            val text = ServerBot.config.menu.messageMenu.formatLang("nickname" to (user.nickname ?: ""))
+            val replyMarkup = TgMenu(arrayListOf<List<ITgMenuButton>>().apply {
+                addAll(integrations.filter { it.filter(chatId, userId) }.map { it.menuButton })
+                if (chatId == userId && SQLUser.get(userId)?.agreedWithRules == true) add(listOf(SQLCallback.of(
+                    display = ServerBot.config.menu.removeAgreedWithRules,
+                    type = "menu",
+                    data = MenuCallbackData.of("removeAgreedWithRules")
+                )))
+                add(listOf(SQLCallback.of(
+                    display = ConfigManager.config.general.buttons.success,
+                    type = "menu",
+                    data = MenuCallbackData.of("success")
+                )))
+            })
+            if (newMessage || messageId == null) ServerBot.bot.sendMessage(
                 chatId = chatId,
-                messageThreadId = threadId,
-                text = ServerBot.config.menu.messageMenu,
-                replyMarkup = TgMenu(arrayListOf<List<ITgMenuButton>>().apply {
-                    addAll(integrations.filter { it.filter(chatId, userId) }.map { it.menuButton })
-                })
+                text = text,
+                replyMarkup = replyMarkup,
+                replyParameters = replyTo?.let { TgReplyParameters(it) },
             )
-//            process.remove(chat.getChatId())
+            else {
+                ServerBot.bot.editMessageText(
+                    chatId = chatId,
+                    messageId = messageId,
+                    text = text,
+                )
+                ServerBot.bot.editMessageReplyMarkup(
+                    chatId = chatId,
+                    messageId = messageId,
+                    replyMarkup = replyMarkup,
+                )
+            }
         }
         else
             ServerBot.bot.sendMessage(
                 chatId = chatId,
                 text = ServerBot.config.menu.messageNotPlayer,
+                replyParameters = replyTo?.let { TgReplyParameters(it) },
             )
     }
     suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<MenuCallbackData<*>>): TgCBHandlerResult {
@@ -129,19 +162,53 @@ object Menu {
                 messageId = cbq.message.messageId,
                 text = ServerBot.config.menu.messageNotPlayer,
             )
-            return TgCBHandlerResult.Companion.DELETE_MARKUP
+            return TgCBHandlerResult.DELETE_MARKUP
         }
-        if (cbq.message.chat.id != cbq.from.id &&  sql.canExecute?.let {
-                !(it.statuses?.contains(ServerBot.bot.getChatMember(cbq.message.chat.id, cbq.from.id).status) == true || it.users?.contains(cbq.from.id) == true)
-            } != false) return ServerBotGroup.answerHaventRights(cbq.id, sql.canExecute?.display ?: "")
         when (sql.data!!.operation /*cbq.data*/) {
-            "back" -> sendMenu(cbq.message.chat.id, cbq.from.id, cbq.message.messageThreadId)
-            "info" -> ServerBotLogic.sendInfoMessage(entity)
+            "back" -> {
+                sendMenu(cbq.message.chat.id, cbq.from.id, null, false, cbq.message.messageId)
+                return TgCBHandlerResult.DELETE_LINKED
+            }
+            $$"back$newMessage" -> {
+                sendMenu(cbq.message.chat.id, cbq.from.id, cbq.message.messageId, true, null)
+                return TgCBHandlerResult.DELETE_MARKUP
+            }
+//            "info" -> {
+//                ServerBotLogic.sendInfoMessage(entity)
+//                return TgCBHandlerResult.DELETE_MESSAGE
+//            }
+            "removeAgreedWithRules" -> {
+                ServerBot.bot.editMessageText(
+                    chatId = cbq.message.chat.id,
+                    messageId = cbq.message.messageId,
+                    text = ConfigManager.config.general.rules.confirmRemoveAgree4player.formatLang("nickname" to (SQLUser.get(cbq.from.id)?.nickname?:""))
+                )
+                ServerBot.bot.editMessageReplyMarkup(
+                    chatId = cbq.message.chat.id,
+                    messageId = cbq.message.messageId,
+                    replyMarkup = TgMenu(listOf(
+                        listOf(SQLCallback.of(
+                            display = ConfigManager.config.general.buttons.confirm,
+                            type = "rules",
+                            data = RulesCallbackData(RulesOperation.CONFIRM_REMOVE_AGREE, RulesManager.RulesOperationType.REMOVE_AGREE)
+                        )),
+                        listOf(SQLCallback.of(
+                            display = ConfigManager.config.general.buttons.cancel,
+                            type = "rules",
+                            data = RulesCallbackData(RulesOperation.CANCEL_REMOVE_AGREE, RulesManager.RulesOperationType.REMOVE_AGREE, cbq.from.id)
+                        )),
+                    ))
+                )
+                return TgCBHandlerResult.DELETE_LINKED
+            }
+            "success" -> {
+                return TgCBHandlerResult.DELETE_MESSAGE
+            }
             else -> {
-                integrations.map { it.menuCallbackProcessor }.forEach { it(cbq, sql).let { it1 -> if (it1 != TgCBHandlerResult.Companion.SUCCESS) return it1 } }
+                integrations.map { it.menuCallbackProcessor }.forEach { it(cbq, sql).let { it1 -> if (it1 != TgCBHandlerResult.SUCCESS) return it1 } }
             }
         }
-        return TgCBHandlerResult.Companion.DELETE_MARKUP
+        return TgCBHandlerResult.DELETE_MARKUP
     }
 //    suspend fun onMessage(msg: TgMessage) {
 //        runBlocking {

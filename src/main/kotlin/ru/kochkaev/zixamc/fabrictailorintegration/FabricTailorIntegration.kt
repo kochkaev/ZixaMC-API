@@ -65,13 +65,17 @@ object FabricTailorIntegration {
             if (nicknames.size == 1) {
                 data.nickname = nicknames[0]
             } else if (nicknames.isEmpty()) {
-                ServerBot.bot.sendMessage(
+                ServerBot.bot.editMessageText(
                     chatId = cbq.message.chat.id,
-                    messageThreadId = cbq.message.messageThreadId,
+                    messageId = cbq.message.messageId,
                     text = Config.config.messageErrorUpload,
+                )
+                ServerBot.bot.editMessageReplyMarkup(
+                    chatId = cbq.message.chat.id,
+                    messageId = cbq.message.messageId,
                     replyMarkup = TgMenu(listOf(listOf(Menu.getBackButtonExecuteOnly(user))))
                 )
-                return TgCBHandlerResult.DELETE_MARKUP
+                return TgCBHandlerResult.DELETE_LINKED
             } else {
                 ServerBot.bot.editMessageText(
                     chatId = cbq.message.chat.id,
@@ -176,7 +180,7 @@ object FabricTailorIntegration {
                                 asCallbackSend = CancelCallbackData.CallbackSend(
                                     type = "menu",
                                     data = Menu.MenuCallbackData.of("back"),
-                                    result = TgCBHandlerResult.Companion.DELETE_MARKUP,
+                                    result = TgCBHandlerResult.Companion.DELETE_LINKED,
                                 ),
                                 canExecute = CallbackCanExecute(
                                     statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
@@ -188,7 +192,7 @@ object FabricTailorIntegration {
                     )
                 ),
             )
-            SQLProcess.Companion.get(cbq.message.chat.id, FabricTailorUploadProcess)?.also {
+            SQLProcess.get(cbq.message.chat.id, FabricTailorUploadProcess)?.also {
                 it.data?.run {
                     try { ServerBot.bot.editMessageReplyMarkup(
                         chatId = cbq.message.chat.id,
@@ -198,26 +202,34 @@ object FabricTailorIntegration {
                     SQLCallback.Companion.dropAll(cbq.message.chat.id, this.messageId)
                 }
             } ?.drop()
-            SQLProcess.Companion.of(
+            SQLProcess.of(
                 FabricTailorUploadProcess, FTProcessData(
-                nickname = data.nickname!!,
-                slim = data.slim!!,
-                messageId = cbq.message.messageId,
-                topicId = cbq.message.messageThreadId
-            )).pull(cbq.message.chat.id)
+                    nickname = data.nickname!!,
+                    slim = data.slim!!,
+                    messageId = cbq.message.messageId,
+                    topicId = cbq.message.messageThreadId
+                )
+            ).pull(cbq.message.chat.id)
             return TgCBHandlerResult.Companion.DELETE_LINKED
         }
     }
 
-    suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<*>, data: FTProcessData) = Initializer.coroutineScope.launch {
+    suspend fun messageProcessor(msg: TgMessage, process: SQLProcess<FTProcessData>, data: FTProcessData) = Initializer.coroutineScope.launch {
         val user = SQLUser.Companion.get(msg.from?.id ?: return@launch) ?: return@launch
         if (!user.nicknames.contains(data.nickname)) return@launch
+        ServerBot.bot.editMessageReplyMarkup(
+            chatId = msg.chat.id,
+            messageId = data.messageId,
+            replyMarkup = TgReplyMarkup()
+        )
+        SQLCallback.dropAll(msg.chat.id, data.messageId)
         msg.document?.let {
             val message = ServerBot.bot.sendMessage(
                 chatId = msg.chat.id,
                 replyParameters = TgReplyParameters(msg.messageId),
                 text = Config.config.messagePreparing
             )
+            process.data = FTProcessData(message.messageId, data.nickname, data.slim, data.topicId)
             val path = FabricLoader.getInstance().gameDir.toAbsolutePath()
             val path1 = path.resolve("$path/fabrictailor_uploads/")
             path1.toFile().mkdirs()
@@ -230,15 +242,25 @@ object FabricTailorIntegration {
                     messageId = message.messageId,
                     text = Config.config.messageErrorUpload,
                 )
-                process.data?.run {
-                    try { ServerBot.bot.editMessageReplyMarkup(
-                        chatId = process.chatId,
-                        messageId = this.messageId,
-                        replyMarkup = TgReplyMarkup()
-                    ) } catch (_: Exception) {}
-                    SQLCallback.Companion.dropAll(process.chatId, this.messageId)
-                }
-                process.drop()
+                ServerBot.bot.editMessageReplyMarkup(
+                    chatId = msg.chat.id,
+                    messageId = message.messageId,
+                    replyMarkup = TgMenu(
+                        listOf(listOf(CancelCallbackData(
+                            cancelProcesses = listOf(FabricTailorUploadProcess),
+                            asCallbackSend = CancelCallbackData.CallbackSend(
+                                type = "menu",
+                                data = Menu.MenuCallbackData.of("back"),
+                                result = TgCBHandlerResult.Companion.DELETE_LINKED,
+                            ),
+                            canExecute = CallbackCanExecute(
+                                statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
+                                users = listOf(user.userId),
+                                display = user.nickname ?: "",
+                            )
+                        ).build()))
+                    ),
+                )
                 return@launch
             }
             val result = setSkinFromFile(File(downloaded), data.slim, data.nickname)
@@ -269,14 +291,50 @@ object FabricTailorIntegration {
                     messageId = message.messageId,
                     replyMarkup = TgMenu(listOf(listOf(Menu.BACK_BUTTON)))
                 )
+            } else {
+                ServerBot.bot.editMessageReplyMarkup(
+                    chatId = msg.chat.id,
+                    messageId = message.messageId,
+                    replyMarkup = TgMenu(
+                        listOf(listOf(CancelCallbackData(
+                            cancelProcesses = listOf(FabricTailorUploadProcess),
+                            asCallbackSend = CancelCallbackData.CallbackSend(
+                                type = "menu",
+                                data = Menu.MenuCallbackData.of("back"),
+                                result = TgCBHandlerResult.Companion.DELETE_LINKED,
+                            ),
+                            canExecute = CallbackCanExecute(
+                                statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
+                                users = listOf(user.userId),
+                                display = user.nickname ?: "",
+                            )
+                        ).build()))
+                    ),
+                )
             }
             return@let
         } ?: run {
-            ServerBot.bot.sendMessage(
+            val message = ServerBot.bot.sendMessage(
                 chatId = msg.chat.id,
                 replyParameters = TgReplyParameters(msg.messageId),
                 text = Config.config.messageErrorNotAnImage,
+                replyMarkup = TgMenu(
+                    listOf(listOf(CancelCallbackData(
+                        cancelProcesses = listOf(FabricTailorUploadProcess),
+                        asCallbackSend = CancelCallbackData.CallbackSend(
+                            type = "menu",
+                            data = Menu.MenuCallbackData.of("back"),
+                            result = TgCBHandlerResult.Companion.DELETE_LINKED,
+                        ),
+                        canExecute = CallbackCanExecute(
+                            statuses = listOf(TgChatMemberStatuses.CREATOR, TgChatMemberStatuses.ADMINISTRATOR),
+                            users = listOf(user.userId),
+                            display = user.nickname ?: "",
+                        )
+                    ).build()))
+                ),
             )
+            process.data = FTProcessData(message.messageId, data.nickname, data.slim, data.topicId)
         }
     }
 
@@ -319,8 +377,10 @@ object FabricTailorIntegration {
             val server = (FabricLoader.getInstance().gameInstance as MinecraftServer)
             val player = server.playerManager.getPlayer(nickname)
             if (player != null) {
+                // TODO: Add support to fabric tailor errors
                 SkinCommand.setSkin(player) { Optional.of(it) }
             } else {
+                // TODO: Add support for set skin for offline player
 //                val profile = server.userCache?.findByName(nickname)?.getOrNull()
 //                return profile?.let { _ -> setSkin(profile) { it } } ?: SkinUploadResult.SET_ERROR
                 return SkinUploadResult.NOT_ONLINE
