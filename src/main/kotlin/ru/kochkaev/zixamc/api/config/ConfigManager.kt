@@ -5,6 +5,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils
 import ru.kochkaev.zixamc.api.ZixaMC
 import java.io.File
 import java.io.FileOutputStream
+import java.lang.reflect.Type
 import java.nio.charset.StandardCharsets
 
 /**
@@ -30,10 +31,10 @@ object ConfigManager {
     }
 
     @Throws(Exception::class)
-    fun <T> init(file: File, clazz: Class<T>, supplier: ()->T, getter: ()->T?, setter: (T?)->Unit) {
+    fun <T> init(file: File, type: Type, supplier: ()->T, getter: ()->T?, setter: (T?)->Unit) {
         if (file.length() != 0L) {
             try {
-                setter.invoke(load(file, clazz))
+                setter.invoke(load(file, type))
                 update(file, getter.invoke())
             } catch (e: Exception) {
                 logger.error(ExceptionUtils.getStackTrace(e))
@@ -43,7 +44,7 @@ object ConfigManager {
         }
     }
 
-    private fun <T> create(file: File, supplier: ()->T): T? {
+    fun <T> create(file: File, supplier: ()->T): T? {
         val content: T = supplier.invoke()
         try {
             FileOutputStream(file).use { outputStream ->
@@ -57,12 +58,12 @@ object ConfigManager {
         }
     }
 
-    fun <T> load(file: File, clazz: Class<T>): T? {
+    fun <T> load(file: File, type: Type): T? {
         var content: T? = null
         try {
             content = GsonManager.gson.fromJson(
                 IOUtils.toString(file.toURI(), StandardCharsets.UTF_8),
-                clazz
+                type
             )
         } catch (e: Exception) {
             logger.error(ExceptionUtils.getStackTrace(e))

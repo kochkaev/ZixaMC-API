@@ -6,6 +6,8 @@ import ru.kochkaev.zixamc.api.config.Config
 import ru.kochkaev.zixamc.api.config.serialize.GroupCallbackAdapter
 import ru.kochkaev.zixamc.api.config.ConfigManager
 import ru.kochkaev.zixamc.api.config.GsonManager
+import ru.kochkaev.zixamc.api.config.TempConfig
+import ru.kochkaev.zixamc.api.config.TempConfigValueType
 import ru.kochkaev.zixamc.api.config.serialize.MenuCallbackDataAdapter
 import ru.kochkaev.zixamc.api.config.TextData
 import ru.kochkaev.zixamc.api.config.serialize.CallbackDataAdapter
@@ -20,6 +22,8 @@ import ru.kochkaev.zixamc.api.config.serialize.TextDataAdapter
 import ru.kochkaev.zixamc.api.config.serialize.TgChatMemberAdapter
 import ru.kochkaev.zixamc.api.config.serialize.ChatDataMapDeserializer
 import ru.kochkaev.zixamc.api.config.serialize.ChatDataTypeAdapter
+import ru.kochkaev.zixamc.api.config.serialize.TempConfigMapDeserializer
+import ru.kochkaev.zixamc.api.config.serialize.TempConfigValueTypeAdapter
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLGroup
 import ru.kochkaev.zixamc.api.sql.SQLUser
@@ -45,6 +49,7 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
                 Menu.MenuCallbackData::class.java to MenuCallbackDataAdapter(),
                 object : TypeToken<Map<FeatureType<out FeatureData>, FeatureData>>() {}.type to FeatureMapDeserializer(),
                 object : TypeToken<Map<ChatDataType<*>, *>>() {}.type to ChatDataMapDeserializer(),
+                object : TypeToken<Map<TempConfigValueType<*>, *>>() {}.type to TempConfigMapDeserializer(),
                 SQLUser::class.java to SQLUserAdapter(),
                 SQLGroup::class.java to SQLGroupAdapter(),
                 SQLCallback::class.java to SQLCallbackAdapter(),
@@ -57,12 +62,14 @@ class ZixaMCPreLaunch : PreLaunchEntrypoint {
                 FeatureType::class.java to FeatureTypeAdapter(),
                 ProcessType::class.java to ProcessTypeAdapter(),
                 ChatDataType::class.java to ChatDataTypeAdapter(),
+                TempConfigValueType::class.java to TempConfigValueTypeAdapter(),
             )
         }
     }
     override fun onPreLaunch() {
         registerTypeAdapters()
         ConfigManager.registerConfig(Config)
+        TempConfig.temp.init()
 
         Initializer.startSQL()
 

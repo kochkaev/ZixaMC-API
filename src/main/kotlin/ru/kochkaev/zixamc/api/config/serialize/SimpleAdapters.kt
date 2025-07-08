@@ -1,5 +1,7 @@
 package ru.kochkaev.zixamc.api.config.serialize
 
+import ru.kochkaev.zixamc.api.config.TempConfig
+import ru.kochkaev.zixamc.api.config.TempConfigValueType
 import ru.kochkaev.zixamc.api.config.TextData
 import ru.kochkaev.zixamc.api.sql.SQLCallback
 import ru.kochkaev.zixamc.api.sql.SQLGroup
@@ -42,5 +44,9 @@ class ProcessTypeAdapter: SimpleAdapter<ProcessType<*>>(
 )
 class ChatDataTypeAdapter: SimpleAdapter<ChatDataType<*>>(
     reader = { ChatDataTypes.entries[it.nextString()] },
+    writer = { out, it -> out.value(it.serializedName) }
+)
+class TempConfigValueTypeAdapter: SimpleAdapter<TempConfigValueType<*>>(
+    reader = { TempConfig.registeredValueTypes[it.nextString()] },
     writer = { out, it -> out.value(it.serializedName) }
 )

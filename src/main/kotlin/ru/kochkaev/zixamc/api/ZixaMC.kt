@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory
 import ru.kochkaev.zixamc.api.command.ZixaMCCommand
 import ru.kochkaev.zixamc.api.config.Config
 import ru.kochkaev.zixamc.api.config.ConfigManager
+import ru.kochkaev.zixamc.api.config.TempConfig
+import ru.kochkaev.zixamc.api.config.TempConfigMap
 import ru.kochkaev.zixamc.api.sql.callback.CancelCallbackData
 import ru.kochkaev.zixamc.api.telegram.ServerBot
 import ru.kochkaev.zixamc.audioplayerintegration.ZixaMCAudioPlayerIntegration
@@ -29,8 +31,6 @@ class ZixaMC : ModInitializer {
         val logger: Logger = LoggerFactory.getLogger("ZixaMCTGBridge")
         val server: MinecraftServer?
             get() = FabricLoader.getInstance().gameInstance as MinecraftServer?
-        val tmp: Config.TempConfig
-            get() = ConfigManager.config.tmp
         fun runConsoleCommand(command: String) {
             val server = server ?: return
             val dispatcher = server.commandManager.dispatcher

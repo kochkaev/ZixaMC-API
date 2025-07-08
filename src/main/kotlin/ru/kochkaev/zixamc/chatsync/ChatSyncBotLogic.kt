@@ -30,20 +30,20 @@ object ChatSyncBotLogic {
     val DEFAULT_GROUP = SQLGroup.get("main")!!
 
     suspend fun sendServerStartedMessage() {
-        if (!ZixaMC.tmp.isSilentRestart)
+        if (!ChatSync.isSilentRestart)
             bot.sendMessage(
                 chatId = DEFAULT_GROUP.chatId,
                 text = ChatSyncBotCore.lang.telegram.serverStarted,
                 messageThreadId = DEFAULT_GROUP.features.getCasted(ChatSyncFeatureType)!!.topicId,
             )
         else {
-            ZixaMC.tmp.isSilentRestart = false
+            ChatSync.isSilentRestart = false
             Config.update()
             Config.load()
         }
     }
     suspend fun sendServerStoppedMessage() {
-        if (!ZixaMC.tmp.isSilentRestart)
+        if (!ChatSync.isSilentRestart)
             bot.sendMessage(
                 chatId = DEFAULT_GROUP.chatId,
                 text = ChatSyncBotCore.lang.telegram.serverStopped,

@@ -18,15 +18,6 @@ class ZixaMCRequests: ModInitializer {
         ChatDataTypes.registerType(RequestsChatDataType)
         RequestsBot.startBot()
         BotLogic.registerBot(RequestsBot.bot)
-        ZixaMCCommand.registerIntegration(CommandManager.literal("silentRestart")
-            .executes { context ->
-                ZixaMC.tmp.isSilentRestart = true
-                ru.kochkaev.zixamc.api.config.Config.update()
-                context.source.sendFeedback({ Text.of("Server restart will not be seen in telegram.") }, true)
-                context.source.server.stop(false)
-                0
-            }
-        )
         Initializer.registerBeforeSQLStopEvent {
             RequestsBot.stopBot()
             RequestsBot.bot.pollTask?.join()
