@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "zixamc",
+  "id": "zixamc-api",
   "version": "${version}",
-  "name": "ZixaMC API",
+  "name": "ZixaMC-API",
   "description": "",
   "authors": [
     "kochkaev"

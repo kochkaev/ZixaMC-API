@@ -50,7 +50,7 @@ subprojects {
             splitEnvironmentSourceSets()
 
             mods {
-                register("zixamcrequests") {
+                register("zixamc-api") {
                     sourceSet("main")
                     sourceSet("client")
                 }
