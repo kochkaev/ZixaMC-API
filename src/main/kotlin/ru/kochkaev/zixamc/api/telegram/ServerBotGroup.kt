@@ -43,14 +43,14 @@ object ServerBotGroup {
     )
     fun getSettings(group: SQLGroup) = TgMenu(
         arrayListOf<List<ITgMenuButton>>(
-//            listOf(
-//                SQLCallback.of(
-//                    display = ServerBot.config.group.settings.features,
-//                    type = "group",
-//                    data = GroupCallback.of(Operations.EDIT_FEATURES),
-//                    canExecute = CAN_EXECUTE_ADMIN,
-//                )
-//            ),
+            listOf(
+                SQLCallback.of(
+                    display = ServerBot.config.group.settings.features,
+                    type = "group",
+                    data = GroupCallback.of(Operations.EDIT_FEATURES),
+                    canExecute = CAN_EXECUTE_ADMIN,
+                )
+            ),
             listOf(
                 SQLCallback.of(
                     display = ServerBot.config.group.settings.changeName,

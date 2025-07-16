@@ -34,7 +34,7 @@ object ServerBotLogic {
     fun registerTelegramHandlers() {
         bot.registerCommandHandler("start") { Menu.sendMenu(it.chat.id, it.from?.id, it.messageThreadId, true) }
         bot.registerCommandHandler("menu") { Menu.sendMenu(it.chat.id, it.from?.id, it.messageThreadId, true) }
-        bot.registerCommandHandler("admin") { AdminPanel.sendPanel(it.chat.id, it.from?.id, it.messageThreadId) }
+        bot.registerCommandHandler("admin") { AdminPanel.sendPanel(it.chat.id, it.from?.id, it.messageThreadId, true) }
         bot.registerCommandHandler("mentionAll") { SQLGroup.get(it.chat.id)?.also { group ->
             bot.sendMessage(
                 chatId = it.chat.id,
