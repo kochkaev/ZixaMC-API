@@ -17,6 +17,8 @@ enum class TgEntityType {
     URL,
     @SerializedName("mention")
     MENTION,
+    @SerializedName("text_mention")
+    TEXT_MENTION,
     @SerializedName("hashtag")
     HASHTAG,
     @SerializedName("cashtag")
@@ -27,4 +29,16 @@ enum class TgEntityType {
     CODE,
     @SerializedName("pre")
     PRE,
+    @SerializedName("blockquote")
+    BLOCKQUOTE,
+    @SerializedName("expandable_blockquote")
+    EXPANDABLE_BLOCKQUOTE,
+    @SerializedName("bot_command")
+    BOT_COMMAND,
+    @SerializedName("email")
+    EMAIL,
+    @SerializedName("phone_number")
+    PRONE_NUMBER,
+    @SerializedName("custom_emoji")
+    CUSTOM_EMOJI,
 }

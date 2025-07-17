@@ -4,13 +4,13 @@ package ru.kochkaev.zixamc.api.telegram.model
  * @author vanutp
  */
 interface TgMessageMedia {
-    val animation: TgAny?
-    val photo: List<TgAny>?
+    val animation: TgAnimation?
+    val photo: List<TgPhotoSize>?
     val audio: TgAudio?
     val document: TgDocument?
-    val sticker: TgAny?
-    val video: TgAny?
-    val videoNote: TgAny?
-    val voice: TgAny?
+    val sticker: TgSticker?
+    val video: TgVideo?
+    val videoNote: TgVideoNote?
+    val voice: TgVoice?
     val poll: TgPoll?
 }

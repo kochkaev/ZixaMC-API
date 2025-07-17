@@ -21,6 +21,24 @@ import ru.kochkaev.zixamc.api.sql.SQLProcess
 import ru.kochkaev.zixamc.api.sql.data.AccountType
 import ru.kochkaev.zixamc.api.sql.process.ProcessorType
 import ru.kochkaev.zixamc.api.telegram.ServerBotGroup.answerHaventRights
+import ru.kochkaev.zixamc.api.telegram.request.TgAnswerCallbackQueryRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgApproveChatJoinRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgBanChatMemberRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgDeleteMessageRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgDeleteMessagesRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgEditMessageReplyMarkupRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgEditMessageRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgForwardMessageRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgGetChatMemberCountRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgGetChatMemberRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgGetChatRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgGetFileRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgLeaveChatRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgPinChatMessageRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgSendMessageRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgSendPollRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgStopPollRequest
+import ru.kochkaev.zixamc.api.telegram.request.TgUnbanChatMemberRequest
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.time.Duration
@@ -219,7 +237,7 @@ class TelegramBotZixa(
                         update.chatMember?.run {
                             if (this.from.id != this.newChatMember.user.id)
                                 SQLGroup.collectData(this.chat, this.from)
-                            if (!(this.newChatMember.status == TgChatMemberStatuses.BANNED && (this.newChatMember as TgChatMemberBanned).untilDate == 0 || this.newChatMember.status == TgChatMemberStatuses.LEFT))
+                            if (!(this.newChatMember.status == TgChatMemberStatuses.KICKED && (this.newChatMember as TgChatMemberBanned).untilDate == 0 || this.newChatMember.status == TgChatMemberStatuses.LEFT))
                                 SQLGroup.get(this.chat.id)?.members?.remove(this.newChatMember.user.id)
                             chatMemberUpdatedHandlers.forEach {
                                 it.invoke(this)
@@ -343,16 +361,18 @@ class TelegramBotZixa(
         protectContent: Boolean = false,
     ): TgMessage = call {
         val markup = if (replyMarkup is TgMenu?) replyMarkup?.inlineAndId(chatId) else replyMarkup as TgReplyMarkup? to listOf()
-        val result = client.sendMessage(TgSendMessageRequest(
-            chatId = chatId,
-            messageThreadId = messageThreadId,
-            text = BotLogic.processGlobalPlaceholders(text, chatId),
-            parseMode = parseMode,
-            entities = entities,
-            replyParameters = replyParameters,
-            replyMarkup = markup?.first,
-            protectContent = protectContent,
-        ))
+        val result = client.sendMessage(
+            TgSendMessageRequest(
+                chatId = chatId,
+                messageThreadId = messageThreadId,
+                text = BotLogic.processGlobalPlaceholders(text, chatId),
+                parseMode = parseMode,
+                entities = entities,
+                replyParameters = replyParameters,
+                replyMarkup = markup?.first,
+                protectContent = protectContent,
+            )
+        )
         if (result.ok) markup?.second?.forEach { SQLCallback.get(it)!!.messageId = result.result!!.messageId }
         else markup?.second?.forEach { SQLCallback.get(it)!!.drop() }
         result
@@ -382,30 +402,32 @@ class TelegramBotZixa(
         messageEffectId: String? = null,
         replyParameters: TgReplyParameters? = null,
     ): TgMessage = call {
-        client.sendPoll(TgSendPollRequest(
-            businessConnectionId,
-            chatId,
-            messageThreadId,
-            question,
-            questionParseMode,
-            questionEntities,
-            options,
-            isAnonymous,
-            type,
-            allowsMultipleAnswers,
-            correctOptionId,
-            explanation,
-            explanationParseMode,
-            explanationEntities,
-            openPeriod,
-            closeDate,
-            isClosed,
-            disableNotification,
-            protectContent,
-            allowPaidBroadcast,
-            messageEffectId,
-            replyParameters
-        ))
+        client.sendPoll(
+            TgSendPollRequest(
+                businessConnectionId,
+                chatId,
+                messageThreadId,
+                question,
+                questionParseMode,
+                questionEntities,
+                options,
+                isAnonymous,
+                type,
+                allowsMultipleAnswers,
+                correctOptionId,
+                explanation,
+                explanationParseMode,
+                explanationEntities,
+                openPeriod,
+                closeDate,
+                isClosed,
+                disableNotification,
+                protectContent,
+                allowPaidBroadcast,
+                messageEffectId,
+                replyParameters
+            )
+        )
     }
     suspend fun stopPoll(
         chatId: Long,
@@ -435,7 +457,16 @@ class TelegramBotZixa(
         protectContent: Boolean = false,
         messageId: Int,
     ): TgMessage = call {
-        client.forwardMessage(TgForwardMessageRequest(chatId, messageThreadId, fromChatId, disableNotification, protectContent, messageId))
+        client.forwardMessage(
+            TgForwardMessageRequest(
+                chatId,
+                messageThreadId,
+                fromChatId,
+                disableNotification,
+                protectContent,
+                messageId
+            )
+        )
     }
 
     suspend fun editMessageText(
@@ -464,11 +495,13 @@ class TelegramBotZixa(
         replyMarkup: ITgMenu,
     ) : TgMessage = call {
         val markup = if (replyMarkup is TgMenu) replyMarkup.inlineAndId(chatId) else replyMarkup as TgReplyMarkup to listOf()
-        val result = client.editMessageReplyMarkup(TgEditMessageReplyMarkupRequest(
-            chat_id = chatId,
-            message_id = messageId,
-            reply_markup = markup.first,
-        ))
+        val result = client.editMessageReplyMarkup(
+            TgEditMessageReplyMarkupRequest(
+                chat_id = chatId,
+                message_id = messageId,
+                reply_markup = markup.first,
+            )
+        )
         if (result.ok) markup.second.forEach { SQLCallback.get(it)!!.messageId = result.result!!.messageId }
         else markup.second.forEach { SQLCallback.get(it)!!.drop() }
         result
@@ -489,6 +522,9 @@ class TelegramBotZixa(
 
     suspend fun deleteMessage(chatId: Long, messageId: Int) = call {
         client.deleteMessage(TgDeleteMessageRequest(chatId, messageId))
+    }
+    suspend fun deleteMessages(chatId: Long, messageIds: List<Int>) = call {
+        client.deleteMessages(TgDeleteMessagesRequest(chatId, messageIds))
     }
 
     suspend fun banChatMember(chatId: Long, userId: Long) = call {
