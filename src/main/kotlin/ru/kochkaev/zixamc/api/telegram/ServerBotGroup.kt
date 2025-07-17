@@ -852,8 +852,8 @@ object ServerBotGroup {
                 .map { it.value }
                 .filter { it.checkAvailable(group) }
                 .filter { !group.features.contains(it) }
-                .map {
-                    SQLCallback.Companion.of(
+                .map<FeatureType<*>, SQLCallback.Companion.Builder<*>> {
+                    SQLCallback.of(
                         display = it.tgDisplayName(),
                         type = "group",
                         data = GroupCallback.of(
@@ -862,6 +862,22 @@ object ServerBotGroup {
                         ),
                         canExecute = CAN_EXECUTE_ADMIN,
                     )
+                }
+                .toMutableList()
+                .apply {
+                    if (withDone) add(SQLCallback.of(
+                        display = ConfigManager.config.general.buttons.success,
+                        type = "group",
+                        data = GroupCallback.of(Operations.SUCCESS),
+                        canExecute = CAN_EXECUTE_ADMIN,
+                    ))
+                    else add(CancelCallbackData(
+                        asCallbackSend = CancelCallbackData.CallbackSend(
+                            type = "group",
+                            data = GroupCallback.of(Operations.EDIT_FEATURES),
+                            result = TgCBHandlerResult.DELETE_LINKED,
+                        )
+                    ).build())
                 }
                 .map { listOf(it) }
         )
