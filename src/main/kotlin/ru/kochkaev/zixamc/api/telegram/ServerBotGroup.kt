@@ -167,6 +167,7 @@ object ServerBotGroup {
         }
         val group = SQLGroup.getOrCreate(msg.chat.id)
         msg.newChatMembers!!.forEach { member ->
+            group.members.add(member.id)
             if (member.id == ServerBot.bot.me.id && msg.from != null) {
                 try {
                     group.deleteProtected(AccountType.UNKNOWN)
@@ -222,16 +223,13 @@ object ServerBotGroup {
                 }
                 else sendFeatures(group)
             }
-            else {
-                group.members.add(member.id)
-                if (!member.isBot) {
-                    val user = SQLUser.getOrCreate(member.id)
-                    user.accountType.levelHigh?.let { group.deleteProtected(it) }
-                    if (group.data.getCasted(ChatDataTypes.GREETING_ENABLE)?:false) ServerBot.bot.sendMessage(
-                        chatId = group.id,
-                        text = ServerBot.config.group.protectedWasDeleted
-                    )
-                }
+            else if (!member.isBot) {
+                val user = SQLUser.getOrCreate(member.id)
+                user.accountType.levelHigh?.let { group.deleteProtected(it) }
+                if (group.data.getCasted(ChatDataTypes.GREETING_ENABLE)?:false) ServerBot.bot.sendMessage(
+                    chatId = group.id,
+                    text = ServerBot.config.group.protectedWasDeleted
+                )
             }
         }
     }

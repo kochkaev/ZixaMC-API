@@ -54,6 +54,7 @@ data class Config (
             val buttonBackToMenu: String = "« Вернуться в меню",
             val infoButton: String = "Информация о сервере 📌",
             val addToGroupButton: String = "Добавить бота в группу 🎊",
+            val adminPanelButton: String = "Панель администратора 💻",
             val removeAgreedWithRules: String = "Отозвать согласие с правилами ❌",
         )
         data class AdminPanelConfig(

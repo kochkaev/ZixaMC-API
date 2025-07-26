@@ -79,7 +79,7 @@ object AdminPanel {
         }
     }
 
-    suspend fun sendPanel(chatId: Long, userId: Long?, messageId: Int? = null, newMessage: Boolean = false) {
+    suspend fun sendPanel(chatId: Long, userId: Long?, messageId: Int? = null, newMessage: Boolean = false): Boolean {
         val chat = SQLChat.get(chatId)
         val user = userId?.let { SQLUser.get(it) }
         ProcessTypes.entries.values
@@ -127,13 +127,16 @@ object AdminPanel {
                     replyMarkup = replyMarkup,
                 )
             }
+            return true
         }
-        else
+        else {
             ServerBot.bot.sendMessage(
                 chatId = chatId,
                 text = ServerBot.config.adminPanel.messageNotAdmin,
                 replyParameters = messageId?.let { TgReplyParameters(it) },
             )
+            return false
+        }
     }
     suspend fun onCallback(cbq: TgCallbackQuery, sql: SQLCallback<AdminPanelCallback<*>>): TgCBHandlerResult {
         val user = SQLUser.get(cbq.from.id)

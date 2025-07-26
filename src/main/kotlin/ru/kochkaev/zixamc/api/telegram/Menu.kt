@@ -53,7 +53,7 @@ object Menu {
     data class Integration(
         val menuButton: List<ITgMenuButton>,
         val menuCallbackProcessor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<*>>) -> TgCBHandlerResult,
-        val filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
+        val filter: suspend (Long, Long?) -> Boolean = { chatId, userId -> true },
     ) {
         companion object {
             fun of(
@@ -64,7 +64,7 @@ object Menu {
                 callbackName: String,
                 menuDisplay: String,
                 processor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<MenuCallbackData.DummyAdditional>>) -> TgCBHandlerResult,
-                filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
+                filter: suspend (Long, Long?) -> Boolean = { chatId, userId -> true },
             ): Integration = of(callbackName, menuDisplay, processor, MenuCallbackData.DummyAdditional::class.java, MenuCallbackData.DummyAdditional(), filter)
             fun <T> of(
                 callbackName: String,
@@ -72,7 +72,7 @@ object Menu {
                 processor: suspend (TgCallbackQuery, SQLCallback<MenuCallbackData<T>>) -> TgCBHandlerResult,
                 customDataType: Class<T>,
                 customDataInitial: T,
-                filter: (Long, Long?) -> Boolean = { chatId, userId -> true },
+                filter: suspend (Long, Long?) -> Boolean = { chatId, userId -> true },
             ): Integration {
                 return Integration(
                     menuButton = listOf(

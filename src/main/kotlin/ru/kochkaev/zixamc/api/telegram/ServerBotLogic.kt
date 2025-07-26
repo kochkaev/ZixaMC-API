@@ -79,6 +79,20 @@ object ServerBotLogic {
             ),
             filter = { chatId, userId -> chatId == userId },
         ))
+        Menu.addIntegration(Menu.Integration.of(
+            callbackName = "adminPanel",
+            menuDisplay = config.menu.adminPanelButton,
+            processor = { cbq, sql ->
+                if (AdminPanel.sendPanel(
+                    chatId = cbq.message.chat.id,
+                    userId = cbq.from.id,
+                    messageId = cbq.message.messageId,
+                    newMessage = false,
+                )) TgCBHandlerResult.DELETE_LINKED
+                else TgCBHandlerResult.DELETE_MARKUP
+            },
+            filter = { chatId, userId -> userId?.let { SQLUser.get(it) } ?.hasProtectedLevel(AccountType.ADMIN) == true },
+        ))
 
         AdminPanel.addIntegration(AdminPanel.Integration.of(
             callbackName = "rulesUpdated",

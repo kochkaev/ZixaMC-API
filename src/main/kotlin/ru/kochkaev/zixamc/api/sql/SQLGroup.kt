@@ -254,9 +254,7 @@ class SQLGroup private constructor(id: Long): SQLChat(id) {
     fun isMember(nickname: String) =
         SQLUser.get(nickname)?.let { members.contains(it) } ?: false
     suspend fun getNoBotsMembers(): List<SQLUser> =
-        members.get()?.let {
-            it.filter { it1 -> !bot.getChatMember(id, it1.id).user.isBot }
-        } ?: listOf()
+        members.get()?.filter { !bot.getChatMember(id, it.id).user.isBot } ?: listOf()
 
     fun mentionAll() : String {
         val output = StringBuilder()
@@ -271,7 +269,7 @@ class SQLGroup private constructor(id: Long): SQLChat(id) {
     override suspend fun hasProtectedLevel(level: AccountType): Boolean =
         getNoBotsMembers().fold(true) { acc, it -> acc && it.hasProtectedLevel(level) }
         && (!level.requireGroupPrivate || bot.getChat(id).username == null)
-        && bot.getChatMemberCount(id) == (members.get()?.size?:0)+1
+        && bot.getChatMemberCount(id) == (members.get()?.size?:0)
     override suspend fun deleteProtected(protectLevel: AccountType) {
         super.deleteProtected(protectLevel)
         features.getAll()?.keys?.forEach { key ->
