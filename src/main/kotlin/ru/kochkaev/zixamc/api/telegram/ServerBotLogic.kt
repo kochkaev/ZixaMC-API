@@ -91,7 +91,7 @@ object ServerBotLogic {
                 )) TgCBHandlerResult.DELETE_LINKED
                 else TgCBHandlerResult.DELETE_MARKUP
             },
-            filter = { chatId, userId -> userId?.let { SQLUser.get(it) } ?.hasProtectedLevel(AccountType.ADMIN) == true },
+            filter = { chatId, userId -> SQLChat.get(chatId)?.hasProtectedLevel(AccountType.ADMIN) == true },
         ))
 
         AdminPanel.addIntegration(AdminPanel.Integration.of(
