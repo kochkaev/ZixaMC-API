@@ -36,7 +36,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
             chatId = group.id,
             messageId = cbq.message.messageId,
             text = ((tgDescription.invoke()) +
-                    if (cbq.message.chat.isForum) "\n\n" + config.group.selectTopicForFeature else "")
+                    if (cbq.message.chat.isForum == true) "\n\n" + config.group.selectTopicForFeature else "")
                 .formatLang(
                     "groupName" to group.name!!
                 )
@@ -45,12 +45,12 @@ open class TopicFeatureType<R: TopicFeatureData>(
             this.data?.also { bot.deleteMessage(group.id, it.messageId) }
             this.drop()
         }
-        if (cbq.message.chat.isForum)
+        if (cbq.message.chat.isForum == true)
             SQLProcess.of(ProcessTypes.GROUP_SELECT_TOPIC_FEATURE, GroupSelectTopicProcessData(cbq.message.messageId, serializedName)).pull(group.id)
         else {
             finishSetUp(group, cbq.message.messageId)
         }
-        if (cbq.message.chat.isForum) bot.editMessageReplyMarkup(
+        if (cbq.message.chat.isForum == true) bot.editMessageReplyMarkup(
             chatId = group.id,
             messageId = cbq.message.messageId,
             replyMarkup = TgMenu(listOf(
@@ -87,7 +87,7 @@ open class TopicFeatureType<R: TopicFeatureData>(
 
     override fun getEditorMarkup(cbq: TgCallbackQuery, group: SQLGroup): ArrayList<List<SQLCallback.Companion.Builder<out CallbackData>>> {
         val origin = super.getEditorMarkup(cbq, group)
-        if (cbq.message.chat.isForum) origin.add(listOf(SQLCallback.of(
+        if (cbq.message.chat.isForum == true) origin.add(listOf(SQLCallback.of(
             display = config.group.settings.selectTopic,
             type = "group",
             data = GroupCallback.of(
