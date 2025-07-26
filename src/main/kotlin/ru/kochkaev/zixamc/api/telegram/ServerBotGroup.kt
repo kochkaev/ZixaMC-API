@@ -266,8 +266,8 @@ object ServerBotGroup {
                         chatId = group.id,
                         text = ServerBot.config.group.thinkOfName,
                         replyMarkup = TgMenu(
-                            listOf(
-                                cbq.message.chat.title.let { escapeName(it) }.let {
+                            listOfNotNull(
+                                cbq.message.chat.title?.let { escapeName(it) }?.let {
                                     if (group.canTakeName(it)) listOf(
                                         SQLCallback.Companion.of(
                                             display = it,
@@ -292,7 +292,7 @@ object ServerBotGroup {
                                             canExecute = CAN_EXECUTE_ADMIN,
                                         )
                                     ) else listOf()
-                                } ?: listOf(),
+                                },
                             ))
                     )
                     SQLProcess.Companion.get(group.id, ProcessTypes.GROUP_WAITING_NAME)?.apply {
